@@ -1,0 +1,49 @@
+  Future<Map<String, dynamic>> getClosingPreview(String codeBank, String jnsMesin, String dateReplenish) async {
+    try {
+      debugPrint('Fetching closing preview data for CodeBank: $codeBank, JnsMesin: $jnsMesin, DateReplenish: $dateReplenish');
+      
+      final String url = '${ApiService.baseUrl}/api/CRF/kon/closing/preview?codeBank=$codeBank&jnsMesin=$jnsMesin&dateReplenish=$dateReplenish';
+      
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await headers,
+      );
+      
+      debugPrint('Closing preview response status: ${response.statusCode}');
+      debugPrint('Closing preview response body: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData;
+      } else {
+        throw Exception('Failed to load closing preview data: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('Error retrieving closing preview: $e');
+      rethrow;
+    }
+  }
+  
+  Future<ClosingAndroidResponse> insertClosingData(ClosingAndroidRequest request) async {
+    try {
+      debugPrint('Inserting closing data: ${json.encode(request.toJson())}');
+      
+      final String url = '${ApiService.baseUrl}/api/CRF/kon/closing/insert';
+      
+      final response = await http.post(
+        Uri.parse(url),
+        headers: await headers,
+        body: json.encode(request.toJson()),
+      );
+      
+      debugPrint('Closing insert response status: ${response.statusCode}');
+      debugPrint('Closing insert response body: ${response.body}');
+      
+      final Map<String, dynamic> responseData = json.decode(response.body);
+      
+      return ClosingAndroidResponse.fromJson(responseData);
+    } catch (e) {
+      debugPrint('Error inserting closing data: $e');
+      rethrow;
+    }
+  }

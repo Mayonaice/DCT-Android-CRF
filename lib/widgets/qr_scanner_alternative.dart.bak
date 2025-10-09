@@ -1,0 +1,335 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+// Import qr_code_scanner hanya jika bukan web platform
+import 'package:qr_code_scanner/qr_code_scanner.dart' if (dart.library.js) 'qr_scanner_stub.dart';
+
+/// Widget QR Scanner alternatif menggunakan package qr_code_scanner
+/// yang lebih stabil dan reliable dibanding qr_mobile_vision
+/// Catatan: Widget ini hanya berfungsi di Android dan iOS, tidak di web
+class QRScannerAlternative extends StatefulWidget {
+  final String title;
+  final Function(String) onBarcodeDetected;
+  final String? fieldKey;
+  final String? fieldLabel;
+
+  const QRScannerAlternative({
+    Key? key,
+    required this.title,
+    required this.onBarcodeDetected,
+    this.fieldKey,
+    this.fieldLabel,
+  }) : super(key: key);
+
+  @override
+  State<QRScannerAlternative> createState() => _QRScannerAlternativeState();
+}
+
+class _QRScannerAlternativeState extends State<QRScannerAlternative> with WidgetsBindingObserver {
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  QRViewController? controller;
+  bool _qrFound = false;
+  bool _isProcessing = false;
+  
+  // Untuk menangani hot reload
+  @override
+  void reassemble() {
+    super.reassemble();
+    if (Platform.isAndroid) {
+      controller?.pauseCamera();
+    } else if (Platform.isIOS) {
+      controller?.resumeCamera();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Set orientasi ke portrait untuk scanning
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+  
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    controller?.dispose();
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      controller?.resumeCamera();
+    } else if (state == AppLifecycleState.inactive || 
+              state == AppLifecycleState.paused || 
+              state == AppLifecycleState.detached) {
+      controller?.pauseCamera();
+    }
+  }
+
+  void _onQRViewCreated(QRViewController controller) {
+    this.controller = controller;
+    
+    // Tambahkan listener untuk data yang di-scan
+    controller.scannedDataStream.listen((scanData) {
+      if (_qrFound || _isProcessing || scanData.code == null) return;
+      
+      setState(() {
+        _qrFound = true;
+        _isProcessing = true;
+      });
+      
+      // Perbaikan: Menangani scanData.code yang bisa null dengan aman
+      final code = scanData.code ?? '';
+      final displayCode = code.length > 50 ? '${code.substring(0, 50)}...' : code;
+      print('🎯 QR SCANNER ALTERNATIVE: QR code detected: $displayCode');
+      
+      // Pause camera
+      controller.pauseCamera();
+      
+      // Beep untuk konfirmasi scan berhasil
+      HapticFeedback.mediumImpact();
+      
+      // Kembalikan ke landscape orientation
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      
+      // Panggil callback dengan data yang di-scan
+      widget.onBarcodeDetected(code);
+      
+      // Tutup scanner setelah delay
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          Navigator.of(context).pop(code);
+        }
+      });
+    });
+    
+    // Mulai kamera setelah controller siap
+    controller.resumeCamera();
+  }
+  
+  void _showManualInputDialog() {
+    final textController = TextEditingController();
+    
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Manual QR Code Input'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter or paste QR code content:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: textController,
+                decoration: const InputDecoration(
+                  hintText: 'Paste QR code here...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 5,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (textController.text.isNotEmpty) {
+                  // Kembalikan ke landscape orientation
+                  SystemChrome.setPreferredOrientations([
+                    DeviceOrientation.landscapeLeft,
+                    DeviceOrientation.landscapeRight,
+                  ]);
+                  
+                  // Panggil callback dengan data yang diinput
+                  widget.onBarcodeDetected(textController.text);
+                  
+                  // Tutup dialog dan scanner
+                  Navigator.of(context).pop();
+                  Navigator.of(context).pop(textController.text);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('QR code cannot be empty'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Pastikan orientasi dalam portrait mode
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    
+    // Jika platform web, tampilkan pesan error karena qr_code_scanner tidak didukung di web
+    if (kIsWeb) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(widget.title),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 64),
+              const SizedBox(height: 16),
+              const Text(
+                'Scanner alternatif tidak didukung di web',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Gunakan scanner default atau input manual',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _showManualInputDialog,
+                child: const Text('Input Manual'),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Kembali'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.text_fields),
+            onPressed: _showManualInputDialog,
+            tooltip: 'Manual Input',
+          ),
+          IconButton(
+            icon: const Icon(Icons.flash_on),
+            onPressed: () async {
+              await controller?.toggleFlash();
+              setState(() {});
+            },
+            tooltip: 'Toggle Flash',
+          ),
+          IconButton(
+            icon: const Icon(Icons.flip_camera_ios),
+            onPressed: () async {
+              await controller?.flipCamera();
+              setState(() {});
+            },
+            tooltip: 'Flip Camera',
+          ),
+        ],
+      ),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            flex: 5,
+            child: QRView(
+              key: qrKey,
+              onQRViewCreated: _onQRViewCreated,
+              overlay: QrScannerOverlayShape(
+                borderColor: Colors.green,
+                borderRadius: 10,
+                borderLength: 30,
+                borderWidth: 10,
+                cutOutSize: 300,
+              ),
+              formatsAllowed: const [
+                BarcodeFormat.qrcode,
+                BarcodeFormat.aztec,
+                BarcodeFormat.dataMatrix,
+                BarcodeFormat.pdf417,
+                BarcodeFormat.code39,
+                BarcodeFormat.code93,
+                BarcodeFormat.code128,
+                BarcodeFormat.ean8,
+                BarcodeFormat.ean13,
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 1,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              width: double.infinity,
+              color: Colors.black87,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Arahkan kamera ke QR Code',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (_isProcessing)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Memproses QR code...',
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+} 

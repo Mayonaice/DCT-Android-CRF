@@ -1,0 +1,511 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+// Hapus import QrCamera yang menyebabkan konflik
+import 'package:qr_mobile_vision/qr_mobile_vision.dart';
+// Import wrapper kita sendiri
+import 'qr_camera_wrapper.dart';
+
+class QRCodeScannerTLWidget extends StatefulWidget {
+  final String title;
+  final Function(String) onBarcodeDetected;
+  final String? fieldKey;
+  final String? fieldLabel;
+  final String? sectionId;
+
+  const QRCodeScannerTLWidget({
+    Key? key,
+    required this.title,
+    required this.onBarcodeDetected,
+    this.fieldKey,
+    this.fieldLabel,
+    this.sectionId,
+  }) : super(key: key);
+
+  @override
+  State<QRCodeScannerTLWidget> createState() => _QRCodeScannerTLWidgetState();
+}
+
+class _QRCodeScannerTLWidgetState extends State<QRCodeScannerTLWidget> with WidgetsBindingObserver {
+  bool _isScanning = false;
+  bool _qrFound = false;
+  String _scanResult = '';
+  bool _hasPermission = false;
+  bool _loading = true;
+  Timer? _permissionCheckTimer;
+  Timer? _forceRestartTimer;
+  int _permissionRetryCount = 0;
+  bool _forceRestarting = false;
+  // Gunakan GlobalKey dengan tipe state yang benar
+  final GlobalKey<QRCameraWrapperState> _cameraKey = GlobalKey<QRCameraWrapperState>();
+  
+  @override
+  void initState() {
+    super.initState();
+    _isScanning = false;
+    _qrFound = false;
+    
+    // Register observer for app lifecycle changes
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Change to portrait orientation for camera scanning
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    
+    // Delay permission check to avoid race conditions
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        _checkPermission();
+      }
+    });
+    
+    // Set timer untuk force restart kamera jika masih infinite loading setelah 15 detik
+    _forceRestartTimer = Timer(const Duration(seconds: 15), () {
+      if (mounted && !_qrFound && _hasPermission) {
+        print('⚠️ Force restarting camera after 15s of potential infinite loading');
+        _forceRestartCamera();
+      }
+    });
+  }
+  
+  @override
+  void dispose() {
+    // Unregister observer
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // Stop camera and cancel timers
+    QrMobileVision.stop();
+    _permissionCheckTimer?.cancel();
+    _forceRestartTimer?.cancel();
+    
+    super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Handle app lifecycle changes to properly manage camera resources
+    if (state == AppLifecycleState.resumed) {
+      // App is visible, ensure camera is working
+      if (_hasPermission && !_qrFound && mounted) {
+        print('App resumed: ensuring camera is active');
+        _resetCameraState();
+        
+        // Force restart camera after a short delay
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && _hasPermission && !_qrFound) {
+            _forceRestartCamera();
+          }
+        });
+      }
+    } else if (state == AppLifecycleState.inactive || 
+              state == AppLifecycleState.paused || 
+              state == AppLifecycleState.detached) {
+      // App is not visible, release camera resources
+      print('App state changed to $state: stopping camera');
+      QrMobileVision.stop();
+    }
+  }
+  
+  // Force restart kamera untuk mengatasi infinite loading
+  Future<void> _forceRestartCamera() async {
+    if (_forceRestarting) return;
+    
+    setState(() {
+      _forceRestarting = true;
+    });
+    
+    print('🔄 Force restarting camera in QRCodeScannerTLWidget');
+    
+    try {
+      // Coba gunakan GlobalKey untuk memanggil metode pada QRCameraWrapper jika tersedia
+      if (_cameraKey.currentState != null) {
+        await _cameraKey.currentState!.forceRestartCamera();
+        
+        // Tunggu sebentar sebelum mengubah status restarting
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (mounted) {
+          setState(() {
+            _forceRestarting = false;
+          });
+        }
+        return;
+      }
+      
+      // Fallback jika state tidak tersedia
+      // Stop camera
+      await QrMobileVision.stop();
+      
+      // Reset state
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+        });
+      }
+      
+      // Wait a moment
+      await Future.delayed(const Duration(milliseconds: 800));
+      
+      // Reset permission check
+      if (mounted) {
+        setState(() {
+          _loading = true;
+        });
+        
+        await _checkPermission();
+      }
+    } catch (e) {
+      print('Error during force restart: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _forceRestarting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkPermission() async {
+    _permissionCheckTimer?.cancel();
+    
+    try {
+      print('Checking camera permission...');
+      
+      // Cleanup previous instances
+      await QrMobileVision.stop();
+      
+      // Check camera permission by starting with minimal required parameters
+      await QrMobileVision.start(
+        qrCodeHandler: (String? code) {
+          // Empty handler since we're just checking permission
+          if (code != null) {
+            QrMobileVision.stop();
+          }
+        },
+        // Required parameters from updated API
+        width: 300,
+        height: 300,
+        formats: const [BarcodeFormats.QR_CODE],
+      );
+      
+      // Successfully initialized camera, permission granted
+      if (mounted) {
+        setState(() {
+          _hasPermission = true;
+          _loading = false;
+          _permissionRetryCount = 0;
+        });
+      }
+      
+      // Stop immediately, we'll start again via QRCameraWrapper
+      await QrMobileVision.stop();
+      
+      print('Camera permission check successful');
+      
+    } catch (e) {
+      print('Error checking camera permission: $e');
+      
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          
+          // Only set permission to false after a few retries
+          if (_permissionRetryCount >= 2) {
+            _hasPermission = false;
+          }
+        });
+      }
+      
+      // Retry permission check with increasing delay
+      _retryPermissionCheck();
+    }
+  }
+  
+  void _retryPermissionCheck() {
+    if (_permissionRetryCount >= 3 || !mounted || _hasPermission) return;
+    
+    _permissionRetryCount++;
+    final delay = _permissionRetryCount * 1000; // Increasing delay: 1s, 2s, 3s
+    
+    print('Retrying permission check in ${delay}ms (attempt $_permissionRetryCount)');
+    
+    _permissionCheckTimer = Timer(Duration(milliseconds: delay), () {
+      if (mounted) {
+        setState(() {
+          _loading = true;
+        });
+        _checkPermission();
+      }
+    });
+  }
+
+  void _resetCameraState() {
+    if (mounted) {
+      setState(() {
+        _isScanning = false;
+        _qrFound = false;
+      });
+    }
+  }
+
+  void _handleCode(String code) {
+    if (_qrFound || code.isEmpty) return;
+    
+    print('🎯 QR SCANNER TL: QR code detected: ${code.length > 50 ? "${code.substring(0, 50)}..." : code}');
+    
+    // Ensure we set state only if mounted
+    if (mounted) {
+      setState(() {
+        _qrFound = true;
+        _scanResult = code;
+        _isScanning = false;
+      });
+    
+      // Return to landscape orientation before calling callback
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      
+      // Stop the camera
+      QrMobileVision.stop();
+      
+      // Call the callback function with the scanned code
+      widget.onBarcodeDetected(code);
+      
+      // Close the screen after a short delay
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          Navigator.of(context).pop(code);
+        }
+      });
+    }
+  }
+
+  void _showManualInputDialog() {
+    final textController = TextEditingController();
+    
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false, // User must tap a button to close dialog
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Manual QR Code Input'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter or paste QR code content:',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: textController,
+                decoration: const InputDecoration(
+                  hintText: 'Paste QR code here...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 5,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                if (textController.text.isNotEmpty) {
+                  _handleCode(textController.text);
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('QR code cannot be empty'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Submit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.text_fields),
+            onPressed: _showManualInputDialog,
+            tooltip: 'Manual Input',
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _forceRestarting ? null : _forceRestartCamera,
+            tooltip: 'Restart Camera',
+          ),
+        ],
+      ),
+      body: _loading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Initializing camera...',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  if (_permissionRetryCount > 0) 
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        'Retry attempt: $_permissionRetryCount',
+                        style: const TextStyle(fontSize: 14, color: Colors.orange),
+                      ),
+                    ),
+                ],
+              ),
+            )
+          : Column(
+              children: [
+                Expanded(
+                  child: _hasPermission
+                      ? Stack(
+                          children: [
+                            QRCameraWrapper(
+                              key: _cameraKey,
+                              qrCodeCallback: _handleCode,
+                              formats: const [BarcodeFormats.QR_CODE],
+                              fit: BoxFit.cover,
+                              notStartedBuilder: (context) => const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircularProgressIndicator(),
+                                    SizedBox(height: 16),
+                                    Text('Starting camera...'),
+                                  ],
+                                ),
+                              ),
+                              onError: (context, error) => Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red,
+                                      size: 40,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    const Text(
+                                      'Camera error',
+                                      style: TextStyle(color: Colors.red, fontSize: 18),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                                      child: Text(
+                                        error.toString().length > 100 
+                                            ? '${error.toString().substring(0, 100)}...' 
+                                            : error.toString(),
+                                        style: const TextStyle(color: Colors.red, fontSize: 14),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    ElevatedButton(
+                                      onPressed: _forceRestartCamera,
+                                      child: const Text('Restart Camera'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (_forceRestarting)
+                              Container(
+                                color: Colors.black.withOpacity(0.7),
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Restarting camera...',
+                                        style: TextStyle(color: Colors.white, fontSize: 16),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.no_photography,
+                                size: 64,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Camera permission denied',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _loading = true;
+                                    _permissionRetryCount = 0;
+                                  });
+                                  _checkPermission();
+                                },
+                                child: const Text('Request Permission'),
+                              ),
+                            ],
+                          ),
+                        ),
+                ),
+                SafeArea(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    color: Colors.black87,
+                    child: const Text(
+                      'Arahkan kamera ke QR Code',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+} 

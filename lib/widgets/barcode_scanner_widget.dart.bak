@@ -1,0 +1,501 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+// GLOBAL STREAM FOR BARCODE SCANNING RESULTS
+class BarcodeResultStream {
+  static final BarcodeResultStream _instance = BarcodeResultStream._internal();
+  factory BarcodeResultStream() => _instance;
+  BarcodeResultStream._internal();
+
+  final _controller = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get stream => _controller.stream;
+
+  void addResult({
+    required String barcode,
+    required String fieldKey,
+    required String label,
+    String? sectionId, // NEW: Add section ID to target specific section
+  }) {
+    _controller.add({
+      'barcode': barcode,
+      'fieldKey': fieldKey,
+      'label': label,
+      'sectionId': sectionId, // NEW: Include section ID
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    });
+    print('🎯 STREAM: Barcode result added to stream - $fieldKey: $barcode for section: $sectionId');
+  }
+
+  void dispose() {
+    _controller.close();
+  }
+}
+
+class BarcodeScannerWidget extends StatefulWidget {
+  final String title;
+  final Function(String) onBarcodeDetected;
+  final bool forceShowCheckmark; // Add this parameter
+  final String? fieldKey; // NEW: Add field key to identify which field is being scanned
+  final String? fieldLabel; // NEW: Add field label
+  final String? sectionId; // NEW: Add section ID to target specific section
+
+  const BarcodeScannerWidget({
+    Key? key,
+    required this.title,
+    required this.onBarcodeDetected,
+    this.forceShowCheckmark = false, // Changed default to false
+    this.fieldKey,
+    this.fieldLabel,
+    this.sectionId, // NEW: Add section ID parameter
+  }) : super(key: key);
+
+  @override
+  State<BarcodeScannerWidget> createState() => _BarcodeScannerWidgetState();
+}
+
+class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
+  late MobileScannerController cameraController;
+  bool _screenOpened = false;
+  bool _processingBarcode = false; // Tambahkan flag untuk mencegah multiple processing
+
+  @override
+  void initState() {
+    super.initState();
+    _screenOpened = false;
+    _processingBarcode = false;
+    
+    // Change to portrait orientation for camera scanning
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+    
+    // Debug log
+    print('🔍 Barcode scanner initialized with ALL formats');
+    print('🔍 Supported formats: ${BarcodeFormat.values}');
+    
+    // Inisialisasi controller dengan konfigurasi yang lebih agresif
+    cameraController = MobileScannerController(
+      // Configure camera for portrait orientation during scanning
+      facing: CameraFacing.back,
+      torchEnabled: false,
+      formats: BarcodeFormat.values, // Support ALL barcode formats
+      useNewCameraSelector: true,
+      detectionSpeed: DetectionSpeed.normal, // Use normal detection speed for better accuracy
+      detectionTimeoutMs: 1000, // Timeout untuk deteksi (1 detik)
+      returnImage: true, // Mengembalikan gambar untuk debugging
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    // For portrait mode, adjust the responsive check
+    final isSmallScreen = size.height < 600; // Changed from width to height for portrait
+    
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: Text(
+          widget.title,
+          style: TextStyle(
+            fontSize: isSmallScreen ? 16 : 18,
+            fontWeight: FontWeight.w500,
+            color: Colors.white,
+          ),
+        ),
+        leading: IconButton(
+          onPressed: () {
+            // Return to landscape orientation before closing
+            SystemChrome.setPreferredOrientations([
+              DeviceOrientation.landscapeLeft,
+              DeviceOrientation.landscapeRight,
+            ]);
+            Navigator.of(context).pop();
+          },
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          IconButton(
+            color: Colors.white,
+            icon: ValueListenableBuilder(
+              valueListenable: cameraController.torchState,
+              builder: (context, state, child) {
+                switch (state) {
+                  case TorchState.off:
+                    return const Icon(Icons.flash_off, color: Colors.grey);
+                  case TorchState.on:
+                    return const Icon(Icons.flash_on, color: Colors.yellow);
+                }
+              },
+            ),
+            iconSize: isSmallScreen ? 24 : 32,
+            onPressed: () => cameraController.toggleTorch(),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // Camera preview with proper orientation for portrait
+          SizedBox(
+            width: double.infinity,
+            height: double.infinity,
+            child: MobileScanner(
+              controller: cameraController,
+              onDetect: _foundBarcode,
+              fit: BoxFit.cover, // Ensure camera fills the screen properly
+            ),
+          ),
+          
+          // Overlay with scanning frame - adjusted for portrait
+          Container(
+            decoration: ShapeDecoration(
+              shape: QrScannerOverlayShape(
+                borderColor: Colors.red,
+                borderRadius: 10,
+                borderLength: isSmallScreen ? 25 : 30,
+                borderWidth: isSmallScreen ? 8 : 10,
+                cutOutSize: isSmallScreen ? 250 : 300, // Larger for portrait
+                overlayColor: Colors.black.withOpacity(0.5),
+              ),
+            ),
+          ),
+          
+          // Instructions overlay
+          Positioned(
+            bottom: 100,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Arahkan kamera ke QR code${widget.fieldLabel != null ? " untuk ${widget.fieldLabel}" : ""}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Pastikan QR code terlihat jelas dan dalam fokus',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Processing indicator
+          if (_processingBarcode)
+            Container(
+              color: Colors.black.withOpacity(0.7),
+              child: const Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(height: 16),
+                    Text(
+                      'Memproses QR Code...',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _foundBarcode(BarcodeCapture barcodeCapture) {
+    // Hindari pemrosesan berulang
+    if (_screenOpened || _processingBarcode || !mounted) return;
+
+    final List<Barcode> barcodes = barcodeCapture.barcodes;
+    if (barcodes.isEmpty) return;
+    
+    // Set flag processing
+    setState(() {
+      _processingBarcode = true;
+    });
+    
+    try {
+      // LOGGING EKSTENSIF
+      print('🔍 BARCODE DETECTED COUNT: ${barcodes.length}');
+      
+      // Loop through all detected barcodes
+      for (int i = 0; i < barcodes.length; i++) {
+        final barcode = barcodes[i];
+        print('🔍 BARCODE #${i+1} FORMAT: ${barcode.format}');
+        print('🔍 BARCODE #${i+1} TYPE: ${barcode.type}');
+        print('🔍 BARCODE #${i+1} RAW: ${barcode.rawValue}');
+        print('🔍 BARCODE #${i+1} DISPLAY: ${barcode.displayValue}');
+        
+        // Tambahan: Log corners jika ada
+        print('🔍 BARCODE #${i+1} HAS CORNERS: ${barcode.corners.length}');
+            }
+      
+      // Gunakan barcode pertama
+      final Barcode barcode = barcodes.first;
+      
+      // Gunakan rawValue jika displayValue kosong atau null
+      final String? rawValue = barcode.rawValue;
+      final String? displayValue = barcode.displayValue;
+      
+      // Pilih nilai yang akan digunakan
+      String code = '';
+      
+      // PENDEKATAN ALTERNATIF: Coba beberapa metode untuk mendapatkan nilai barcode
+      if (rawValue != null && rawValue.isNotEmpty) {
+        code = rawValue;
+        print('🔍 Using rawValue: ${code.length} chars');
+      } else if (displayValue != null && displayValue.isNotEmpty) {
+        code = displayValue;
+        print('🔍 Using displayValue: ${code.length} chars');
+      } else {
+        // Coba ekstrak data langsung dari corners jika ada
+        if (barcode.corners.isNotEmpty) {
+          print('🔍 Trying to extract data from corners');
+          // Kode untuk ekstraksi data dari corners jika diperlukan
+        }
+        
+        // Jika masih kosong, coba gunakan bytes jika tersedia
+        if (code.isEmpty && barcode.rawBytes != null) {
+          try {
+            // Coba konversi bytes ke string dengan berbagai encoding
+            code = String.fromCharCodes(barcode.rawBytes!);
+            print('🔍 Extracted from rawBytes: ${code.length} chars');
+          } catch (e) {
+            print('🔍 Error extracting from rawBytes: $e');
+          }
+        }
+      }
+      
+      if (code.isEmpty) {
+        print('🚫 SCANNER: Empty barcode content detected');
+        setState(() {
+          _processingBarcode = false;
+        });
+        return;
+      }
+      
+      print('🎯 SCANNER: Barcode detected: ${code.length > 50 ? "${code.substring(0, 50)}..." : code}');
+      
+      // Tandai screen sebagai sudah terbuka
+      _screenOpened = true;
+      
+      // Stop the camera safely
+      try {
+        cameraController.stop();
+      } catch (e) {
+        print('Error stopping camera: $e');
+      }
+      
+      // Return to landscape orientation before calling callback
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      
+      // ADD TO STREAM INSTEAD OF RELYING ON NAVIGATION
+      if (widget.fieldKey != null) {
+        BarcodeResultStream().addResult(
+          barcode: code,
+          fieldKey: widget.fieldKey!,
+          label: widget.fieldLabel ?? widget.title,
+          sectionId: widget.sectionId,
+        );
+      }
+      
+      // Call the callback function with the scanned code
+      widget.onBarcodeDetected(code);
+      
+      // Delay sebentar untuk memastikan callback selesai
+      Future.delayed(const Duration(milliseconds: 500), () {
+        // Close the scanner screen with the code as result
+        if (mounted && Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(code);
+        }
+      });
+    } catch (e) {
+      print('🚫 Error processing barcode: $e');
+      setState(() {
+        _processingBarcode = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    // Ensure we return to landscape orientation when disposing
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
+    try {
+      cameraController.dispose();
+    } catch (e) {
+      print('Error disposing camera controller: $e');
+    }
+    super.dispose();
+  }
+}
+
+// Custom path for the barcode scanner overlay
+class QrScannerOverlayShape extends ShapeBorder {
+  const QrScannerOverlayShape({
+    required this.borderColor,
+    required this.borderWidth,
+    required this.overlayColor,
+    required this.borderRadius,
+    required this.borderLength,
+    required this.cutOutSize,
+  });
+
+  final Color borderColor;
+  final double borderWidth;
+  final Color overlayColor;
+  final double borderRadius;
+  final double borderLength;
+  final double cutOutSize;
+
+  @override
+  EdgeInsetsGeometry get dimensions => const EdgeInsets.all(10);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) {
+    return Path()
+      ..fillType = PathFillType.evenOdd
+      ..addPath(getOuterPath(rect), Offset.zero);
+  }
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    Path getLeftTopPath(Rect rect) {
+      return Path()
+        ..moveTo(rect.left, rect.bottom)
+        ..lineTo(rect.left, rect.top)
+        ..lineTo(rect.right, rect.top);
+    }
+
+    return getLeftTopPath(rect)
+      ..lineTo(rect.left + cutOutSize, rect.top)
+      ..lineTo(rect.left + cutOutSize, rect.top + borderLength)
+      ..lineTo(rect.left + borderLength, rect.top + borderLength)
+      ..lineTo(rect.left + borderLength, rect.top + cutOutSize)
+      ..lineTo(rect.left, rect.top + cutOutSize)
+      ..lineTo(rect.left, rect.bottom);
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    final width = rect.width;
+    final borderWidthSize = width / 2;
+    final height = rect.height;
+    final borderOffset = borderWidth / 2;
+    final mCutOutWidth = cutOutSize < width ? cutOutSize : width - borderOffset;
+    final mCutOutHeight = cutOutSize < height ? cutOutSize : height - borderOffset;
+
+    final backgroundPaint = Paint()
+      ..color = overlayColor
+      ..style = PaintingStyle.fill;
+
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = borderWidth;
+
+    final mCutOutRect = Rect.fromLTWH(
+      rect.left + (width - mCutOutWidth) / 2 + borderOffset,
+      rect.top + (height - mCutOutHeight) / 2 + borderOffset,
+      mCutOutWidth - borderOffset * 2,
+      mCutOutHeight - borderOffset * 2,
+    );
+
+    canvas
+      ..saveLayer(
+        rect,
+        backgroundPaint,
+      )
+      ..drawRect(rect, backgroundPaint)
+      ..drawRRect(
+        RRect.fromRectAndRadius(
+          mCutOutRect,
+          Radius.circular(borderRadius),
+        ),
+        backgroundPaint..blendMode = BlendMode.clear,
+      )
+      ..restore();
+
+    // Draw borders
+    final borderLength = math.min(mCutOutHeight, mCutOutWidth) / 4;
+
+    // Top left
+    canvas.drawPath(
+      Path()
+        ..moveTo(mCutOutRect.left, mCutOutRect.top + borderLength)
+        ..lineTo(mCutOutRect.left, mCutOutRect.top)
+        ..lineTo(mCutOutRect.left + borderLength, mCutOutRect.top),
+      borderPaint,
+    );
+
+    // Top right
+    canvas.drawPath(
+      Path()
+        ..moveTo(mCutOutRect.right - borderLength, mCutOutRect.top)
+        ..lineTo(mCutOutRect.right, mCutOutRect.top)
+        ..lineTo(mCutOutRect.right, mCutOutRect.top + borderLength),
+      borderPaint,
+    );
+
+    // Bottom right
+    canvas.drawPath(
+      Path()
+        ..moveTo(mCutOutRect.right, mCutOutRect.bottom - borderLength)
+        ..lineTo(mCutOutRect.right, mCutOutRect.bottom)
+        ..lineTo(mCutOutRect.right - borderLength, mCutOutRect.bottom),
+      borderPaint,
+    );
+
+    // Bottom left
+    canvas.drawPath(
+      Path()
+        ..moveTo(mCutOutRect.left + borderLength, mCutOutRect.bottom)
+        ..lineTo(mCutOutRect.left, mCutOutRect.bottom)
+        ..lineTo(mCutOutRect.left, mCutOutRect.bottom - borderLength),
+      borderPaint,
+    );
+  }
+
+  @override
+  ShapeBorder scale(double t) => QrScannerOverlayShape(
+        borderColor: borderColor,
+        borderWidth: borderWidth,
+        overlayColor: overlayColor,
+        borderRadius: borderRadius,
+        borderLength: borderLength,
+        cutOutSize: cutOutSize,
+      );
+}
+
+ 

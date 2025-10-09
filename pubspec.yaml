@@ -1,0 +1,89 @@
+name: crf_android
+description: A new Flutter project.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.1.0 <4.0.0'  # Flutter 3.13.8 compatible SDK constraint
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # CORE UI & ICONS - Flutter 3.13.8 compatible
+  cupertino_icons: ^1.0.2
+  
+  # NETWORKING - Stable versions for Flutter 3.13.8
+  http: ^1.1.0
+  dio: ^5.3.2
+  connectivity_plus: ^4.0.2
+  
+  # DATA PERSISTENCE - Flutter 3.13.8 compatible  
+  shared_preferences: ^2.2.0
+  flutter_secure_storage: ^9.0.0  # Updated for Flutter 3.13.8
+  path_provider: ^2.1.1
+  
+  # INTERNATIONALIZATION
+  intl: ^0.18.1
+  
+  # CRYPTOGRAPHY & SECURITY
+  crypto: ^3.0.3
+  
+  # QR CODE & BARCODE - Safe alternatives (no camera conflicts)
+  qr_flutter: ^4.1.0
+  barcode_widget: ^2.0.3
+  
+  # DEVICE & SYSTEM INFO - RESTORED with compatible versions
+  device_info_plus: ^9.1.0  # RESTORED - Flutter 3.13.8 compatible
+  package_info_plus: ^4.2.0  # RESTORED - No win32 conflicts in 3.13.8
+  
+  # WEBVIEW - RESTORED with stable version
+  webview_flutter: ^4.4.1  # RESTORED - Flutter 3.13.8 stable version
+  
+  # CAMERA & QR SCANNING - RESTORED with compatible versions
+  camera: ^0.10.5+5  # RESTORED - Flutter 3.13.8 compatible
+  qr_code_scanner: ^1.0.1  # RESTORED - Stable for Flutter 3.13.8
+  
+  # IMAGE PROCESSING & CACHING
+  flutter_image_compress: ^2.0.4
+  flutter_cache_manager: ^3.3.1
+  # Face Recognition plugins - Working solutions
+  google_mlkit_face_detection: ^0.9.0
+  tflite_flutter: ^0.10.4
+  local_auth: ^2.1.8  # For biometric authentication
+  
+  # Image processing
+  image: ^4.1.7 # For image processing in ML Kit integration
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  # Assets
+  assets:
+    - assets/images/
+    - assets/models/  # For TensorFlow Lite models
+
+# Android icon configuration
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/CRFicon.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/CRFicon.png"
+  min_sdk_android: 26
+  remove_alpha_ios: true
+  adaptive_icon_mask: false
+  background_color_ios: "#FFFFFF"
+  android_gravity: fill
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
