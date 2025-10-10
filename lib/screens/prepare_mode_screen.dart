@@ -814,9 +814,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         // No. Catridge field focus listener
         _catridgeFocusNodes[i][0].addListener(() {
           if (!_catridgeFocusNodes[i][0].hasFocus && _catridgeControllers[i][0].text.trim().isNotEmpty) {
-            _debounceApiCall('catridge_$i', () {
-              _lookupCatridgeAndCreateDetail(i, _catridgeControllers[i][0].text.trim());
-            });
+            _lookupCatridgeAndCreateDetail(i, _catridgeControllers[i][0].text.trim());
           }
         });
         
@@ -824,9 +822,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         if (_catridgeFocusNodes[i].length > 1) {
           _catridgeFocusNodes[i][1].addListener(() {
             if (!_catridgeFocusNodes[i][1].hasFocus && _catridgeControllers[i][1].text.trim().isNotEmpty) {
-              _debounceApiCall('catridge_seal_$i', () {
-                _validateSealAndUpdateDetail(i, _catridgeControllers[i][1].text.trim());
-              });
+              _validateSealAndUpdateDetail(i, _catridgeControllers[i][1].text.trim());
             }
           });
         }
@@ -839,9 +835,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         // No. Catridge field focus listener
         _divertFocusNodes[i][0].addListener(() {
           if (!_divertFocusNodes[i][0].hasFocus && _divertControllers[i][0].text.trim().isNotEmpty) {
-            _debounceApiCall('divert_catridge_$i', () {
-              _lookupDivertCatridge(i, _divertControllers[i][0].text.trim());
-            });
+            _lookupDivertCatridge(i, _divertControllers[i][0].text.trim());
           }
         });
         
@@ -849,9 +843,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         if (_divertFocusNodes[i].length > 1) {
           _divertFocusNodes[i][1].addListener(() {
             if (!_divertFocusNodes[i][1].hasFocus && _divertControllers[i][1].text.trim().isNotEmpty) {
-              _debounceApiCall('divert_seal_$i', () {
-                _validateDivertSeal(i, _divertControllers[i][1].text.trim());
-              });
+              _validateDivertSeal(i, _divertControllers[i][1].text.trim());
             }
           });
         }
@@ -863,9 +855,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       // No. Catridge field focus listener
       _pocketFocusNodes[0].addListener(() {
         if (!_pocketFocusNodes[0].hasFocus && _pocketControllers[0].text.trim().isNotEmpty) {
-          _debounceApiCall('pocket_catridge', () {
-            _lookupPocketCatridge(_pocketControllers[0].text.trim());
-          });
+          _lookupPocketCatridge(_pocketControllers[0].text.trim());
         }
       });
       
@@ -873,9 +863,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       if (_pocketFocusNodes.length > 1) {
         _pocketFocusNodes[1].addListener(() {
           if (!_pocketFocusNodes[1].hasFocus && _pocketControllers[1].text.trim().isNotEmpty) {
-            _debounceApiCall('pocket_seal', () {
-              _validatePocketSeal(_pocketControllers[1].text.trim());
-            });
+            _validatePocketSeal(_pocketControllers[1].text.trim());
           }
         });
       }
