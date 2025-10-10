@@ -807,6 +807,79 @@ class _PrepareModePageState extends State<PrepareModePage> {
         });
       });
     }
+
+    // Add focus listeners for catridge fields API calls
+    for (int i = 0; i < _catridgeFocusNodes.length; i++) {
+      if (_catridgeFocusNodes[i].length > 0) {
+        // No. Catridge field focus listener
+        _catridgeFocusNodes[i][0].addListener(() {
+          if (!_catridgeFocusNodes[i][0].hasFocus && _catridgeControllers[i][0].text.trim().isNotEmpty) {
+            _debounceApiCall('catridge_$i', () {
+              _lookupCatridgeAndCreateDetail(i, _catridgeControllers[i][0].text.trim());
+            });
+          }
+        });
+        
+        // Seal Catridge field focus listener
+        if (_catridgeFocusNodes[i].length > 1) {
+          _catridgeFocusNodes[i][1].addListener(() {
+            if (!_catridgeFocusNodes[i][1].hasFocus && _catridgeControllers[i][1].text.trim().isNotEmpty) {
+              _debounceApiCall('catridge_seal_$i', () {
+                _validateSealAndUpdateDetail(i, _catridgeControllers[i][1].text.trim());
+              });
+            }
+          });
+        }
+      }
+    }
+
+    // Add focus listeners for divert fields API calls
+    for (int i = 0; i < _divertFocusNodes.length; i++) {
+      if (_divertFocusNodes[i].length > 0) {
+        // No. Catridge field focus listener
+        _divertFocusNodes[i][0].addListener(() {
+          if (!_divertFocusNodes[i][0].hasFocus && _divertControllers[i][0].text.trim().isNotEmpty) {
+            _debounceApiCall('divert_catridge_$i', () {
+              _lookupDivertCatridge(i, _divertControllers[i][0].text.trim());
+            });
+          }
+        });
+        
+        // Seal Catridge field focus listener
+        if (_divertFocusNodes[i].length > 1) {
+          _divertFocusNodes[i][1].addListener(() {
+            if (!_divertFocusNodes[i][1].hasFocus && _divertControllers[i][1].text.trim().isNotEmpty) {
+              _debounceApiCall('divert_seal_$i', () {
+                _validateDivertSeal(i, _divertControllers[i][1].text.trim());
+              });
+            }
+          });
+        }
+      }
+    }
+
+    // Add focus listeners for pocket fields API calls
+    if (_pocketFocusNodes.length > 0) {
+      // No. Catridge field focus listener
+      _pocketFocusNodes[0].addListener(() {
+        if (!_pocketFocusNodes[0].hasFocus && _pocketControllers[0].text.trim().isNotEmpty) {
+          _debounceApiCall('pocket_catridge', () {
+            _lookupPocketCatridge(_pocketControllers[0].text.trim());
+          });
+        }
+      });
+      
+      // Seal Catridge field focus listener
+      if (_pocketFocusNodes.length > 1) {
+        _pocketFocusNodes[1].addListener(() {
+          if (!_pocketFocusNodes[1].hasFocus && _pocketControllers[1].text.trim().isNotEmpty) {
+            _debounceApiCall('pocket_seal', () {
+              _validatePocketSeal(_pocketControllers[1].text.trim());
+            });
+          }
+        });
+      }
+    }
     
     // NEW: Add listeners for Divert controllers to trigger manual mode
     for (int i = 0; i < _divertControllers.length; i++) {
@@ -1062,6 +1135,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
       
       // Clear detail items for consistency
       _detailCatridgeItems = [];
+      
+      // IMPORTANT: Re-setup focus listeners for API calls after creating new FocusNodes
+      _setupFocusListeners();
       
       print('Initialized $count catridge controllers and data arrays');
     });
@@ -1950,6 +2026,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         requiredStandValue: requiredStandValue,
         requiredType: 'C', // Main catridge must be type C
         existingCatridges: existingCatridges,
+        idTool: _idCRFController.text.trim(), // Pass ID CRF as IdTool parameter
       );
       
       setState(() {
@@ -3696,9 +3773,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // ID CRF field
-                          Expanded(
-                            flex: 1,
+                          // ID CRF field - increased width
+                          SizedBox(
+                            width: 280,
                             child: _buildFormField(
                               label: 'ID CRF :',
                               controller: _idCRFController,
@@ -3711,9 +3788,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
                           
                           const SizedBox(width: 20),
                           
-                          // Jam Mulai field
-                          Expanded(
-                            flex: 1,
+                          // Jam Mulai field - increased width
+                          SizedBox(
+                            width: 200,
                             child: _buildFormField(
                               label: 'Jam Mulai :',
                               controller: _jamMulaiController,
@@ -3725,11 +3802,27 @@ class _PrepareModePageState extends State<PrepareModePage> {
                             ),
                           ),
                           
-                          const SizedBox(width: 20),
+                          // TANPA BAG label - show when isNoBag is true
+                          if (_prepareData?.isNoBag == true) ...[
+                            const SizedBox(width: 15),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 25), // Align with form field
+                              child: const Text(
+                                'TANPA BAG',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900, // Extra bold
+                                ),
+                              ),
+                            ),
+                          ],
                           
-                          // Tanggal Replenish field
-                          Expanded(
-                            flex: 1,
+                          const Spacer(), // Space between left fields and right field
+                          
+                          // Tanggal Replenish field - positioned to the right with increased width
+                          SizedBox(
+                            width: 240,
                             child: _buildFormField(
                               label: 'Tanggal Replenish:',
                               controller: _tanggalReplenishController,
@@ -4353,14 +4446,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         if (value.isNotEmpty) {
                           _onCatridgeFieldChanged(index - 1, 0);
                         }
-                        
-                        // Auto API call with debounce
-                        _debounceApiCall('catridge_${index - 1}', () {
-                          String catridgeCode = value.trim();
-                          if (catridgeCode.isNotEmpty) {
-                            _lookupCatridgeAndCreateDetail(index - 1, catridgeCode);
-                          }
-                        });
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
@@ -4378,14 +4463,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         if (value.isNotEmpty) {
                           _onCatridgeFieldChanged(index - 1, 1);
                         }
-                        
-                        // Auto API call with debounce
-                        _debounceApiCall('seal_${index - 1}', () {
-                          String sealCode = value.trim();
-                          if (sealCode.isNotEmpty) {
-                            _validateSealAndUpdateDetail(index - 1, sealCode);
-                          }
-                        });
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
@@ -4396,7 +4473,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: controllers[2],
                       focusNode: (index - 1 < _catridgeFocusNodes.length) ? _catridgeFocusNodes[index - 1][2] : null,
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(), // Read-only if ID CRF is not valid
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailCatridgeItemField(index - 1, 'bagCode', value);
                       },
@@ -4409,7 +4486,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: controllers[3],
                       focusNode: (index - 1 < _catridgeFocusNodes.length) ? _catridgeFocusNodes[index - 1][3] : null,
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(), // Read-only if ID CRF is not valid
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailCatridgeItemField(index - 1, 'sealCode', value);
                       },
@@ -4423,7 +4500,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         controller: controllers[4],
                         focusNode: (index - 1 < _catridgeFocusNodes.length) ? _catridgeFocusNodes[index - 1][4] : null,
                         isSmallScreen: isSmallScreen,
-                        isReadOnly: !_isIdCRFValid(), // Read-only if ID CRF is not valid
+                        isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                         onChanged: (value) {
                           _updateDetailCatridgeItemField(index - 1, 'sealReturn', value);
                         },
@@ -4749,7 +4826,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
           _buildDetailRow('WSID', _prepareData?.atmCode ?? '-', isSmallScreen),
           _buildDetailRow('Bank', _prepareData?.codeBank ?? '-', isSmallScreen),
           _buildDetailRow('Lokasi', _prepareData?.lokasi ?? '-', isSmallScreen),
-          _buildDetailRow('ATM Type', _prepareData?.jnsMesin ?? '-', isSmallScreen),
+          _buildDetailRow('ATM Type', _prepareData?.idTypeATM ?? '-', isSmallScreen),
           _buildDetailRow('Jumlah Kaset', '${_prepareData?.jmlKaset ?? 0}', isSmallScreen),
         ],
       ),
@@ -5942,11 +6019,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         if (value.isNotEmpty) {
                           _onDivertFieldChanged(sectionIndex, 'catridge', value);
                         }
-                        if (value.trim().isNotEmpty) {
-                          _debounceApiCall('divert_catridge_$sectionIndex', () {
-                            _lookupDivertCatridge(sectionIndex, value.trim());
-                          });
-                        }
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
@@ -5964,11 +6036,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         if (value.isNotEmpty) {
                           _onDivertFieldChanged(sectionIndex, 'seal', value);
                         }
-                        if (value.trim().isNotEmpty) {
-                          _debounceApiCall('divert_seal_$sectionIndex', () {
-                            _validateDivertSeal(sectionIndex, value.trim());
-                          });
-                        }
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
@@ -5979,7 +6046,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _divertControllers[sectionIndex][2],
                       focusNode: _divertFocusNodes[sectionIndex][2],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailDivertItemField(sectionIndex, 'bagCode', value);
                       },
@@ -5992,7 +6059,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _divertControllers[sectionIndex][3],
                       focusNode: _divertFocusNodes[sectionIndex][3],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailDivertItemField(sectionIndex, 'sealCode', value);
                       },
@@ -6005,7 +6072,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _divertControllers[sectionIndex][4],
                       focusNode: _divertFocusNodes[sectionIndex][4],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailDivertItemField(sectionIndex, 'sealReturn', value);
                       },
@@ -6286,11 +6353,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         if (value.isNotEmpty) {
                           _onPocketFieldChanged('catridge', value);
                         }
-                        if (value.trim().isNotEmpty) {
-                          _debounceApiCall('pocket_catridge', () {
-                            _lookupPocketCatridge(value.trim());
-                          });
-                        }
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
@@ -6308,11 +6370,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         if (value.isNotEmpty) {
                           _onPocketFieldChanged('seal', value);
                         }
-                        if (value.trim().isNotEmpty) {
-                          _debounceApiCall('pocket_seal', () {
-                            _validatePocketSeal(value.trim());
-                          });
-                        }
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
@@ -6323,7 +6380,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _pocketControllers[2],
                       focusNode: _pocketFocusNodes[2],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailPocketItemField('bagCode', value);
                       },
@@ -6336,7 +6393,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _pocketControllers[3],
                       focusNode: _pocketFocusNodes[3],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailPocketItemField('sealCode', value);
                       },
@@ -6349,7 +6406,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _pocketControllers[4],
                       focusNode: _pocketFocusNodes[4],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailPocketItemField('sealReturn', value);
                       },
@@ -6535,6 +6592,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         catridgeCode,
         requiredType: 'D', // Must be type D for divert
         existingCatridges: existingCatridges,
+        idTool: _idCRFController.text.trim(), // Pass ID CRF as IdTool parameter
       );
       
       print('🔍 DIVERT LOOKUP: API Response - success: ${response.success}, message: ${response.message}');
@@ -6911,6 +6969,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         catridgeCode,
         requiredType: 'P', // Must be type P for pocket
         existingCatridges: existingCatridges,
+        idTool: _idCRFController.text.trim(), // Pass ID CRF as IdTool parameter
       );
       
       print('🔍 POCKET LOOKUP: API Response - success: ${response.success}, message: ${response.message}');

@@ -603,9 +603,11 @@ class ApiService {
     int? requiredStandValue,
     String? requiredType,
     List<String>? existingCatridges,
+    String? idTool, // Add IdTool parameter
   }) async {
     try {
       final requestHeaders = await headers;
+      ApiResponse? firstErrorResponse; // Store first error response
       
       // Try with original format first
       final originalResponse = await _tryCatridgeFormat(
@@ -615,10 +617,13 @@ class ApiService {
         requiredStandValue: requiredStandValue,
         requiredType: requiredType,
         existingCatridges: existingCatridges,
+        idTool: idTool, // Pass IdTool parameter
       );
       
       if (originalResponse.success) {
         return originalResponse;
+      } else {
+        firstErrorResponse = originalResponse; // Store first error
       }
       
       // If original format fails, try without spaces
@@ -631,6 +636,7 @@ class ApiService {
           requiredStandValue: requiredStandValue,
           requiredType: requiredType,
           existingCatridges: existingCatridges,
+          idTool: idTool, // Pass IdTool parameter
         );
         
         if (noSpacesResponse.success) {
@@ -647,6 +653,7 @@ class ApiService {
           requiredStandValue: requiredStandValue,
           requiredType: requiredType,
           existingCatridges: existingCatridges,
+          idTool: idTool, // Pass IdTool parameter
         );
         
         if (withAtmResponse.success) {
@@ -654,7 +661,12 @@ class ApiService {
         }
       }
       
-      // If all formats fail, return the original error
+      // If all formats fail, return the first error response (most relevant)
+      if (firstErrorResponse != null) {
+        return firstErrorResponse;
+      }
+      
+      // Fallback generic error
       return ApiResponse(
         success: false,
         message: 'Catridge tidak ditemukan. Periksa kembali nomor catridge.',
@@ -678,6 +690,7 @@ class ApiService {
     int? requiredStandValue,
     String? requiredType,
     List<String>? existingCatridges,
+    String? idTool, // Add IdTool parameter
   }) async {
     try {
       final encodedCatridgeCode = Uri.encodeComponent(catridgeCode);
@@ -692,6 +705,11 @@ class ApiService {
       
       if (requiredType != null) {
         url += '&requiredType=$requiredType';
+      }
+      
+      // Add IdTool parameter if provided
+      if (idTool != null && idTool.isNotEmpty) {
+        url += '&IdTool=$idTool';
       }
       
       // Debug log the request
