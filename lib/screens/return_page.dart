@@ -2261,15 +2261,6 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   // Data baru
   String _branchCode = '1'; // Default branch code
 
-  // Helper method to format currency
-  String _formatCurrency(int amount) {
-    final formatted = amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-    return 'Rp. $formatted';
-  }
-
   @override
   void initState() {
     super.initState();
@@ -3899,28 +3890,30 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         final screenSize = MediaQuery.of(context).size;
         final isSmallScreen = screenSize.width < 600;
         
-        return Dialog(
-          child: Container(
-            width: isSmallScreen ? screenSize.width * 0.9 : 320,
-            constraints: BoxConstraints(
-              maxHeight: screenSize.height * 0.7,
-            ),
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setDialogState) {
+            return Dialog(
+              child: Container(
+                width: isSmallScreen ? screenSize.width * 0.9 : 320,
+                constraints: BoxConstraints(
+                  maxHeight: screenSize.height * 0.7,
                 ),
-              ],
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                   // Header
                   Row(
                     children: [
@@ -4004,7 +3997,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                             ],
                             onChanged: (value) {
                               if (value != null) {
-                                tempAlasanController.text = value;
+                                // Update dialog state immediately for UI refresh
+                                setDialogState(() {
+                                  tempAlasanController.text = value;
+                                });
                               }
                             },
                           ),
@@ -4095,13 +4091,15 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       ),
                     ],
                   ),
-                ],
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-        );
-      },
-    );
+            );
+          },
+         );
+       },
+     );
     
     // Dispose temporary controllers
     tempAlasanController.dispose();
@@ -4149,6 +4147,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         }
       });
     }
+  }
+
+  // Format currency helper method
+  String _formatCurrency(int amount) {
+    return 'Rp. ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
   }
 }
 

@@ -51,6 +51,24 @@ class _PrepareModePageState extends State<PrepareModePage> {
   
   // Detail catridge data for the right panel
   List<DetailCatridgeItem> _detailCatridgeItems = [];
+  
+  // Flag to prevent duplicate modal showing
+  bool _isDuplicateModalShowing = false;
+  
+  // Flag to prevent duplicate API calls for Divert fields
+  Map<String, bool> _divertApiCallInProgress = {};
+  
+  // Flag to prevent duplicate API calls for Pocket fields
+  Map<String, bool> _pocketApiCallInProgress = {};
+  
+  // Flag to prevent duplicate seal validation calls for Pocket fields
+  Map<String, bool> _pocketSealValidationInProgress = {};
+  
+  // Flag to prevent duplicate seal validation calls for Divert fields
+  Map<String, bool> _divertSealValidationInProgress = {};
+  
+  // Flag to prevent duplicate listener addition
+  bool _divertListenersAdded = false;
 
   // Divert controllers - UPDATED: Now 3 sections with 5 fields each
   final List<List<TextEditingController>> _divertControllers = [
@@ -188,6 +206,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
   // Debounce timers for auto API calls
   Map<String, Timer?> _debounceTimers = {};
 
+  // NEW: Duplicate validation tracking
+  Set<String> _usedValues = <String>{};
+
   @override
   void initState() {
     super.initState();
@@ -244,9 +265,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
       setState(() {
         if (value.trim().isNotEmpty) {
           // Activate manual mode for specific field type
-          if (fieldType == 'no_catridge') {
+          if (fieldType == 'catridge' || fieldType == 'no_catridge') {
             _divertNoManualMode[sectionIndex] = true;
-          } else if (fieldType == 'seal_catridge') {
+          } else if (fieldType == 'seal' || fieldType == 'seal_catridge') {
             _divertSealManualMode[sectionIndex] = true;
           }
         }
@@ -374,9 +395,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
     setState(() {
       if (value.trim().isNotEmpty) {
         // Activate manual mode for specific field type
-        if (fieldType == 'no_catridge') {
+        if (fieldType == 'catridge' || fieldType == 'no_catridge') {
           _pocketNoManualMode = true;
-        } else if (fieldType == 'seal_catridge') {
+        } else if (fieldType == 'seal' || fieldType == 'seal_catridge') {
           _pocketSealManualMode = true;
         }
       }
@@ -768,6 +789,85 @@ class _PrepareModePageState extends State<PrepareModePage> {
     );
   }
   
+  // NEW: Duplicate validation functions
+  bool _isDuplicateValue(String value, String currentFieldKey) {
+    if (value.trim().isEmpty) return false;
+    
+    // Get all current values from all sections
+    Map<String, String> allFieldValues = _getAllFieldValues();
+    
+    // Remove current field from validation to allow editing same field
+    allFieldValues.remove(currentFieldKey);
+    
+    // Check if value exists in any other field
+    return allFieldValues.values.any((existingValue) => 
+        existingValue.trim().toLowerCase() == value.trim().toLowerCase());
+  }
+  
+  Map<String, String> _getAllFieldValues() {
+    Map<String, String> allValues = {};
+    
+    // Catridge section values
+    for (int i = 0; i < _catridgeControllers.length; i++) {
+      if (_catridgeControllers[i].length >= 5) {
+        allValues['catridge_${i}_no'] = _catridgeControllers[i][0].text.trim();
+        allValues['catridge_${i}_seal'] = _catridgeControllers[i][1].text.trim();
+        allValues['catridge_${i}_bag'] = _catridgeControllers[i][2].text.trim();
+        allValues['catridge_${i}_seal_code'] = _catridgeControllers[i][3].text.trim();
+        allValues['catridge_${i}_seal_return'] = _catridgeControllers[i][4].text.trim();
+      }
+    }
+    
+    // Divert section values
+    for (int i = 0; i < _divertControllers.length; i++) {
+      allValues['divert_${i}_no'] = _divertControllers[i][0].text.trim();
+      allValues['divert_${i}_seal'] = _divertControllers[i][1].text.trim();
+      allValues['divert_${i}_bag'] = _divertControllers[i][2].text.trim();
+      allValues['divert_${i}_seal_code'] = _divertControllers[i][3].text.trim();
+      allValues['divert_${i}_seal_return'] = _divertControllers[i][4].text.trim();
+    }
+    
+    // Pocket section values
+    allValues['pocket_0_no'] = _pocketControllers[0].text.trim();
+    allValues['pocket_0_seal'] = _pocketControllers[1].text.trim();
+    allValues['pocket_0_bag'] = _pocketControllers[2].text.trim();
+    allValues['pocket_0_seal_code'] = _pocketControllers[3].text.trim();
+    allValues['pocket_0_seal_return'] = _pocketControllers[4].text.trim();
+    
+    // Remove empty values
+    allValues.removeWhere((key, value) => value.isEmpty);
+    
+    return allValues;
+  }
+  
+  void _showDuplicateValidationError(String fieldName, String value) {
+    CustomModals.showFailedModal(
+      context: context,
+      message: 'Kode $fieldName "$value" sudah diinput. Silakan input kode lain.',
+      buttonText: 'OK',
+      onPressed: () {
+        Navigator.of(context).pop();
+        // Reset flag when modal is closed
+        _isDuplicateModalShowing = false;
+      },
+    );
+  }
+  
+  bool _validateFieldForDuplicates(String value, String fieldKey, String fieldName) {
+    if (_isDuplicateValue(value, fieldKey)) {
+      // Use a more robust approach to prevent multiple modals
+      if (!_isDuplicateModalShowing) {
+        _isDuplicateModalShowing = true;
+        // Add a small delay to ensure flag is set before any other calls
+        Future.microtask(() {
+          _showDuplicateValidationError(fieldName, value);
+        });
+      }
+      return false;
+    }
+    return true;
+  }
+  
   // Load user data from login
   Future<void> _loadUserData() async {
     try {
@@ -784,6 +884,19 @@ class _PrepareModePageState extends State<PrepareModePage> {
     } catch (e) {
       debugPrint('Error loading user data: $e');
     }
+  }
+
+  // Method to remove all focus listeners
+  void _removeFocusListeners() {
+    // Remove divert focus listeners
+    for (int i = 0; i < _divertFocusNodes.length; i++) {
+      for (int j = 0; j < _divertFocusNodes[i].length; j++) {
+        _divertFocusNodes[i][j].removeListener(() {});
+      }
+    }
+    
+    // Reset the flag
+    _divertListenersAdded = false;
   }
 
   // Setup focus listeners for section highlighting
@@ -814,7 +927,15 @@ class _PrepareModePageState extends State<PrepareModePage> {
         // No. Catridge field focus listener
         _catridgeFocusNodes[i][0].addListener(() {
           if (!_catridgeFocusNodes[i][0].hasFocus && _catridgeControllers[i][0].text.trim().isNotEmpty) {
-            _lookupCatridgeAndCreateDetail(i, _catridgeControllers[i][0].text.trim());
+            // Check for duplicates before API call
+            String fieldKey = 'catridge_${i}_no';
+            String fieldName = 'No. Catridge (Catridge ${i + 1})';
+            if (_validateFieldForDuplicates(_catridgeControllers[i][0].text.trim(), fieldKey, fieldName)) {
+              _lookupCatridgeAndCreateDetail(i, _catridgeControllers[i][0].text.trim());
+            } else {
+              // Clear the field if duplicate found
+              _catridgeControllers[i][0].clear();
+            }
           }
         });
         
@@ -822,30 +943,78 @@ class _PrepareModePageState extends State<PrepareModePage> {
         if (_catridgeFocusNodes[i].length > 1) {
           _catridgeFocusNodes[i][1].addListener(() {
             if (!_catridgeFocusNodes[i][1].hasFocus && _catridgeControllers[i][1].text.trim().isNotEmpty) {
-              _validateSealAndUpdateDetail(i, _catridgeControllers[i][1].text.trim());
+              // Check for duplicates before API call
+              String fieldKey = 'catridge_${i}_seal';
+              String fieldName = 'Seal Catridge (Catridge ${i + 1})';
+              if (_validateFieldForDuplicates(_catridgeControllers[i][1].text.trim(), fieldKey, fieldName)) {
+                _validateSealAndUpdateDetail(i, _catridgeControllers[i][1].text.trim());
+              } else {
+                // Clear the field if duplicate found
+                _catridgeControllers[i][1].clear();
+              }
             }
           });
         }
       }
     }
 
-    // Add focus listeners for divert fields API calls
-    for (int i = 0; i < _divertFocusNodes.length; i++) {
-      if (_divertFocusNodes[i].length > 0) {
-        // No. Catridge field focus listener
-        _divertFocusNodes[i][0].addListener(() {
-          if (!_divertFocusNodes[i][0].hasFocus && _divertControllers[i][0].text.trim().isNotEmpty) {
-            _lookupDivertCatridge(i, _divertControllers[i][0].text.trim());
-          }
-        });
-        
-        // Seal Catridge field focus listener
-        if (_divertFocusNodes[i].length > 1) {
-          _divertFocusNodes[i][1].addListener(() {
-            if (!_divertFocusNodes[i][1].hasFocus && _divertControllers[i][1].text.trim().isNotEmpty) {
-              _validateDivertSeal(i, _divertControllers[i][1].text.trim());
+    // Add focus listeners for divert fields API calls - FIXED: Only add listeners once
+    if (!_divertListenersAdded) {
+      _divertListenersAdded = true;
+      for (int i = 0; i < _divertFocusNodes.length; i++) {
+        if (_divertFocusNodes[i].length > 0) {
+          // No. Catridge field focus listener
+          _divertFocusNodes[i][0].addListener(() {
+            if (!_divertFocusNodes[i][0].hasFocus && _divertControllers[i][0].text.trim().isNotEmpty) {
+              // Check for duplicates before API call
+              String fieldKey = 'divert_${i}_no';
+              String fieldName = 'No. Catridge (Divert ${i + 1})';
+              String apiKey = 'divert_${i}_${_divertControllers[i][0].text.trim()}';
+              
+              // Skip if API call is already in progress for this field and value
+              if (_divertApiCallInProgress[apiKey] == true) {
+                print('🔍 DIVERT LOOKUP: Skipping duplicate API call for $apiKey');
+                return;
+              }
+              
+              // Skip duplicate validation if modal is already showing to prevent double modals
+              if (!_isDuplicateModalShowing && _validateFieldForDuplicates(_divertControllers[i][0].text.trim(), fieldKey, fieldName)) {
+                _lookupDivertCatridge(i, _divertControllers[i][0].text.trim());
+              } else if (_isDuplicateValue(_divertControllers[i][0].text.trim(), fieldKey)) {
+                // Clear the field if duplicate found, but don't show modal again
+                _divertControllers[i][0].clear();
+              }
             }
           });
+          
+          // Seal Catridge field focus listener
+          if (_divertFocusNodes[i].length > 1) {
+            _divertFocusNodes[i][1].addListener(() {
+              if (!_divertFocusNodes[i][1].hasFocus && _divertControllers[i][1].text.trim().isNotEmpty) {
+                // Check for duplicates before API call
+                String fieldKey = 'divert_${i}_seal';
+                String fieldName = 'Seal Catridge (Divert ${i + 1})';
+                String sealCode = _divertControllers[i][1].text.trim();
+                
+                // Create unique key for seal validation tracking
+                String validationKey = 'divert_${i}_seal_$sealCode';
+                
+                // Check if seal validation is already in progress for this field and value
+                if (_divertSealValidationInProgress[validationKey] == true) {
+                  print('Seal validation already in progress for Divert field: $fieldKey with value: $sealCode');
+                  return;
+                }
+                
+                // Skip duplicate validation if modal is already showing to prevent double modals
+                if (!_isDuplicateModalShowing && _validateFieldForDuplicates(sealCode, fieldKey, fieldName)) {
+                  _validateDivertSeal(i, sealCode);
+                } else if (_isDuplicateValue(sealCode, fieldKey)) {
+                  // Clear the field if duplicate found, but don't show modal again
+                  _divertControllers[i][1].clear();
+                }
+              }
+            });
+          }
         }
       }
     }
@@ -855,7 +1024,26 @@ class _PrepareModePageState extends State<PrepareModePage> {
       // No. Catridge field focus listener
       _pocketFocusNodes[0].addListener(() {
         if (!_pocketFocusNodes[0].hasFocus && _pocketControllers[0].text.trim().isNotEmpty) {
-          _lookupPocketCatridge(_pocketControllers[0].text.trim());
+          // Check for duplicates before API call
+          String fieldKey = 'pocket_0_no';
+          String fieldName = 'No. Catridge (Pocket)';
+          String catridgeCode = _pocketControllers[0].text.trim();
+          
+          // Create unique key for API call tracking
+          String apiKey = 'pocket_0_$catridgeCode';
+          
+          // Check if API call is already in progress for this field and value
+          if (_pocketApiCallInProgress[apiKey] == true) {
+            print('API call already in progress for Pocket field: $fieldKey with value: $catridgeCode');
+            return;
+          }
+          
+          if (_validateFieldForDuplicates(catridgeCode, fieldKey, fieldName)) {
+            _lookupPocketCatridge(catridgeCode);
+          } else {
+            // Clear the field if duplicate found
+            _pocketControllers[0].clear();
+          }
         }
       });
       
@@ -863,22 +1051,139 @@ class _PrepareModePageState extends State<PrepareModePage> {
       if (_pocketFocusNodes.length > 1) {
         _pocketFocusNodes[1].addListener(() {
           if (!_pocketFocusNodes[1].hasFocus && _pocketControllers[1].text.trim().isNotEmpty) {
-            _validatePocketSeal(_pocketControllers[1].text.trim());
+            // Check for duplicates before API call
+            String fieldKey = 'pocket_0_seal';
+            String fieldName = 'Seal Catridge (Pocket)';
+            String sealCode = _pocketControllers[1].text.trim();
+            
+            // Create unique key for seal validation tracking
+            String validationKey = 'pocket_0_seal_$sealCode';
+            
+            // Check if seal validation is already in progress for this field and value
+            if (_pocketSealValidationInProgress[validationKey] == true) {
+              print('Seal validation already in progress for Pocket field: $fieldKey with value: $sealCode');
+              return;
+            }
+            
+            if (_validateFieldForDuplicates(sealCode, fieldKey, fieldName)) {
+              _validatePocketSeal(sealCode);
+            } else {
+              // Clear the field if duplicate found
+              _pocketControllers[1].clear();
+            }
           }
         });
       }
     }
     
-    // NEW: Add listeners for Divert controllers to trigger manual mode
+    // NEW: Add listeners for Divert controllers to trigger manual mode and duplicate validation
     for (int i = 0; i < _divertControllers.length; i++) {
-      // Add listener for No. Catridge (index 0) and Seal Catridge (index 1)
-      _divertControllers[i][0].addListener(() => _onDivertFieldChanged(i, 'no_catridge', _divertControllers[i][0].text));
-      _divertControllers[i][1].addListener(() => _onDivertFieldChanged(i, 'seal_catridge', _divertControllers[i][1].text));
+      // NOTE: No. Catridge (index 0) and Seal Catridge (index 1) listeners are already handled 
+      // in focus listeners above to prevent duplicate API calls
+      
+      // Add listener for Bag Code (index 2) with duplicate validation
+      _divertControllers[i][2].addListener(() {
+        String value = _divertControllers[i][2].text.trim();
+        if (value.isNotEmpty) {
+          String fieldKey = 'divert_${i}_bag';
+          String fieldName = 'Bag Code (Divert ${i + 1})';
+          // Skip duplicate validation if modal is already showing to prevent double modals
+          if (!_isDuplicateModalShowing && !_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+            _divertControllers[i][2].clear();
+            return;
+          } else if (_isDuplicateModalShowing && _isDuplicateValue(value, fieldKey)) {
+            // Clear the field if duplicate found and modal is already showing
+            _divertControllers[i][2].clear();
+            return;
+          }
+        }
+        _onDivertFieldChanged(i, 'bag_code', value);
+      });
+      
+      // Add listener for Seal Code (index 3) with duplicate validation
+      _divertControllers[i][3].addListener(() {
+        String value = _divertControllers[i][3].text.trim();
+        if (value.isNotEmpty) {
+          String fieldKey = 'divert_${i}_seal_code';
+          String fieldName = 'Seal Code (Divert ${i + 1})';
+          // Skip duplicate validation if modal is already showing to prevent double modals
+          if (!_isDuplicateModalShowing && !_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+            _divertControllers[i][3].clear();
+            return;
+          } else if (_isDuplicateModalShowing && _isDuplicateValue(value, fieldKey)) {
+            // Clear the field if duplicate found and modal is already showing
+            _divertControllers[i][3].clear();
+            return;
+          }
+        }
+        _onDivertFieldChanged(i, 'seal_code', value);
+      });
+      
+      // Add listener for Seal Code Return (index 4) with duplicate validation
+      _divertControllers[i][4].addListener(() {
+        String value = _divertControllers[i][4].text.trim();
+        if (value.isNotEmpty) {
+          String fieldKey = 'divert_${i}_seal_return';
+          String fieldName = 'Seal Code Return (Divert ${i + 1})';
+          // Skip duplicate validation if modal is already showing to prevent double modals
+          if (!_isDuplicateModalShowing && !_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+            _divertControllers[i][4].clear();
+            return;
+          } else if (_isDuplicateModalShowing && _isDuplicateValue(value, fieldKey)) {
+            // Clear the field if duplicate found and modal is already showing
+            _divertControllers[i][4].clear();
+            return;
+          }
+        }
+        _onDivertFieldChanged(i, 'seal_code_return', value);
+      });
     }
     
-    // NEW: Add listeners for Pocket controllers to trigger manual mode
-    _pocketControllers[0].addListener(() => _onPocketFieldChanged('no_catridge', _pocketControllers[0].text));
-    _pocketControllers[1].addListener(() => _onPocketFieldChanged('seal_catridge', _pocketControllers[1].text));
+    // NEW: Add listeners for Pocket controllers to trigger manual mode and duplicate validation
+    // NOTE: No. Catridge (index 0) and Seal Catridge (index 1) listeners are already handled 
+    // in focus listeners above to prevent duplicate API calls
+    
+    // Bag Code (index 2) with duplicate validation
+    _pocketControllers[2].addListener(() {
+      String value = _pocketControllers[2].text.trim();
+      if (value.isNotEmpty) {
+        String fieldKey = 'pocket_0_bag';
+        String fieldName = 'Bag Code (Pocket)';
+        if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+          _pocketControllers[2].clear();
+          return;
+        }
+      }
+      _onPocketFieldChanged('bag_code', value);
+    });
+    
+    // Seal Code (index 3) with duplicate validation
+    _pocketControllers[3].addListener(() {
+      String value = _pocketControllers[3].text.trim();
+      if (value.isNotEmpty) {
+        String fieldKey = 'pocket_0_seal_code';
+        String fieldName = 'Seal Code (Pocket)';
+        if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+          _pocketControllers[3].clear();
+          return;
+        }
+      }
+      _onPocketFieldChanged('seal_code', value);
+    });
+    
+    // Seal Code Return (index 4) with duplicate validation
+    _pocketControllers[4].addListener(() {
+      String value = _pocketControllers[4].text.trim();
+      if (value.isNotEmpty) {
+        String fieldKey = 'pocket_0_seal_return';
+        String fieldName = 'Seal Code Return (Pocket)';
+        if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+          _pocketControllers[4].clear();
+          return;
+        }
+      }
+      _onPocketFieldChanged('seal_code_return', value);
+    });
   }
 
   @override
@@ -888,6 +1193,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
       timer?.cancel();
     }
     _debounceTimers.clear();
+    
+    // Remove all focus listeners before disposing
+    _removeFocusListeners();
     
     _idCRFController.dispose();
     _jamMulaiController.dispose();
@@ -1091,9 +1399,58 @@ class _PrepareModePageState extends State<PrepareModePage> {
         }
         
         // NEW: Add special listeners for No. Catridge (index 0) and Seal Catridge (index 1)
-        // to trigger manual mode when user starts typing
+        // to trigger manual mode when user starts typing - already handled in focus listeners above
         _catridgeControllers[i][0].addListener(() => _onCatridgeFieldChanged(i, 0));
         _catridgeControllers[i][1].addListener(() => _onCatridgeFieldChanged(i, 1));
+        
+        // Add listeners for other Catridge fields with duplicate validation
+        if (_catridgeControllers[i].length > 2) {
+          // Bag Code (index 2) with duplicate validation
+          _catridgeControllers[i][2].addListener(() {
+            String value = _catridgeControllers[i][2].text.trim();
+            if (value.isNotEmpty) {
+              String fieldKey = 'catridge_${i}_bag';
+              String fieldName = 'Bag Code (Catridge ${i + 1})';
+              if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+                _catridgeControllers[i][2].clear();
+                return;
+              }
+            }
+            _onCatridgeFieldChanged(i, 2);
+          });
+        }
+        
+        if (_catridgeControllers[i].length > 3) {
+          // Seal Code (index 3) with duplicate validation
+          _catridgeControllers[i][3].addListener(() {
+            String value = _catridgeControllers[i][3].text.trim();
+            if (value.isNotEmpty) {
+              String fieldKey = 'catridge_${i}_seal_code';
+              String fieldName = 'Seal Code (Catridge ${i + 1})';
+              if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+                _catridgeControllers[i][3].clear();
+                return;
+              }
+            }
+            _onCatridgeFieldChanged(i, 3);
+          });
+        }
+        
+        if (_catridgeControllers[i].length > 4) {
+          // Seal Code Return (index 4) with duplicate validation
+          _catridgeControllers[i][4].addListener(() {
+            String value = _catridgeControllers[i][4].text.trim();
+            if (value.isNotEmpty) {
+              String fieldKey = 'catridge_${i}_seal_return';
+              String fieldName = 'Seal Code Return (Catridge ${i + 1})';
+              if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
+                _catridgeControllers[i][4].clear();
+                return;
+              }
+            }
+            _onCatridgeFieldChanged(i, 4);
+          });
+        }
       }
       
       // NEW: Add listeners to field-specific remark controllers to track filled status
@@ -1125,6 +1482,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
       _detailCatridgeItems = [];
       
       // IMPORTANT: Re-setup focus listeners for API calls after creating new FocusNodes
+      // Remove existing listeners first, then reset flag and re-add
+      _removeFocusListeners();
       _setupFocusListeners();
       
       print('Initialized $count catridge controllers and data arrays');
@@ -1644,170 +2003,163 @@ class _PrepareModePageState extends State<PrepareModePage> {
         }
         
         // Calculate position next to icon if provided
-        Widget dialogWidget = Container(
-          width: isSmallScreen ? screenSize.width * 0.9 : 320, // Smaller width
-          constraints: BoxConstraints(
-            maxHeight: screenSize.height * 0.7, // Prevent overflow
-          ),
-          padding: EdgeInsets.all(12), // Reduced padding
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 10,
-                offset: Offset(0, 4),
+        Widget dialogWidget = StatefulBuilder(
+          builder: (BuildContext context, StateSetter setDialogState) {
+            return Container(
+              width: isSmallScreen ? screenSize.width * 0.9 : 320, // Smaller width
+              constraints: BoxConstraints(
+                maxHeight: screenSize.height * 0.7, // Prevent overflow
               ),
-            ],
-          ),
-          child: SingleChildScrollView( // Add scroll support
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header with icon (compact)
-                  Row(
-                    children: [
-                      Image.asset(
-                        'assets/images/ManualModeIcon_notdone.png',
-                        width: 20, // Smaller icon
-                        height: 20,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.edit, size: 20, color: Colors.orange);
-                        },
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Detail Manual ${sectionType.toUpperCase()}',
-                        style: TextStyle(
-                          fontSize: 14, // Smaller font
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+              padding: EdgeInsets.all(12), // Reduced padding
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
                   ),
-                  SizedBox(height: 10), // Reduced spacing
-                  
-                  // Inline No. Catridge field
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                ],
+              ),
+              child: SingleChildScrollView( // Add scroll support
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      SizedBox(
-                        width: 90,
-                        child: Text(
-                          'No. Catridge',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      Text(' : ', style: TextStyle(fontSize: 12)),
-                      Expanded(
-                        child: Text(
-                          fieldController.text.isNotEmpty ? fieldController.text : 'ATM XXXXXX',
-                          style: TextStyle(fontSize: 12, color: fieldController.text.isNotEmpty ? Colors.black : Colors.grey),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  
-                  // Inline Alasan field with dropdown
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 90,
-                        child: Text(
-                          'Alasan',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      Text(' : ', style: TextStyle(fontSize: 12)),
-                      Expanded(
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: alasanController.text.isNotEmpty ? alasanController.text : null,
-                            hint: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Pilih alasan',
-                                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                ),
-                                Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
-                              ],
-                            ),
-                            isExpanded: true,
-                            style: TextStyle(fontSize: 12, color: Colors.black),
-                            items: [
-                              DropdownMenuItem(value: 'Segel Tidak Terbaca', child: Text('Segel Tidak Terbaca', style: TextStyle(fontSize: 12))),
-                              DropdownMenuItem(value: 'Scanner Rusak', child: Text('Scanner Rusak', style: TextStyle(fontSize: 12))),
-                              DropdownMenuItem(value: 'Kaset Berbeda', child: Text('Kaset Berbeda', style: TextStyle(fontSize: 12))),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                // Perbarui nilai controller dan rebuild UI
-                                setState(() {
-                                  alasanController.text = value;
-                                });
-                                
-                                // Update status remark filled berdasarkan section
-                                if (sectionType == 'divert') {
-                                  if (catridgeIndex >= 0 && catridgeIndex < 3) {
-                                    if (fieldType == 'No. Catridge' || fieldType == null) {
-                                      setState(() {
-                                        _divertNoAlasanControllers[catridgeIndex].text = value;
-                                        _divertNoRemarkFilled[catridgeIndex] = 
-                                            _divertNoRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
-                                            _divertNoAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
-                                      });
-                                    } else if (fieldType == 'Seal Catridge') {
-                                      setState(() {
-                                        _divertSealAlasanControllers[catridgeIndex].text = value;
-                                        _divertSealRemarkFilled[catridgeIndex] = 
-                                            _divertSealRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
-                                            _divertSealAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
-                                      });
-                                    }
-                                  }
-                                } else if (sectionType == 'pocket') {
-                                  if (fieldType == 'No. Catridge' || fieldType == null) {
-                                    setState(() {
-                                      _pocketNoAlasanController.text = value;
-                                      _pocketNoRemarkFilled = _pocketNoRemarkController.text.trim().isNotEmpty &&
-                                                         _pocketNoAlasanController.text.trim().isNotEmpty;
-                                    });
-                                  } else if (fieldType == 'Seal Catridge') {
-                                    setState(() {
-                                      _pocketSealAlasanController.text = value;
-                                      _pocketSealRemarkFilled = _pocketSealRemarkController.text.trim().isNotEmpty &&
-                                                           _pocketSealAlasanController.text.trim().isNotEmpty;
-                                    });
-                                  }
-                                } else if (sectionType == 'catridge') {
-                                  if (fieldType == 'No. Catridge' || fieldType == null) {
-                                    setState(() {
-                                      _catridgeNoAlasanControllers[catridgeIndex].text = value;
-                                      _catridgeNoRemarkFilled[catridgeIndex] = 
-                                          _catridgeNoRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
-                                          _catridgeNoAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
-                                    });
-                                  } else if (fieldType == 'Seal Catridge') {
-                                    setState(() {
-                                      _catridgeSealAlasanControllers[catridgeIndex].text = value;
-                                      _catridgeSealRemarkFilled[catridgeIndex] = 
-                                          _catridgeSealRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
-                                          _catridgeSealAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
-                                    });
-                                  }
-                                }
-                              }
+                      // Header with icon (compact)
+                      Row(
+                        children: [
+                          Image.asset(
+                            'assets/images/ManualModeIcon_notdone.png',
+                            width: 20, // Smaller icon
+                            height: 20,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(Icons.edit, size: 20, color: Colors.orange);
                             },
                           ),
-                        ),
+                          SizedBox(width: 6),
+                          Text(
+                            'Detail Manual ${sectionType.toUpperCase()}',
+                            style: TextStyle(
+                              fontSize: 14, // Smaller font
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                      SizedBox(height: 10), // Reduced spacing
+                      
+                      // Inline No. Catridge field
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 90,
+                            child: Text(
+                              'No. Catridge',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          Text(' : ', style: TextStyle(fontSize: 12)),
+                          Expanded(
+                            child: Text(
+                              fieldController.text.isNotEmpty ? fieldController.text : 'ATM XXXXXX',
+                              style: TextStyle(fontSize: 12, color: fieldController.text.isNotEmpty ? Colors.black : Colors.grey),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      
+                      // Inline Alasan field with dropdown
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 90,
+                            child: Text(
+                              'Alasan',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                          Text(' : ', style: TextStyle(fontSize: 12)),
+                          Expanded(
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: alasanController.text.isNotEmpty ? alasanController.text : null,
+                                hint: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Pilih alasan',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                    ),
+                                    Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
+                                  ],
+                                ),
+                                isExpanded: true,
+                                style: TextStyle(fontSize: 12, color: Colors.black),
+                                items: [
+                                  DropdownMenuItem(value: 'Segel Tidak Terbaca', child: Text('Segel Tidak Terbaca', style: TextStyle(fontSize: 12))),
+                                  DropdownMenuItem(value: 'Scanner Rusak', child: Text('Scanner Rusak', style: TextStyle(fontSize: 12))),
+                                  DropdownMenuItem(value: 'Kaset Berbeda', child: Text('Kaset Berbeda', style: TextStyle(fontSize: 12))),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    // Update dialog state immediately for UI refresh
+                                    setDialogState(() {
+                                      alasanController.text = value;
+                                    });
+                                    
+                                    // Update main widget state for data persistence
+                                    setState(() {
+                                      // Update status remark filled berdasarkan section
+                                      if (sectionType == 'divert') {
+                                        if (catridgeIndex >= 0 && catridgeIndex < 3) {
+                                          if (fieldType == 'No. Catridge' || fieldType == null) {
+                                            _divertNoAlasanControllers[catridgeIndex].text = value;
+                                            _divertNoRemarkFilled[catridgeIndex] = 
+                                                _divertNoRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
+                                                _divertNoAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
+                                          } else if (fieldType == 'Seal Catridge') {
+                                            _divertSealAlasanControllers[catridgeIndex].text = value;
+                                            _divertSealRemarkFilled[catridgeIndex] = 
+                                                _divertSealRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
+                                                _divertSealAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
+                                          }
+                                        }
+                                      } else if (sectionType == 'pocket') {
+                                        if (fieldType == 'No. Catridge' || fieldType == null) {
+                                          _pocketNoAlasanController.text = value;
+                                          _pocketNoRemarkFilled = _pocketNoRemarkController.text.trim().isNotEmpty &&
+                                                             _pocketNoAlasanController.text.trim().isNotEmpty;
+                                        } else if (fieldType == 'Seal Catridge') {
+                                          _pocketSealAlasanController.text = value;
+                                          _pocketSealRemarkFilled = _pocketSealRemarkController.text.trim().isNotEmpty &&
+                                                               _pocketSealAlasanController.text.trim().isNotEmpty;
+                                        }
+                                      } else if (sectionType == 'catridge') {
+                                        if (fieldType == 'No. Catridge' || fieldType == null) {
+                                          _catridgeNoAlasanControllers[catridgeIndex].text = value;
+                                          _catridgeNoRemarkFilled[catridgeIndex] = 
+                                              _catridgeNoRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
+                                              _catridgeNoAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
+                                        } else if (fieldType == 'Seal Catridge') {
+                                          _catridgeSealAlasanControllers[catridgeIndex].text = value;
+                                          _catridgeSealRemarkFilled[catridgeIndex] = 
+                                              _catridgeSealRemarkControllers[catridgeIndex].text.trim().isNotEmpty &&
+                                              _catridgeSealAlasanControllers[catridgeIndex].text.trim().isNotEmpty;
+                                        }
+                                      }
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                   
                   // Divider line
                   Container(
@@ -1911,7 +2263,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
                 ],
               ),
             ),
-        );
+              );
+            },
+          );
         
         // Position dialog next to icon if position provided
         if (iconPosition != null) {
@@ -3136,8 +3490,91 @@ class _PrepareModePageState extends State<PrepareModePage> {
     return null;
   }
    
+  // Sync form data to models before navigation
+  void _syncFormDataToModels() {
+    // Sync catridge data
+    for (int i = 0; i < _catridgeControllers.length; i++) {
+      if (_catridgeControllers[i].length >= 5) {
+        String bagCode = _catridgeControllers[i][2].text.trim();
+        String sealCode = _catridgeControllers[i][3].text.trim();
+        String sealReturn = _catridgeControllers[i][4].text.trim();
+        
+        // Update existing item or create new one
+        int existingIndex = _detailCatridgeItems.indexWhere((item) => item.index == i + 1);
+        if (existingIndex >= 0) {
+          DetailCatridgeItem currentItem = _detailCatridgeItems[existingIndex];
+          _detailCatridgeItems[existingIndex] = DetailCatridgeItem(
+            index: currentItem.index,
+            noCatridge: currentItem.noCatridge,
+            sealCatridge: currentItem.sealCatridge,
+            value: currentItem.value,
+            total: currentItem.total,
+            denom: currentItem.denom,
+            bagCode: bagCode.isNotEmpty ? bagCode : currentItem.bagCode,
+            sealCode: sealCode.isNotEmpty ? sealCode : currentItem.sealCode,
+            sealReturn: sealReturn.isNotEmpty ? sealReturn : currentItem.sealReturn,
+          );
+        }
+      }
+    }
+    
+    // Sync divert data - use DetailCatridgeItem with index offset
+    for (int i = 0; i < _divertControllers.length; i++) {
+      if (_divertControllers[i].length >= 5) {
+        String bagCode = _divertControllers[i][2].text.trim();
+        String sealCode = _divertControllers[i][3].text.trim();
+        String sealReturn = _divertControllers[i][4].text.trim();
+        
+        if (_divertDetailItems[i] != null) {
+          // Create a new DetailCatridgeItem for divert with index 100+
+          int divertIndex = _detailCatridgeItems.indexWhere((item) => item.index == 100 + i);
+          if (divertIndex >= 0) {
+            DetailCatridgeItem currentItem = _detailCatridgeItems[divertIndex];
+            _detailCatridgeItems[divertIndex] = DetailCatridgeItem(
+              index: currentItem.index,
+              noCatridge: currentItem.noCatridge,
+              sealCatridge: currentItem.sealCatridge,
+              value: currentItem.value,
+              total: currentItem.total,
+              denom: currentItem.denom,
+              bagCode: bagCode.isNotEmpty ? bagCode : currentItem.bagCode,
+              sealCode: sealCode.isNotEmpty ? sealCode : currentItem.sealCode,
+              sealReturn: sealReturn.isNotEmpty ? sealReturn : currentItem.sealReturn,
+            );
+          }
+        }
+      }
+    }
+    
+    // Sync pocket data - use DetailCatridgeItem with index 200
+    if (_pocketControllers.length >= 5 && _pocketDetailItem != null) {
+      String bagCode = _pocketControllers[2].text.trim();
+      String sealCode = _pocketControllers[3].text.trim();
+      String sealReturn = _pocketControllers[4].text.trim();
+      
+      int pocketIndex = _detailCatridgeItems.indexWhere((item) => item.index == 200);
+      if (pocketIndex >= 0) {
+        DetailCatridgeItem currentItem = _detailCatridgeItems[pocketIndex];
+        _detailCatridgeItems[pocketIndex] = DetailCatridgeItem(
+          index: currentItem.index,
+          noCatridge: currentItem.noCatridge,
+          sealCatridge: currentItem.sealCatridge,
+          value: currentItem.value,
+          total: currentItem.total,
+          denom: currentItem.denom,
+          bagCode: bagCode.isNotEmpty ? bagCode : currentItem.bagCode,
+          sealCode: sealCode.isNotEmpty ? sealCode : currentItem.sealCode,
+          sealReturn: sealReturn.isNotEmpty ? sealReturn : currentItem.sealReturn,
+        );
+      }
+    }
+  }
+
   // Show approval form
   void _showApprovalFormDialog() {
+    // Sync form data to models before navigation
+    _syncFormDataToModels();
+    
     // Navigate to prepare summary page
     Navigator.push(
       context,
@@ -3865,7 +4302,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                                     const SizedBox(width: 24),
                                     // Right side - Details (same level as left)
                                     Expanded(
-                                      flex: 3,
+                                      flex: 5, // Increased from 4 to 5 to make right section even wider
                                       child: Container(
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
@@ -4417,7 +4854,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
             children: [
               // Left side - All 5 fields in single column (vertical) - made narrower
               Expanded(
-                flex: isSmallScreen ? 3 : 3, // Increased from 2 to 3
+                flex: isSmallScreen ? 2 : 2, // Reduced from 3 to 2 to make form fields narrower
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -4504,7 +4941,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
               
               // Right side - Denom details with image and total - balanced width
               Expanded(
-                flex: isSmallScreen ? 2 : 2, // Reduced from 2:3 to 3:2
+                flex: isSmallScreen ? 1 : 1, // Reduced from 2 to 1 to make middle section narrower // Reduced from 2:3 to 3:2
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -4597,8 +5034,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         horizontal: isSmallScreen ? 9 : 11
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCF8C6),  // Light green background
+                        color: Colors.white,  // Changed from light green to white
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.grey.shade400,  // Gray border
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade300,  // Gray shadow
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
@@ -5358,7 +5807,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         label: Text(
           'Submit Data',
           style: TextStyle(
-            fontSize: isSmallScreen ? 14 : 16,
+            fontSize: isSmallScreen ? 12 : 14, // Reduced from 14:16 to 12:14
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -5367,7 +5816,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: EdgeInsets.symmetric(
-            horizontal: isSmallScreen ? 16 : 20, 
+            horizontal: isSmallScreen ? 12 : 16, // Reduced from 16:20 to 12:16 to make button narrower
             vertical: isSmallScreen ? 10 : 12
           ),
           shape: RoundedRectangleBorder(
@@ -5875,15 +6324,41 @@ class _PrepareModePageState extends State<PrepareModePage> {
           // Check if this is a Divert No. Catridge field
           for (int i = 0; i < _divertControllers.length; i++) {
             if (_divertControllers[i].isNotEmpty && _divertControllers[i][0] == controller) {
-              Future.delayed(const Duration(milliseconds: 2000), () {
-                _lookupDivertCatridge(i, result);
-              });
+              // Check for duplicates before API call
+              String fieldKey = 'divert_${i}_no';
+              String fieldName = 'No. Catridge (Divert ${i + 1})';
+              String apiKey = 'divert_${i}_${result}';
+              
+              // Skip if API call is already in progress for this field and value
+              if (_divertApiCallInProgress[apiKey] == true) {
+                print('🔍 DIVERT LOOKUP: Skipping duplicate API call for $apiKey');
+                return;
+              }
+              
+              // Skip duplicate validation if modal is already showing to prevent double modals
+              if (!_isDuplicateModalShowing && _validateFieldForDuplicates(result, fieldKey, fieldName)) {
+                Future.delayed(const Duration(milliseconds: 2000), () {
+                  _lookupDivertCatridge(i, result);
+                });
+              } else if (_isDuplicateValue(result, fieldKey)) {
+                // Clear the field if duplicate found, but don't show modal again
+                controller.clear();
+              }
               break;
             }
           }
           
           // Check if this is a Pocket No. Catridge field
           if (_pocketControllers.isNotEmpty && _pocketControllers[0] == controller) {
+            // Create unique key for API call tracking
+            String apiKey = 'pocket_0_$result';
+            
+            // Check if API call is already in progress for this field and value
+            if (_pocketApiCallInProgress[apiKey] == true) {
+              print('API call already in progress for Pocket field from barcode scanner with value: $result');
+              return;
+            }
+            
             Future.delayed(const Duration(milliseconds: 2000), () {
               _lookupPocketCatridge(result);
             });
@@ -5902,15 +6377,43 @@ class _PrepareModePageState extends State<PrepareModePage> {
           // Check if this is a Divert Seal Catridge field
           for (int i = 0; i < _divertControllers.length; i++) {
             if (_divertControllers[i].length > 1 && _divertControllers[i][1] == controller) {
-              Future.delayed(const Duration(milliseconds: 2000), () {
-                _validateDivertSeal(i, result);
-              });
+              // Check for duplicates before API call
+              String fieldKey = 'divert_${i}_seal';
+              String fieldName = 'Seal Catridge (Divert ${i + 1})';
+              
+              // Create unique key for seal validation tracking
+              String validationKey = 'divert_${i}_seal_$result';
+              
+              // Check if seal validation is already in progress for this field and value
+              if (_divertSealValidationInProgress[validationKey] == true) {
+                print('Seal validation already in progress for Divert field from barcode scanner with value: $result');
+                return;
+              }
+              
+              // Skip duplicate validation if modal is already showing to prevent double modals
+              if (!_isDuplicateModalShowing && _validateFieldForDuplicates(result, fieldKey, fieldName)) {
+                Future.delayed(const Duration(milliseconds: 2000), () {
+                  _validateDivertSeal(i, result);
+                });
+              } else if (_isDuplicateValue(result, fieldKey)) {
+                // Clear the field if duplicate found, but don't show modal again
+                controller.clear();
+              }
               break;
             }
           }
           
           // Check if this is a Pocket Seal Catridge field
           if (_pocketControllers.length > 1 && _pocketControllers[1] == controller) {
+            // Create unique key for seal validation tracking
+            String validationKey = 'pocket_0_seal_$result';
+            
+            // Check if seal validation is already in progress for this field and value
+            if (_pocketSealValidationInProgress[validationKey] == true) {
+              print('Seal validation already in progress for Pocket field from barcode scanner with value: $result');
+              return;
+            }
+            
             Future.delayed(const Duration(milliseconds: 2000), () {
               _validatePocketSeal(result);
             });
@@ -5990,7 +6493,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
             children: [
               // Left side - All 5 fields in single column
               Expanded(
-                flex: isSmallScreen ? 3 : 3,
+                flex: isSmallScreen ? 2 : 2, // Reduced from 3 to 2 to make form fields narrower
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -6003,7 +6506,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       isReadOnly: !_isIdCRFValid(),
                       catridgeIndex: sectionIndex,
                       onChanged: (value) {
-                        // Only trigger manual mode when user actually types
+                        // Trigger manual mode when user types
                         if (value.isNotEmpty) {
                           _onDivertFieldChanged(sectionIndex, 'catridge', value);
                         }
@@ -6020,7 +6523,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       isReadOnly: !_isIdCRFValid(),
                       catridgeIndex: sectionIndex,
                       onChanged: (value) {
-                        // Only trigger manual mode when user actually types
+                        // Trigger manual mode when user types
                         if (value.isNotEmpty) {
                           _onDivertFieldChanged(sectionIndex, 'seal', value);
                         }
@@ -6076,7 +6579,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
               
               // Right side - Denom details
               Expanded(
-                flex: isSmallScreen ? 2 : 2,
+                flex: isSmallScreen ? 1 : 1, // Reduced from 2 to 1 to make middle section narrower
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -6175,8 +6678,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         horizontal: isSmallScreen ? 9 : 11
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCF8C6),
+                        color: Colors.white,  // Changed from light green to white
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.grey.shade400,  // Gray border
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade300,  // Gray shadow
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
@@ -6324,7 +6839,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
             children: [
               // Left side - All 5 fields in single column
               Expanded(
-                flex: isSmallScreen ? 3 : 3,
+                flex: isSmallScreen ? 2 : 2, // Reduced from 3 to 2 to make form fields narrower
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -6410,7 +6925,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
               
               // Right side - Denom details
               Expanded(
-                flex: isSmallScreen ? 2 : 2,
+                flex: isSmallScreen ? 1 : 1, // Reduced from 2 to 1 to make middle section narrower
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -6501,8 +7016,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         horizontal: isSmallScreen ? 9 : 11
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFDCF8C6),
+                        color: Colors.white,  // Changed from light green to white
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.grey.shade400,  // Gray border
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade300,  // Gray shadow
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Column(
                         children: [
@@ -6551,6 +7078,17 @@ class _PrepareModePageState extends State<PrepareModePage> {
       print('🔍 DIVERT LOOKUP: Skipped - catridgeCode empty or widget not mounted');
       return;
     }
+    
+    String apiKey = 'divert_${sectionIndex}_${catridgeCode}';
+    
+    // Check if API call is already in progress for this field and value
+    if (_divertApiCallInProgress[apiKey] == true) {
+      print('🔍 DIVERT LOOKUP: API call already in progress for $apiKey');
+      return;
+    }
+    
+    // Set flag to indicate API call is in progress
+    _divertApiCallInProgress[apiKey] = true;
     
     print('🔍 DIVERT LOOKUP: Starting lookup for catridge: $catridgeCode, sectionIndex: $sectionIndex');
     
@@ -6726,6 +7264,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
           _resetDivertAndSealFields(sectionIndex, resetNoCatridge: true, resetSealCatridge: false);
         },
       );
+    } finally {
+      // Always reset the API call flag when the method completes
+      String apiKey = 'divert_${sectionIndex}_${catridgeCode}';
+      _divertApiCallInProgress[apiKey] = false;
+      print('🔍 DIVERT LOOKUP: API call completed for $apiKey');
     }
   }
 
@@ -6735,6 +7278,18 @@ class _PrepareModePageState extends State<PrepareModePage> {
       print('🔒 DIVERT SEAL: Skipped - sealCode empty or widget not mounted (section: $sectionIndex)');
       return;
     }
+    
+    // Create unique key for seal validation tracking
+    String validationKey = 'divert_${sectionIndex}_seal_$sealCode';
+    
+    // Check if seal validation is already in progress for this field and value
+    if (_divertSealValidationInProgress[validationKey] == true) {
+      print('🔒 DIVERT SEAL: Validation already in progress for section $sectionIndex with seal: $sealCode');
+      return;
+    }
+    
+    // Set flag to indicate validation is in progress
+    _divertSealValidationInProgress[validationKey] = true;
     
     print('🔒 DIVERT SEAL: Starting validation for seal: $sealCode (section: $sectionIndex)');
     
@@ -6916,6 +7471,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
           _resetDivertAndSealFields(sectionIndex, resetNoCatridge: false, resetSealCatridge: true);
         },
       );
+    } finally {
+      // Reset the validation flag
+      String validationKey = 'divert_${sectionIndex}_seal_$sealCode';
+      _divertSealValidationInProgress[validationKey] = false;
+      print('🔒 DIVERT SEAL: Validation completed for section $sectionIndex with seal: $sealCode');
     }
   }
 
@@ -6925,6 +7485,18 @@ class _PrepareModePageState extends State<PrepareModePage> {
       print('🔍 POCKET LOOKUP: Skipped - catridgeCode empty or widget not mounted');
       return;
     }
+    
+    // Create unique key for API call tracking
+    String apiKey = 'pocket_0_$catridgeCode';
+    
+    // Check if API call is already in progress for this field and value
+    if (_pocketApiCallInProgress[apiKey] == true) {
+      print('🔍 POCKET LOOKUP: API call already in progress for catridge: $catridgeCode');
+      return;
+    }
+    
+    // Set flag to indicate API call is in progress
+    _pocketApiCallInProgress[apiKey] = true;
     
     print('🔍 POCKET LOOKUP: Starting lookup for catridge: $catridgeCode');
     
@@ -7115,6 +7687,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
           message: errorMessage,
         );
       }
+    } finally {
+      // Always reset the API call flag, regardless of success or error
+      String apiKey = 'pocket_0_$catridgeCode';
+      _pocketApiCallInProgress[apiKey] = false;
+      print('🔍 POCKET LOOKUP: API call completed for catridge: $catridgeCode');
     }
   }
 
@@ -7123,6 +7700,18 @@ class _PrepareModePageState extends State<PrepareModePage> {
       print('🔒 POCKET SEAL: Skipped - sealCode empty or widget not mounted');
       return;
     }
+    
+    // Create unique key for seal validation tracking
+    String validationKey = 'pocket_0_seal_$sealCode';
+    
+    // Check if seal validation is already in progress for this field and value
+    if (_pocketSealValidationInProgress[validationKey] == true) {
+      print('🔒 POCKET SEAL: Validation already in progress for seal: $sealCode');
+      return;
+    }
+    
+    // Set flag to indicate seal validation is in progress
+    _pocketSealValidationInProgress[validationKey] = true;
     
     print('🔒 POCKET SEAL: Starting validation for seal: $sealCode');
     
@@ -7293,6 +7882,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
         context: context,
         message: 'Error: ${e.toString()}',
       );
+    } finally {
+      // Always reset the seal validation flag, regardless of success or error
+      String validationKey = 'pocket_0_seal_$sealCode';
+      _pocketSealValidationInProgress[validationKey] = false;
+      print('🔒 POCKET SEAL: Validation completed for seal: $sealCode');
     }
   }
 

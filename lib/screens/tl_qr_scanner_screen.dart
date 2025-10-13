@@ -453,7 +453,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       );
       
       if (!validationResponse.success || validationResponse.data?.validationStatus != 'SUCCESS') {
-        throw Exception('Validasi TLSPV gagal: ${validationResponse.message}');
+        throw Exception(validationResponse.message);
       }
       
       print('TLSPV validation successful: ${validationResponse.data?.userName} (${validationResponse.data?.userRole})');
@@ -471,26 +471,8 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       final tableCode = catridges[0].tableCode; // Gunakan tableCode dari catridge pertama
       final warehouseCode = catridges[0].warehouseCode; // Gunakan warehouseCode dari catridge pertama
       
-      // Step 2: Update Planning API - sama seperti flow manual
-      print('=== STEP 2: UPDATE PLANNING ===');
-      print('Calling updatePlanning with: idTool=$idToolInt, cashierCode=$currentUser, spvTLCode=$cleanNik, tableCode=$tableCode');
-      
-      final planningResponse = await _apiService.updatePlanning(
-        idTool: idToolInt,
-        cashierCode: currentUser,
-        spvTLCode: cleanNik,
-        tableCode: tableCode,
-        warehouseCode: warehouseCode,
-      );
-      
-      if (!planningResponse.success) {
-        throw Exception('Update planning gagal: ${planningResponse.message}');
-      }
-      
-      print('Planning update success for ID: $idTool by TL: $cleanNik ($currentUserName)');
-      
-      // Step 3: Insert ATM Catridge untuk setiap item catridge
-      print('=== STEP 3: INSERT ATM CATRIDGE ===');
+      // Step 2: Insert ATM Catridge untuk setiap item catridge
+      print('=== STEP 2: INSERT ATM CATRIDGE ===');
       List<String> successMessages = [];
       List<String> errorMessages = [];
       
@@ -523,6 +505,24 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
           print('Exception inserting catridge ${catridge.catridgeCode}: $e');
         }
       }
+      
+      // Step 3: Update Planning API - moved to last
+      print('=== STEP 3: UPDATE PLANNING ===');
+      print('Calling updatePlanning with: idTool=$idToolInt, cashierCode=$currentUser, spvTLCode=$cleanNik, tableCode=$tableCode');
+      
+      final planningResponse = await _apiService.updatePlanning(
+        idTool: idToolInt,
+        cashierCode: currentUser,
+        spvTLCode: cleanNik,
+        tableCode: tableCode,
+        warehouseCode: warehouseCode,
+      );
+      
+      if (!planningResponse.success) {
+        throw Exception(planningResponse.message);
+      }
+      
+      print('Planning update success for ID: $idTool by TL: $cleanNik ($currentUserName)');
       
       // Step 4: Kirim notifikasi ke CRF_OPR (tidak menggunakan FCM)
       if (_operatorId != null && _operatorId!.isNotEmpty) {
@@ -571,7 +571,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       }
     } catch (e) {
       print('Error processing catridges: $e');
-      throw Exception('Proses catridge gagal: ${e.toString()}');
+      throw Exception(e.toString());
     }
   }
 
@@ -617,7 +617,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         );
         
       if (!validationResponse.success || validationResponse.data?.validationStatus != 'SUCCESS') {
-          throw Exception('Validasi TLSPV gagal: ${validationResponse.message}');
+          throw Exception(validationResponse.message);
         }
         
       print('TLSPV validation successful: ${validationResponse.data?.userName} (${validationResponse.data?.userRole})');
@@ -648,7 +648,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       );
       
       if (!planningResponse.success) {
-        throw Exception('Update planning gagal: ${planningResponse.message}');
+        throw Exception(planningResponse.message);
       }
       
       print('Planning update success for ID: $idTool by TL: $cleanNik ($currentUserName)');
@@ -673,7 +673,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       }
     } catch (e) {
       print('Error approving prepare: $e');
-      throw Exception('Approval gagal: ${e.toString()}');
+      throw Exception(e.toString());
     }
   }
 
@@ -719,7 +719,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         );
         
       if (!validationResponse.success || validationResponse.data?.validationStatus != 'SUCCESS') {
-          throw Exception('Validasi TLSPV gagal: ${validationResponse.message}');
+          throw Exception(validationResponse.message);
         }
         
       print('TLSPV validation successful: ${validationResponse.data?.userName} (${validationResponse.data?.userRole})');
@@ -747,7 +747,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       final updateResponse = await _apiService.updatePlanningRTN(updateParams);
       
       if (!updateResponse.success) {
-        throw Exception('Update planning RTN gagal: ${updateResponse.message}');
+        throw Exception(updateResponse.message);
       }
       
       print('Return approved for ID: $idTool by TL: $cleanNik ($currentUserName)');
@@ -772,7 +772,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       }
     } catch (e) {
       print('Error approving return: $e');
-      throw Exception('Approval return gagal: ${e.toString()}');
+      throw Exception(e.toString());
     }
   }
 

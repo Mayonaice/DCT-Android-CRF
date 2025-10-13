@@ -284,7 +284,27 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
         debugPrint('     - noRemark: ${widget.pocketData!['noRemark']}');
       }
       
-      // Update planning status
+      // Insert catridge data (main catridge items) - STEP 2
+      debugPrint('💾 [PREPARE_SUMMARY] Starting catridge data insertion...');
+      await _insertCatridgeData(widget.catridgeData, 'C', planningId, atmCode, userId);
+      
+      // Insert divert data if exists
+      if (widget.divertData.isNotEmpty) {
+        debugPrint('💾 [PREPARE_SUMMARY] Starting divert data insertion...');
+        await _insertCatridgeData(widget.divertData, 'D', planningId, atmCode, userId);
+      } else {
+        debugPrint('ℹ️ [PREPARE_SUMMARY] No divert data to insert');
+      }
+      
+      // Insert pocket data if exists
+      if (widget.pocketData != null) {
+        debugPrint('💾 [PREPARE_SUMMARY] Starting pocket data insertion...');
+        await _insertCatridgeData([widget.pocketData!], 'P', planningId, atmCode, userId);
+      } else {
+        debugPrint('ℹ️ [PREPARE_SUMMARY] No pocket data to insert');
+      }
+      
+      // Update planning status - STEP 3 (moved to last)
       debugPrint('🔄 [PREPARE_SUMMARY] Calling updatePlanning API...');
       debugPrint('🌐 [UPDATE_PLANNING] Endpoint: POST /updatePlanning');
       debugPrint('📤 [UPDATE_PLANNING] Request Parameters:');
@@ -312,30 +332,10 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       
       if (!updateResponse.success) {
         debugPrint('❌ [UPDATE_PLANNING] Failed: ${updateResponse.message}');
-        throw Exception(updateResponse.message ?? 'Gagal update planning');
+        throw Exception(updateResponse.message);
       }
       
       debugPrint('✅ [UPDATE_PLANNING] Success!');
-      
-      // Insert catridge data (main catridge items)
-      debugPrint('💾 [PREPARE_SUMMARY] Starting catridge data insertion...');
-      await _insertCatridgeData(widget.catridgeData, 'C', planningId, atmCode, userId);
-      
-      // Insert divert data if exists
-      if (widget.divertData.isNotEmpty) {
-        debugPrint('💾 [PREPARE_SUMMARY] Starting divert data insertion...');
-        await _insertCatridgeData(widget.divertData, 'D', planningId, atmCode, userId);
-      } else {
-        debugPrint('ℹ️ [PREPARE_SUMMARY] No divert data to insert');
-      }
-      
-      // Insert pocket data if exists
-      if (widget.pocketData != null) {
-        debugPrint('💾 [PREPARE_SUMMARY] Starting pocket data insertion...');
-        await _insertCatridgeData([widget.pocketData!], 'P', planningId, atmCode, userId);
-      } else {
-        debugPrint('ℹ️ [PREPARE_SUMMARY] No pocket data to insert');
-      }
       
       debugPrint('🎉 [PREPARE_SUMMARY] All data inserted successfully!');
       
@@ -350,7 +350,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       debugPrint('⏰ [PREPARE_SUMMARY] Process end time: ${processEndTime.toIso8601String()}');
       debugPrint('⏱️ [PREPARE_SUMMARY] Total process duration: ${totalDuration.inMilliseconds}ms (${totalDuration.inSeconds}s)');
       
-      await _showSuccessDialog('Data Prepare berhasil disubmit!');
+      await _showSuccessDialog(updateResponse.message);
       
       // Navigate back to previous screens
       debugPrint('🔄 [NAVIGATION] Navigating back to first screen...');
@@ -364,7 +364,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       debugPrint('📍 [PREPARE_SUMMARY] Stack trace: ${StackTrace.current}');
       debugPrint('⏰ [PREPARE_SUMMARY] Error occurred at: ${processEndTime.toIso8601String()}');
       debugPrint('⏱️ [PREPARE_SUMMARY] Process duration before error: ${totalDuration.inMilliseconds}ms (${totalDuration.inSeconds}s)');
-      await _showErrorDialog('Error submit data: ${e.toString()}');
+      await _showErrorDialog(e.toString());
     }
   }
   
@@ -503,14 +503,14 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
           break; // Success, exit retry loop
         } else {
           debugPrint('❌ [INSERT_CATRIDGE] Insert failed: ${response.message}');
-          throw Exception(response.message ?? 'Insert catridge failed');
+          throw Exception(response.message ?? response.message);
         }
       } catch (e) {
         retryCount++;
         debugPrint('💥 [INSERT_CATRIDGE] Exception on attempt $retryCount: ${e.toString()}');
         if (retryCount >= maxRetries) {
           debugPrint('🚫 [INSERT_CATRIDGE] Max retries reached, throwing exception');
-          throw Exception('Gagal insert catridge setelah $maxRetries percobaan: ${e.toString()}');
+          throw Exception('${e.toString()}');
         }
         // Wait before retry
         debugPrint('⏳ [INSERT_CATRIDGE] Waiting 1s before retry...');
@@ -521,7 +521,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
 
   Future<void> _showErrorDialog(String message) async {
     debugPrint('❌ [DIALOG] Showing error dialog: $message');
-    return CustomModals.showSuccessModal(
+    return CustomModals.showFailedModal(
       context: context,
       message: message,
     );
