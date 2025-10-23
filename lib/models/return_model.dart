@@ -242,13 +242,13 @@ class ReturnCatridgeData {
   factory ReturnCatridgeData.fromJson(Map<String, dynamic> json) {
     return ReturnCatridgeData(
       idTool: json['idTool'] ?? '',
-      catridgeCode: json['catridgeCode'] ?? '',
-      catridgeSeal: json['catridgeSeal'] ?? '',
+      catridgeCode: json['catridgeCode'] ?? json['CatridgeCode'] ?? '',
+      catridgeSeal: json['catridgeSeal'] ?? json['CatridgeSeal'] ?? '',
       denomCode: json['denomCode'] ?? '',
       typeCatridge: json['typeCatridge'] ?? '',
       bagCode: json['bagCode'], // Tambahkan mapping untuk bagCode
       qty: json['qty'], // Tambahkan mapping untuk qty
-      typeCatridgeTrx: json['typeCatridgeTrx'] ?? 'C', // Default to 'C' if not provided
+      typeCatridgeTrx: json['typeCatridgeTrx'], // Remove default value to preserve null/actual value
       sealCodeReturn: json['sealCodeReturn'], // Add mapping for sealCodeReturn
     );
   }
@@ -369,13 +369,29 @@ class ReturnHeaderResponse {
   });
 
   factory ReturnHeaderResponse.fromJson(Map<String, dynamic> json) {
+    List<ReturnCatridgeData> catridgeDataList = [];
+    
+    // Handle different response formats
+    if (json['data'] != null) {
+      // If data contains catridges array (new format)
+      if (json['data'] is Map && json['data']['catridges'] is List) {
+        catridgeDataList = (json['data']['catridges'] as List)
+            .map((item) => ReturnCatridgeData.fromJson(item))
+            .toList();
+      }
+      // If data is directly an array (old format)
+      else if (json['data'] is List) {
+        catridgeDataList = (json['data'] as List)
+            .map((item) => ReturnCatridgeData.fromJson(item))
+            .toList();
+      }
+    }
+    
     return ReturnHeaderResponse(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
       header: json['header'] != null ? ReturnHeaderData.fromJson(json['header']) : null,
-      data: (json['data'] as List<dynamic>? ?? [])
-          .map((item) => ReturnCatridgeData.fromJson(item))
-          .toList(),
+      data: catridgeDataList,
     );
   }
 }

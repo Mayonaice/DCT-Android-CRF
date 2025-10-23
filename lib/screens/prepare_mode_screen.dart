@@ -7,6 +7,7 @@ import '../services/profile_service.dart';
 import '../widgets/barcode_scanner_widget.dart';
 import '../widgets/qr_code_generator_widget.dart';
 import '../widgets/custom_modals.dart';
+import '../widgets/prepare_mode_header.dart';
 import 'profile_menu_screen.dart';
 import 'prepare_summary_page.dart';
 import 'dart:async';
@@ -276,10 +277,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
         int divertIndex = 100 + sectionIndex;
         for (int i = 0; i < _detailCatridgeItems.length; i++) {
           if (_detailCatridgeItems[i].index == divertIndex) {
-            // For manual entry, we need to ensure the item has a valid value
-            // Set default for other fields
+            // For divert sections, only set default value for primary fields (no_catridge, seal_catridge)
+            // NOT for seal_code or seal_code_return fields
             int currentValue = _detailCatridgeItems[i].value;
-            if (currentValue <= 0 && value.trim().isNotEmpty) {
+            if (currentValue <= 0 && value.trim().isNotEmpty && 
+                (fieldType == 'catridge' || fieldType == 'no_catridge' || fieldType == 'seal' || fieldType == 'seal_catridge')) {
               // Set default value for manual entry (can be updated later by user)
               currentValue = 1;
               
@@ -955,6 +957,40 @@ class _PrepareModePageState extends State<PrepareModePage> {
             }
           });
         }
+        
+        // Seal Code field focus listener
+        if (_catridgeFocusNodes[i].length > 3) {
+          _catridgeFocusNodes[i][3].addListener(() {
+            if (!_catridgeFocusNodes[i][3].hasFocus && _catridgeControllers[i][3].text.trim().isNotEmpty) {
+              String sealCode = _catridgeControllers[i][3].text.trim();
+              String sealCodeReturn = _catridgeControllers[i][4].text.trim();
+              _validateSealCode(
+                sealCode: sealCode,
+                sealCodeReturn: sealCodeReturn,
+                fieldType: 'seal_code',
+                sectionType: 'catridge',
+                sectionIndex: i,
+              );
+            }
+          });
+        }
+        
+        // Seal Code Return field focus listener
+        if (_catridgeFocusNodes[i].length > 4) {
+          _catridgeFocusNodes[i][4].addListener(() {
+            if (!_catridgeFocusNodes[i][4].hasFocus && _catridgeControllers[i][4].text.trim().isNotEmpty) {
+              String sealCode = _catridgeControllers[i][3].text.trim();
+              String sealCodeReturn = _catridgeControllers[i][4].text.trim();
+              _validateSealCode(
+                sealCode: sealCode,
+                sealCodeReturn: sealCodeReturn,
+                fieldType: 'seal_code_return',
+                sectionType: 'catridge',
+                sectionIndex: i,
+              );
+            }
+          });
+        }
       }
     }
 
@@ -1015,6 +1051,40 @@ class _PrepareModePageState extends State<PrepareModePage> {
               }
             });
           }
+          
+          // Seal Code field focus listener for divert
+          if (_divertFocusNodes[i].length > 3) {
+            _divertFocusNodes[i][3].addListener(() {
+              if (!_divertFocusNodes[i][3].hasFocus && _divertControllers[i][3].text.trim().isNotEmpty) {
+                String sealCode = _divertControllers[i][3].text.trim();
+                String sealCodeReturn = _divertControllers[i][4].text.trim();
+                _validateSealCode(
+                  sealCode: sealCode,
+                  sealCodeReturn: sealCodeReturn,
+                  fieldType: 'seal_code',
+                  sectionType: 'divert',
+                  sectionIndex: i,
+                );
+              }
+            });
+          }
+          
+          // Seal Code Return field focus listener for divert
+          if (_divertFocusNodes[i].length > 4) {
+            _divertFocusNodes[i][4].addListener(() {
+              if (!_divertFocusNodes[i][4].hasFocus && _divertControllers[i][4].text.trim().isNotEmpty) {
+                String sealCode = _divertControllers[i][3].text.trim();
+                String sealCodeReturn = _divertControllers[i][4].text.trim();
+                _validateSealCode(
+                  sealCode: sealCode,
+                  sealCodeReturn: sealCodeReturn,
+                  fieldType: 'seal_code_return',
+                  sectionType: 'divert',
+                  sectionIndex: i,
+                );
+              }
+            });
+          }
         }
       }
     }
@@ -1071,6 +1141,40 @@ class _PrepareModePageState extends State<PrepareModePage> {
               // Clear the field if duplicate found
               _pocketControllers[1].clear();
             }
+          }
+        });
+      }
+      
+      // Seal Code field focus listener for pocket
+      if (_pocketFocusNodes.length > 3) {
+        _pocketFocusNodes[3].addListener(() {
+          if (!_pocketFocusNodes[3].hasFocus && _pocketControllers[3].text.trim().isNotEmpty) {
+            String sealCode = _pocketControllers[3].text.trim();
+            String sealCodeReturn = _pocketControllers[4].text.trim();
+            _validateSealCode(
+              sealCode: sealCode,
+              sealCodeReturn: sealCodeReturn,
+              fieldType: 'seal_code',
+              sectionType: 'pocket',
+              sectionIndex: 0,
+            );
+          }
+        });
+      }
+      
+      // Seal Code Return field focus listener for pocket
+      if (_pocketFocusNodes.length > 4) {
+        _pocketFocusNodes[4].addListener(() {
+          if (!_pocketFocusNodes[4].hasFocus && _pocketControllers[4].text.trim().isNotEmpty) {
+            String sealCode = _pocketControllers[3].text.trim();
+            String sealCodeReturn = _pocketControllers[4].text.trim();
+            _validateSealCode(
+              sealCode: sealCode,
+              sealCodeReturn: sealCodeReturn,
+              fieldType: 'seal_code_return',
+              sectionType: 'pocket',
+              sectionIndex: 0,
+            );
           }
         });
       }
@@ -1628,6 +1732,212 @@ class _PrepareModePageState extends State<PrepareModePage> {
     });
   }
   
+  // Method to validate seal code using the new API endpoint
+  Future<void> _validateSealCode({
+    String? sealCode,
+    String? sealCodeReturn,
+    required String fieldType, // 'sealCode' or 'sealCodeReturn'
+    required String sectionType, // 'catridge', 'divert', or 'pocket'
+    int? sectionIndex,
+  }) async {
+    if ((sealCode?.isEmpty ?? true) && (sealCodeReturn?.isEmpty ?? true)) {
+      debugPrint('❌ Cannot validate seal code: Both seal codes are empty');
+      return;
+    }
+    
+    try {
+      // Show loading indicator
+      setState(() {
+        _isLoading = true;
+      });
+      
+      // Get branchCode from user data
+      String branchCode = "1"; // Default
+      if (_prepareData != null && _prepareData!.branchCode.isNotEmpty) {
+        branchCode = _prepareData!.branchCode;
+      } else if (_userData != null) {
+        branchCode = _userData!['groupId']?.toString() ?? 
+                    _userData!['branchCode']?.toString() ?? 
+                    _userData!['BranchCode']?.toString() ?? "1";
+      }
+      
+      // Get idTool from ID CRF controller
+      String idTool = _idCRFController.text.trim();
+      if (idTool.isEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        debugPrint('❌ Cannot validate seal code: ID CRF is empty');
+        return;
+      }
+      
+      debugPrint('🔍 Validating seal code: branchCode=$branchCode, idTool=$idTool, sealCode=$sealCode, sealCodeReturn=$sealCodeReturn');
+      
+      // Call the API
+      final response = await _apiService.validateSealCode(
+        branchCode: branchCode,
+        idTool: idTool,
+        sealCode: sealCode,
+        sealCodeReturn: sealCodeReturn,
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (response.success) {
+        debugPrint('✅ Seal code validation successful: ${response.message}');
+        
+        // Show success modal
+        CustomModals.showSuccessModal(
+          context: context,
+          message: response.message.isNotEmpty ? response.message : 'Seal code berhasil divalidasi',
+        );
+      } else {
+        debugPrint('❌ Seal code validation failed: ${response.message}');
+        
+        // Determine error message
+        String errorMessage = response.message.isNotEmpty ? response.message : 'Gagal';
+        
+        // Show error modal with cleanup actions
+        CustomModals.showFailedModal(
+          context: context,
+          message: 'Gagal: $errorMessage',
+          onPressed: () {
+            Navigator.of(context).pop();
+            
+            // Clear fields and delete detail items based on section type
+             if (sectionType == 'catridge' && sectionIndex != null) {
+               _clearCatridgeSealFields(sectionIndex);
+               // For catridge section, remove by calculated index
+               int itemIndex = sectionIndex + 1;
+               _removeDetailCatridgeItem(itemIndex);
+             } else if (sectionType == 'divert' && sectionIndex != null) {
+               _clearDivertSealFields(sectionIndex);
+               _removeDivertDetailItem(sectionIndex);
+             } else if (sectionType == 'pocket') {
+               _clearPocketSealFields();
+               _removePocketDetailItem();
+             }
+          },
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
+      debugPrint('❌ Error validating seal code: $e');
+      
+      // Determine specific error message based on exception type
+      String errorMessage;
+      if (e.toString().contains('timeout') || e.toString().contains('connection')) {
+        errorMessage = 'Koneksi timeout atau masalah jaringan';
+      } else if (e.toString().contains('parsing') || e.toString().contains('format')) {
+        errorMessage = 'Format respons validasi seal code tidak valid';
+      } else {
+        errorMessage = 'Kesalahan sistem: ${e.toString()}';
+      }
+      
+      // Show error modal with cleanup actions
+      CustomModals.showFailedModal(
+        context: context,
+        message: errorMessage,
+        onPressed: () {
+          Navigator.of(context).pop();
+          
+          // Clear fields and delete detail items based on section type
+            if (sectionType == 'catridge' && sectionIndex != null) {
+              _clearCatridgeSealFields(sectionIndex);
+              // For catridge section, remove by calculated index
+              int itemIndex = sectionIndex + 1;
+              _removeDetailCatridgeItem(itemIndex);
+            } else if (sectionType == 'divert' && sectionIndex != null) {
+              _clearDivertSealFields(sectionIndex);
+              _removeDivertDetailItem(sectionIndex);
+            } else if (sectionType == 'pocket') {
+              _clearPocketSealFields();
+              _removePocketDetailItem();
+            }
+        },
+      );
+    }
+  }
+  
+  // Helper methods to clear seal code fields
+  void _clearCatridgeSealFields(int sectionIndex) {
+    if (sectionIndex < _catridgeControllers.length) {
+      setState(() {
+        // Clear Seal Code field (index 3)
+        if (_catridgeControllers[sectionIndex].length > 3) {
+          _catridgeControllers[sectionIndex][3].clear();
+        }
+        // Clear Seal Code Return field (index 4)
+        if (_catridgeControllers[sectionIndex].length > 4) {
+          _catridgeControllers[sectionIndex][4].clear();
+        }
+        print('🔄 CLEAR FIELDS: Catridge section ${sectionIndex + 1} - Seal Code and Seal Code Return fields cleared');
+      });
+    }
+  }
+  
+  void _clearDivertSealFields(int sectionIndex) {
+    if (sectionIndex < _divertControllers.length) {
+      setState(() {
+        // Clear Seal Code field (index 3)
+        if (_divertControllers[sectionIndex].length > 3) {
+          _divertControllers[sectionIndex][3].clear();
+        }
+        // Clear Seal Code Return field (index 4)
+        if (_divertControllers[sectionIndex].length > 4) {
+          _divertControllers[sectionIndex][4].clear();
+        }
+        print('🔄 CLEAR FIELDS: Divert section ${sectionIndex + 1} - Seal Code and Seal Code Return fields cleared');
+      });
+    }
+  }
+  
+  void _clearPocketSealFields() {
+    setState(() {
+      // Clear Seal Code field (index 3)
+      if (_pocketControllers.length > 3) {
+        _pocketControllers[3].clear();
+      }
+      // Clear Seal Code Return field (index 4)
+      if (_pocketControllers.length > 4) {
+        _pocketControllers[4].clear();
+      }
+      print('🔄 CLEAR FIELDS: Pocket section - Seal Code and Seal Code Return fields cleared');
+    });
+  }
+  
+  // Helper methods to remove detail items (removed duplicate method)
+  
+  void _removeDivertDetailItem(int sectionIndex) {
+    setState(() {
+      // Remove from _divertDetailItems
+      if (sectionIndex < _divertDetailItems.length) {
+        _divertDetailItems[sectionIndex] = null;
+      }
+      
+      // Remove from _detailCatridgeItems (divert items have index 100+)
+      int itemIndex = 100 + sectionIndex;
+      _detailCatridgeItems.removeWhere((item) => item.index == itemIndex);
+      print('🗑️ REMOVE DETAIL: Removed divert detail item for section ${sectionIndex + 1}');
+    });
+  }
+  
+  void _removePocketDetailItem() {
+    setState(() {
+      // Remove pocket detail item
+      _pocketDetailItem = null;
+      
+      // Remove from _detailCatridgeItems (pocket item has index 200)
+      _detailCatridgeItems.removeWhere((item) => item.index == 200);
+      print('🗑️ REMOVE DETAIL: Removed pocket detail item');
+    });
+  }
+
   // Method to update specific field in DetailDivertItem
   void _updateDetailDivertItemField(int divertIndex, String fieldName, String value) {
     setState(() {
@@ -1681,9 +1991,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
            index: itemIndex,
            noCatridge: noCatridge,
            sealCatridge: sealCatridge,
-           value: 0,
-           total: '0',
-           denom: '',
+           value: 0, // Always 0 for divert
+           total: 'Rp 0', // Always 'Rp 0' for divert
+           denom: _prepareData?.tipeDenom == 'A100' ? 'Rp 100.000' : 'Rp 50.000',
            bagCode: fieldName == 'bagCode' ? value : bagCode,
            sealCode: fieldName == 'sealCode' ? value : sealCode,
            sealReturn: fieldName == 'sealReturn' ? value : sealReturn,
@@ -4162,7 +4472,12 @@ class _PrepareModePageState extends State<PrepareModePage> {
         child: Column(
           children: [
             // Header section with back button, title, and user info
-            _buildHeader(context, isSmallScreen),
+            PrepareModeHeader(
+              branchName: _branchName,
+              userName: _userName,
+              userData: _userData,
+              onRefresh: _handleRefreshWithConfirmation,
+            ),
             
             // Error message if any
             if (_errorMessage.isNotEmpty)
@@ -4530,8 +4845,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
           // Refresh button
           GestureDetector(
             onTap: () {
-              // Refresh data when clicked
-              _fetchPrepareData();
+              // Show confirmation dialog before refreshing
+              _handleRefreshWithConfirmation();
             },
             child: Container(
               width: isTablet ? 44 : 40,
@@ -4915,6 +5230,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       onChanged: (value) {
                         _updateDetailCatridgeItemField(index - 1, 'sealCode', value);
                       },
+                      onEditingComplete: () {
+                        // Validate seal code when focus is lost
+                        String sealCode = controllers[3].text.trim();
+                        String sealCodeReturn = controllers.length >= 5 ? controllers[4].text.trim() : '';
+                        if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
+                          _validateSealCode(
+                            sealCode: sealCode.isEmpty ? null : sealCode,
+                            sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
+                            fieldType: 'sealCode',
+                            sectionType: 'catridge',
+                            sectionIndex: index - 1,
+                          );
+                        }
+                      },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
                     
@@ -4928,6 +5257,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                         onChanged: (value) {
                           _updateDetailCatridgeItemField(index - 1, 'sealReturn', value);
+                        },
+                        onEditingComplete: () {
+                          // Validate seal code when focus is lost
+                          String sealCode = controllers[3].text.trim();
+                          String sealCodeReturn = controllers[4].text.trim();
+                          if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
+                            _validateSealCode(
+                              sealCode: sealCode.isEmpty ? null : sealCode,
+                              sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
+                              fieldType: 'sealCodeReturn',
+                              sectionType: 'catridge',
+                              sectionIndex: index - 1,
+                            );
+                          }
                         },
                       ),
                     
@@ -6554,6 +6897,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       onChanged: (value) {
                         _updateDetailDivertItemField(sectionIndex, 'sealCode', value);
                       },
+                      onEditingComplete: () {
+                        // Validate seal code when focus is lost
+                        String sealCode = _divertControllers[sectionIndex][3].text.trim();
+                        String sealCodeReturn = _divertControllers[sectionIndex][4].text.trim();
+                        if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
+                          _validateSealCode(
+                            sealCode: sealCode.isEmpty ? null : sealCode,
+                            sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
+                            fieldType: 'sealCode',
+                            sectionType: 'divert',
+                            sectionIndex: sectionIndex,
+                          );
+                        }
+                      },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
                     
@@ -6566,6 +6923,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailDivertItemField(sectionIndex, 'sealReturn', value);
+                      },
+                      onEditingComplete: () {
+                        // Validate seal code when focus is lost
+                        String sealCode = _divertControllers[sectionIndex][3].text.trim();
+                        String sealCodeReturn = _divertControllers[sectionIndex][4].text.trim();
+                        if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
+                          _validateSealCode(
+                            sealCode: sealCode.isEmpty ? null : sealCode,
+                            sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
+                            fieldType: 'sealCodeReturn',
+                            sectionType: 'divert',
+                            sectionIndex: sectionIndex,
+                          );
+                        }
                       },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
@@ -6900,6 +7271,19 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       onChanged: (value) {
                         _updateDetailPocketItemField('sealCode', value);
                       },
+                      onEditingComplete: () {
+                        // Validate seal code when focus is lost
+                        String sealCode = _pocketControllers[3].text.trim();
+                        String sealCodeReturn = _pocketControllers[4].text.trim();
+                        if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
+                          _validateSealCode(
+                            sealCode: sealCode.isEmpty ? null : sealCode,
+                            sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
+                            fieldType: 'sealCode',
+                            sectionType: 'pocket',
+                          );
+                        }
+                      },
                     ),
                     SizedBox(height: isSmallScreen ? 6 : 10),
                     
@@ -6912,6 +7296,19 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       isReadOnly: !_isIdCRFValid() || (_prepareData?.isNoBag ?? false), // Disabled if isNoBag is true
                       onChanged: (value) {
                         _updateDetailPocketItemField('sealReturn', value);
+                      },
+                      onEditingComplete: () {
+                        // Validate seal code when focus is lost
+                        String sealCode = _pocketControllers[3].text.trim();
+                        String sealCodeReturn = _pocketControllers[4].text.trim();
+                        if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
+                          _validateSealCode(
+                            sealCode: sealCode.isEmpty ? null : sealCode,
+                            sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
+                            fieldType: 'sealCodeReturn',
+                            sectionType: 'pocket',
+                          );
+                        }
                       },
                     ),
                     
@@ -7163,7 +7560,12 @@ class _PrepareModePageState extends State<PrepareModePage> {
         int totalNominal = denomAmount * standValueInt;
         String formattedTotal = _formatCurrency(totalNominal);
         
+        // For divert, set value to 0 to not affect grand total calculation
+        int divertValue = 0;
+        String divertTotal = 'Rp 0';
+        
         print('🔍 DIVERT LOOKUP: Calculated - standValueInt: $standValueInt, totalNominal: $totalNominal, formatted: $formattedTotal');
+        print('🔍 DIVERT LOOKUP: Divert value set to 0 to not affect grand total');
         
         setState(() {
           // Store data for specific section
@@ -7172,8 +7574,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
             index: sectionIndex + 1,
             noCatridge: catridgeCode,
             sealCatridge: '',
-            value: standValueInt,
-            total: formattedTotal,
+            value: divertValue, // Set to 0 for divert
+            total: divertTotal, // Set to 'Rp 0' for divert
             denom: denomAmount == 100000 ? 'Rp 100.000' : 'Rp 50.000',
             bagCode: '',
             sealCode: '',
@@ -7191,8 +7593,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
             index: divertIndex,
             noCatridge: catridgeCode,
             sealCatridge: '',
-            value: standValueInt,
-            total: formattedTotal,
+            value: divertValue, // Set to 0 for divert
+            total: divertTotal, // Set to 'Rp 0' for divert
             denom: denomAmount == 100000 ? 'Rp 100.000' : 'Rp 50.000',
             bagCode: '',
             sealCode: '',
@@ -8031,6 +8433,147 @@ class _PrepareModePageState extends State<PrepareModePage> {
     
     print('Prepared ${result.length} catridge items for QR code');
     return result;
+  }
+
+  // Function to reset page to initial state
+  void _resetPageToInitialState() {
+    setState(() {
+      // Reset main controllers
+      _idCRFController.clear();
+      _jamMulaiController.clear();
+      _tanggalReplenishController.clear();
+      
+      // Reset loading and error states
+      _isLoading = false;
+      _errorMessage = '';
+      
+      // Reset prepare data
+      _prepareData = null;
+      
+      // Clear catridge controllers and data
+      for (int i = 0; i < _catridgeControllers.length; i++) {
+        for (int j = 0; j < _catridgeControllers[i].length; j++) {
+          _catridgeControllers[i][j].clear();
+        }
+      }
+      _catridgeControllers.clear();
+      _denomValues.clear();
+      _catridgeData.clear();
+      _detailCatridgeItems.clear();
+      
+      // Reset catridge section states
+      _catridgeSectionActive.clear();
+      _catridgeFocusNodes.clear();
+      _catridgeManualMode.clear();
+      _catridgeAlasanControllers.clear();
+      _catridgeShowPopup.clear();
+      _catridgeRemarkControllers.clear();
+      _catridgeRemarkFilled.clear();
+      _catridgeNoManualMode.clear();
+      _catridgeSealManualMode.clear();
+      _catridgeNoAlasanControllers.clear();
+      _catridgeSealAlasanControllers.clear();
+      _catridgeNoRemarkControllers.clear();
+      _catridgeSealRemarkControllers.clear();
+      _catridgeNoRemarkFilled.clear();
+      _catridgeSealRemarkFilled.clear();
+      
+      // Reset divert controllers and data
+      for (int i = 0; i < _divertControllers.length; i++) {
+        for (int j = 0; j < _divertControllers[i].length; j++) {
+          _divertControllers[i][j].clear();
+        }
+      }
+      _divertDetailItems = [null, null, null];
+      for (int i = 0; i < _divertSectionActive.length; i++) {
+        _divertSectionActive[i] = false;
+      }
+      for (int i = 0; i < _divertManualMode.length; i++) {
+        _divertManualMode[i] = false;
+      }
+      _divertAlasanControllers[0].clear();
+      _divertAlasanControllers[1].clear();
+      _divertAlasanControllers[2].clear();
+      _divertRemarkControllers[0].clear();
+      _divertRemarkControllers[1].clear();
+      _divertRemarkControllers[2].clear();
+      _divertNoManualMode = [false, false, false];
+      _divertSealManualMode = [false, false, false];
+      for (int i = 0; i < _divertNoAlasanControllers.length; i++) {
+        _divertNoAlasanControllers[i].clear();
+      }
+      for (int i = 0; i < _divertSealAlasanControllers.length; i++) {
+        _divertSealAlasanControllers[i].clear();
+      }
+      for (int i = 0; i < _divertNoRemarkControllers.length; i++) {
+        _divertNoRemarkControllers[i].clear();
+      }
+      for (int i = 0; i < _divertSealRemarkControllers.length; i++) {
+        _divertSealRemarkControllers[i].clear();
+      }
+      _divertNoRemarkFilled = [false, false, false];
+      _divertSealRemarkFilled = [false, false, false];
+      
+      // Reset pocket controllers and data
+      for (int i = 0; i < _pocketControllers.length; i++) {
+        _pocketControllers[i].clear();
+      }
+      _pocketSectionActive = false;
+      _pocketManualMode = false;
+      _pocketAlasanController.clear();
+      _pocketRemarkController.clear();
+      _pocketNoManualMode = false;
+      _pocketSealManualMode = false;
+      _pocketNoAlasanController.clear();
+      _pocketSealAlasanController.clear();
+      _pocketNoRemarkController.clear();
+      _pocketSealRemarkController.clear();
+      _pocketNoRemarkFilled = false;
+      _pocketSealRemarkFilled = false;
+      
+      // Reset catridge data
+      _divertCatridgeData = [null, null, null];
+      _pocketCatridgeData = null;
+      _pocketDetailItem = null;
+      
+      // Reset approval form
+      _showApprovalForm = false;
+      _isSubmitting = false;
+      _nikTLController.clear();
+      _passwordTLController.clear();
+      
+      // Reset modal states
+      _isDuplicateModalShowing = false;
+      
+      // Reset used values set
+      _usedValues.clear();
+      
+      // Re-initialize with one empty catridge
+      _initializeCatridgeControllers(1);
+      
+      // Set current time as jam mulai
+      _setCurrentTime();
+      
+      // Set current date as tanggal replenish
+      _setCurrentDate();
+      
+      // Re-setup focus listeners
+      _setupFocusListeners();
+    });
+  }
+
+  // Function to handle refresh with confirmation
+  Future<void> _handleRefreshWithConfirmation() async {
+    final confirmed = await CustomModals.showConfirmationModal(
+      context: context,
+      message: 'Apakah Anda yakin ingin me-refresh halaman? Semua data yang telah diinput akan hilang.',
+      confirmText: 'Ya, Refresh',
+      cancelText: 'Batal',
+    );
+
+    if (confirmed) {
+      _resetPageToInitialState();
+    }
   }
 }
 

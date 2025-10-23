@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:device_info_plus/device_info_plus.dart'; // REMOVED - namespace conflict
+import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import '../widgets/custom_modals.dart';
+import '../services/device_service.dart';
 
 class TLDeviceInfoScreen extends StatefulWidget {
   const TLDeviceInfoScreen({Key? key}) : super(key: key);
@@ -32,23 +33,30 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
 
   Future<void> _loadDeviceInfo() async {
     try {
-      // DeviceInfoPlugin deviceInfo = DeviceInfoPlugin(); // REMOVED - namespace conflict
+      // Get Android ID from DeviceService (same as login)
+      final androidId = await DeviceService.getDeviceId();
+      
+      DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
       
       if (Platform.isAndroid) {
-        // Use Platform.environment untuk device info (replacement for device_info_plus)
+        AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
         setState(() {
-          _deviceName = 'Android Device'; // Simplified
-          _androidVersion = 'Android ${Platform.operatingSystemVersion}';
-          _osVersion = Platform.operatingSystemVersion;
-          _androidId = 'Generated Device ID'; // Simplified
+          // Device name: brand + model (e.g., "Xiaomi 14", "Huawei P6 Pro")
+          _deviceName = '${androidInfo.brand} ${androidInfo.model}';
+          // Android version: just the version number (e.g., "14", "12", "13")
+          _androidVersion = androidInfo.version.release;
+          // OS version: the actual OS name (MIUI, HyperOS, etc.)
+          _osVersion = _getOSVersion(androidInfo.brand, androidInfo.version.release);
+          _androidId = androidId;
           _isLoading = false;
         });
       } else if (Platform.isIOS) {
+        IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
         setState(() {
-          _deviceName = 'iOS Device'; // Simplified
-          _androidVersion = 'iOS ${Platform.operatingSystemVersion}';
-          _osVersion = Platform.operatingSystemVersion;
-          _androidId = 'Generated Device ID'; // Simplified
+          _deviceName = '${iosInfo.name} ${iosInfo.model}';
+          _androidVersion = iosInfo.systemVersion;
+          _osVersion = 'iOS';
+          _androidId = androidId;
           _isLoading = false;
         });
       }
@@ -64,263 +72,275 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
     }
   }
 
-  void _copyAndroidId() async {
+  String _getOSVersion(String brand, String androidVersion) {
+    // Determine OS based on brand and Android version
+    final brandLower = brand.toLowerCase();
+    debugPrint('🔍 Detecting OS for brand: $brand, Android version: $androidVersion');
+    
+    switch (brandLower) {
+      case 'xiaomi':
+      case 'redmi':
+      case 'poco':
+        // Xiaomi uses MIUI or HyperOS
+        int version = int.tryParse(androidVersion) ?? 0;
+        if (version >= 14) {
+          return 'HyperOS';
+        } else {
+          return 'MIUI';
+        }
+      case 'huawei':
+        return 'EMUI';
+      case 'honor':
+        return 'Magic UI';
+      case 'oppo':
+        return 'ColorOS';
+      case 'vivo':
+        return 'Funtouch OS';
+      case 'realme':
+        return 'Realme UI';
+      case 'oneplus':
+        return 'OxygenOS';
+      case 'samsung':
+        return 'One UI';
+      case 'google':
+      case 'pixel':
+        return 'Stock Android';
+      case 'motorola':
+        return 'My UX';
+      case 'sony':
+        return 'Xperia UI';
+      case 'lg':
+        return 'LG UX';
+      case 'htc':
+        return 'HTC Sense';
+      case 'asus':
+        return 'ZenUI';
+      case 'nokia':
+        return 'Android One';
+      default:
+        // Fallback: try to detect from system properties or use generic Android
+        debugPrint('⚠️ Unknown brand: $brand, using Android as fallback');
+        return 'Android';
+    }
+  }
+
+  void _copyAndroidId() {
     Clipboard.setData(ClipboardData(text: _androidId));
-    await CustomModals.showSuccessModal(
+    CustomModals.showSuccessModal(
       context: context,
-      message: 'Android ID berhasil di Copy kedalam Clipboard !',
+      message: 'Android ID berhasil disalin ke clipboard',
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Ponsel Saya',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: const Color(0xFF0056A4),
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0056A4),
-              Color(0xFFA9D0D7),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Card(
-              elevation: 8,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header putih dengan tombol back merah dan title "Device Info"
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              color: Colors.white,
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.arrow_back_ios_new, color: Colors.red),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Device Info',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(24),
+            ),
+            const Divider(height: 1, color: Color(0xFFE0E0E0)),
+
+            // Konten scrollable mengikuti layout tl_profile_screen.dart
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 child: _isLoading 
                   ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('Loading device information...'),
-                        ],
-                      ),
+                      child: CircularProgressIndicator(),
                     )
                   : Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header with phone icon
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0056A4),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(
-                                Icons.phone_android,
-                                color: Colors.white,
-                                size: 32,
-                              ),
+                        // PhoneIcon.png dengan ukuran besar di tengah-tengah dibawah header
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 32),
+                            child: Image.asset(
+                              'assets/images/PhoneIcon.png',
+                              width: 260,
+                              height: 260,
+                              fit: BoxFit.contain,
                             ),
-                            const SizedBox(width: 16),
-                            const Expanded(
-                              child: Text(
-                                'Informasi Device',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0056A4),
+                          ),
+                        ),
+
+                        // Nama Device (menggantikan userName)
+                        const Text(
+                          'Nama Device',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(height: 2, width: 180, color: Colors.black87),
+
+                        const SizedBox(height: 12),
+
+                        Text(
+                          _deviceName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Android Version label
+                        const Text(
+                          'Android Version',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(height: 2, width: 220, color: Colors.black54),
+
+                        const SizedBox(height: 12),
+
+                        // Android version value
+                        Text(
+                          _androidVersion,
+                          style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // OS Version label
+                        const Text(
+                          'OS Version',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(height: 2, width: 260, color: Colors.black54),
+
+                        const SizedBox(height: 12),
+
+                        // OS version value
+                        Text(
+                          _osVersion,
+                          style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Android ID label
+                        const Text(
+                          'Android ID',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(height: 2, width: 200, color: Colors.black54),
+
+                        const SizedBox(height: 12),
+
+                        // Android ID value
+                        Text(
+                          _androidId,
+                          style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600),
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // Tombol Copy Android ID
+                        Center(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(28),
+                              border: Border.all(color: const Color(0xFF0056A4), width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(28),
+                              onTap: _copyAndroidId,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.copy, color: Color(0xFF0056A4)),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Copy Android ID',
+                                      style: TextStyle(
+                                        color: Color(0xFF0056A4),
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                        
-                        const SizedBox(height: 32),
-                        
-                        // Device Information
-                        _buildInfoSection('Nama Device', _deviceName, Icons.devices),
-                        const SizedBox(height: 24),
-                        
-                        _buildInfoSection('Versi Android', _androidVersion, Icons.android),
-                        const SizedBox(height: 24),
-                        
-                        _buildInfoSection('Versi OS', _osVersion, Icons.settings),
-                        const SizedBox(height: 24),
-                        
-                        // Android ID with copy button
-                        _buildInfoSectionWithCopy('Android ID', _androidId, Icons.fingerprint),
-                        
-                        const Spacer(),
-                        
-                        // Note at bottom
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: Colors.blue.shade600,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Android ID digunakan untuk validasi device saat login',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.blue.shade600,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
                           ),
                         ),
+
+                        const SizedBox(height: 24),
                       ],
                     ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoSection(String title, String value, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              icon,
-              color: const Color(0xFF0056A4),
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0056A4),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.grey.shade300),
-          ),
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black87,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildInfoSectionWithCopy(String title, String value, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              icon,
-              color: const Color(0xFF0056A4),
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF0056A4),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black87,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: _copyAndroidId,
-              icon: const Icon(Icons.copy, size: 16),
-              label: const Text('Copy'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0056A4),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   @override
   void dispose() {
-    // Keep portrait orientation for CRF_TL
     super.dispose();
   }
-} 
+}

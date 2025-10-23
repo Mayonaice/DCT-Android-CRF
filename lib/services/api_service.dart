@@ -1411,6 +1411,34 @@ class ApiService {
           final jsonData = json.decode(response.body);
           print('Return header response: ${response.body}');
           
+          // Debug: Log the structure of the response
+          print('DEBUG API Response Structure:');
+          print('- success: ${jsonData['success']}');
+          print('- message: ${jsonData['message']}');
+          print('- data type: ${jsonData['data'].runtimeType}');
+          
+          if (jsonData['data'] != null) {
+            if (jsonData['data'] is Map) {
+              print('- data is Map with keys: ${(jsonData['data'] as Map).keys.toList()}');
+              if (jsonData['data']['catridges'] != null) {
+                print('- catridges type: ${jsonData['data']['catridges'].runtimeType}');
+                if (jsonData['data']['catridges'] is List) {
+                  final catridges = jsonData['data']['catridges'] as List;
+                  print('- catridges length: ${catridges.length}');
+                  for (int i = 0; i < catridges.length && i < 2; i++) {
+                    print('- catridge[$i]: ${catridges[i]}');
+                    if (catridges[i] is Map) {
+                      final catridge = catridges[i] as Map;
+                      print('  - typeCatridgeTrx: ${catridge['typeCatridgeTrx']} (type: ${catridge['typeCatridgeTrx'].runtimeType})');
+                    }
+                  }
+                }
+              }
+            } else if (jsonData['data'] is List) {
+              print('- data is List with length: ${(jsonData['data'] as List).length}');
+            }
+          }
+          
           // Handle business validation errors that come with 200 status
           if (jsonData['success'] == false) {
             return ReturnHeaderResponse(
@@ -1716,6 +1744,23 @@ class ApiService {
       if (response.statusCode == 200) {
         try {
           final jsonData = json.decode(response.body);
+          
+          // Debug: Log the response structure for validateAndGetReplenish
+          print('DEBUG validateAndGetReplenish Response:');
+          print('- success: ${jsonData['success']}');
+          print('- message: ${jsonData['message']}');
+          if (jsonData['data'] != null && jsonData['data']['catridges'] != null) {
+            final catridges = jsonData['data']['catridges'] as List;
+            print('- catridges length: ${catridges.length}');
+            for (int i = 0; i < catridges.length && i < 2; i++) {
+              print('- catridge[$i]: ${catridges[i]}');
+              if (catridges[i] is Map) {
+                final catridge = catridges[i] as Map;
+                print('  - typeCatridgeTrx: "${catridge['typeCatridgeTrx']}" (type: ${catridge['typeCatridgeTrx'].runtimeType})');
+              }
+            }
+          }
+          
           return ValidateAndGetReplenishResponse.fromJson(jsonData);
         } catch (e) {
           debugPrint('Error parsing ValidateAndGetReplenish JSON: $e');
@@ -2422,6 +2467,97 @@ class ApiService {
     } catch (e) {
       debugPrint('🚨 Error downloading profile photo: $e');
       return null;
+    }
+  }
+
+  // Validate Seal Code with new endpoint
+  Future<ApiResponse> validateSealCode({
+    required String branchCode,
+    required String idTool,
+    String? sealCode,
+    String? sealCodeReturn,
+  }) async {
+    try {
+      final requestHeaders = await headers;
+      
+      // Prepare request body
+      final requestBody = {
+        'branchCode': branchCode,
+        'idTool': idTool,
+        'sealCode': sealCode ?? '',
+        'sealCodeReturn': sealCodeReturn ?? '',
+      };
+      
+      debugPrint('🔍 Validating seal code with body: $requestBody');
+      debugPrint('🔍 Headers: $requestHeaders');
+      
+      final response = await _debugHttp(
+        () => _tryRequestWithFallback(
+          requestFn: (baseUrl) => http.post(
+            Uri.parse('$baseUrl/CRF/validate/sealcode'),
+            headers: requestHeaders,
+            body: json.encode(requestBody),
+          ),
+        ),
+        'Validate Seal Code'
+      );
+
+      if (response.statusCode == 200) {
+        try {
+          debugPrint('🔍 Raw seal code validation response: ${response.body.substring(0, math.min(200, response.body.length))}...');
+          
+          final jsonData = json.decode(response.body);
+          final apiResponse = ApiResponse.fromJson(jsonData);
+          
+          // Debug log the parsed response
+          debugPrint('🔍 Parsed seal code response: success=${apiResponse.success}, message=${apiResponse.message}');
+          if (apiResponse.data != null) {
+            debugPrint('🔍 Data type: ${apiResponse.data.runtimeType}');
+            if (apiResponse.data is Map) {
+              debugPrint('🔍 Data as Map: ${apiResponse.data.toString().substring(0, math.min(100, apiResponse.data.toString().length))}...');
+            } else if (apiResponse.data is List) {
+              debugPrint('🔍 Data is List with ${(apiResponse.data as List).length} items');
+            }
+          }
+          
+          return apiResponse;
+        } catch (e) {
+          debugPrint('❌ Error parsing seal code validation JSON: $e');
+          return ApiResponse(
+            success: false,
+            message: 'Invalid data format from server',
+            status: 'error'
+          );
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ 401 Unauthorized on seal code validation!');
+        await _authService.logout();
+        return ApiResponse(
+          success: false,
+          message: 'Session expired: Please login again',
+          status: 'error'
+        );
+      } else {
+        debugPrint('❌ HTTP error on seal code validation: ${response.statusCode}, body: ${response.body}');
+        return ApiResponse(
+          success: false,
+          message: 'Server error (${response.statusCode}): ${response.body}',
+          status: 'error'
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Seal code validation API error: $e');
+      
+      String errorMessage = 'Network error: ${e.toString()}';
+      if (e is TimeoutException) {
+        errorMessage = 'Connection timeout: Please check your internet connection';
+      }
+      
+      return ApiResponse(
+        success: false,
+        message: errorMessage,
+        status: 'error'
+      );
     }
   }
 }

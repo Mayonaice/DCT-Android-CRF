@@ -402,14 +402,17 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
           ),
           const SizedBox(height: 24),
           // Grand Total
-          const Row(
+          Row(
             children: [
-              Text(
+              const Text(
                 'Grand Total:',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-              SizedBox(width: 8),
-              Text('Rp', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 8),
+              Text(
+                _formatCurrencyWithPrefix(_calculateGrandTotal()),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -993,5 +996,39 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
         ],
       ),
     );
+  }
+
+  // Calculate grand total from all nominal values
+  int _calculateGrandTotal() {
+    int total = 0;
+    widget.detailReturnNominalControllers.forEach((denom, controller) {
+      if (controller.text.isNotEmpty) {
+        // Remove "Rp. " and dots, then parse to int
+        String cleanText = controller.text.replaceAll('Rp. ', '').replaceAll('.', '');
+        try {
+          total += int.parse(cleanText);
+        } catch (e) {
+          // Ignore parsing errors
+        }
+      }
+    });
+    return total;
+  }
+
+  // Format currency with Rp. prefix and thousand separators (updated version)
+  String _formatCurrencyWithPrefix(int amount) {
+    if (amount == 0) return 'Rp. 0';
+    
+    String formatted = amount.toString();
+    String result = '';
+    
+    for (int i = 0; i < formatted.length; i++) {
+      if (i > 0 && (formatted.length - i) % 3 == 0) {
+        result += '.';
+      }
+      result += formatted[i];
+    }
+    
+    return 'Rp. $result';
   }
 }

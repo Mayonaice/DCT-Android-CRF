@@ -214,22 +214,45 @@ class _TLHomePageState extends State<TLHomePage> {
     }
   }
 
+  // Method untuk refresh seluruh halaman
+  Future<void> _onRefresh() async {
+    print('🔄 TL HOME: Refreshing page data...');
+    await _loadUserData();
+  }
+
   @override
   Widget build(BuildContext context) {
     print('DEBUG: TLHomePage build method called - rendering TL home page');
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SafeArea(
-        child: Column(
-          children: [
-            // Header Section
-            _buildHeader(),
-            const SizedBox(height: 16),
-            // Dashboard Section - Remove Expanded to fit content
-            _buildDashboard(),
-            // Add flexible spacer
-            const Spacer(),
-          ],
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          color: const Color(0xFF4CAF50), // Green color to match theme
+          backgroundColor: Colors.white,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(), // Memungkinkan scroll meski konten tidak penuh
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height - 
+                          MediaQuery.of(context).padding.top - 
+                          kBottomNavigationBarHeight,
+              ),
+              child: Column(
+                children: [
+                  // Header Section
+                  _buildHeader(),
+                  const SizedBox(height: 16),
+                  // Dashboard Section
+                  _buildDashboard(),
+                  // Add flexible spacer to fill remaining space
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.3,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
       bottomNavigationBar: _buildBottomNavigation(),

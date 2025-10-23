@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Add clipboard import
+import 'package:intl/intl.dart'; // Add NumberFormat import
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
@@ -231,10 +232,11 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     _setupBarcodeStream();
   }
 
-  // TESTING PHASE 1: Disable barcode stream completely
+  // Simplified barcode stream setup - direct callback handling
   void _setupBarcodeStream() {
-    // Barcode stream disabled during testing
-    debugPrint('Barcode stream disabled for testing phase');
+    // For now, we'll rely on direct callback handling from scanner
+    // The scanner widget will call onBarcodeDetected directly
+    debugPrint('Barcode stream setup - using direct callback approach');
   }
 
   @override
@@ -481,7 +483,46 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   }
 
   void _openBarcodeScanner() async {
-    // TODO: Implementasi scan barcode dan set _idCRFController.text
+    try {
+      // Navigate to barcode scanner for ID Tool
+      final String? scannedBarcode = await Navigator.push<String?>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BarcodeScannerWidget(
+            title: 'Scan ID Tool',
+            fieldKey: 'idTool',
+            fieldLabel: 'ID Tool',
+            onBarcodeDetected: (String barcode) {
+              print('🎯 ID TOOL SCANNER CALLBACK: $barcode');
+            },
+          ),
+        ),
+      );
+      
+      // Handle the scanned result directly
+      if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
+        print('🎯 ID TOOL SCANNER RESULT: $scannedBarcode');
+        
+        // Update the ID Tool field with scanned value
+        setState(() {
+          _idToolController.text = scannedBarcode;
+        });
+        
+        // Fetch data based on scanned ID Tool
+        _fetchDataByIdTool(scannedBarcode);
+        
+        print('🎯 ID TOOL FIELD UPDATED: $scannedBarcode');
+      } else {
+        print('🎯 ID TOOL SCANNER CANCELLED: No barcode scanned');
+      }
+      
+    } catch (e) {
+      print('Error opening ID Tool barcode scanner: $e');
+      await CustomModals.showFailedModal(
+        context: context,
+        message: 'Gagal membuka scanner ID Tool: ${e.toString()}',
+      );
+    }
   }
 
   // Check if all forms are valid
@@ -509,6 +550,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
 
   // NEW: Calculate totals from all cartridge sections and update detail return forms
   void _calculateAndUpdateDetailReturn() {
+    print('=== DEBUG _calculateAndUpdateDetailReturn ===');
     // Initialize totals for each denomination
     Map<String, int> totalLembar = {
       '100K': 0, '75K': 0, '50K': 0, '20K': 0,
@@ -520,11 +562,16 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       '10K': 0, '5K': 0, '2K': 0, '1K': 0,
     };
     
+    print('Number of cartridge sections: ${_cartridgeSectionKeys.length}');
+    
     // Sum up values from all cartridge sections
     for (var key in _cartridgeSectionKeys) {
       final sectionState = key.currentState;
+      print('Section state: $sectionState');
       if (sectionState != null) {
+        print('Processing section with ${sectionState.denomControllers.length} controllers');
         sectionState.denomControllers.forEach((denom, controller) {
+          print('  Denom: $denom, Value: "${controller.text}"');
           if (controller.text.isNotEmpty) {
             try {
               final count = int.parse(controller.text);
@@ -543,7 +590,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                 case '1K': denomValue = 1000; break;
               }
               totalNominal[denom] = (totalNominal[denom] ?? 0) + (count * denomValue);
+              print('    Added $count * $denomValue = ${count * denomValue} to $denom');
             } catch (e) {
+              print('    Parse error: $e');
               // Ignore parsing errors
             }
           }
@@ -551,14 +600,25 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       }
     }
     
+    print('Final totals - Lembar: $totalLembar');
+    print('Final totals - Nominal: $totalNominal');
+    
     // Update detail return controllers
     totalLembar.forEach((denom, total) {
       _detailReturnLembarControllers[denom]?.text = total.toString();
+      print('Updated lembar $denom: $total');
     });
     
     totalNominal.forEach((denom, total) {
-      _detailReturnNominalControllers[denom]?.text = _formatCurrency(total);
+      final formatted = _formatCurrency(total);
+      _detailReturnNominalControllers[denom]?.text = formatted;
+      print('Updated nominal $denom: $formatted');
     });
+    
+    // Force UI rebuild to update Grand Total
+    setState(() {});
+    
+    print('=== END DEBUG _calculateAndUpdateDetailReturn ===');
   }
 
   // Show TL approval dialog
@@ -1053,6 +1113,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
               typeCatridge: c.typeCatridgeTrx.toString(),
               bagCode: c.bagCode.toString(),
               sealCodeReturn: c.sealCodeReturn.toString(),
+              typeCatridgeTrx: c.typeCatridgeTrx.toString(), // Fix: Map to correct field
             )).toList(),
           );
           
@@ -1587,9 +1648,29 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                         }
                       }
                       
-                      for (int i = 0; i < _returnHeaderResponse!.data.length; i++) {
+                      // Sort the data by typeCatridgeTrx: C first, D second, P third
+                      List<ReturnCatridgeData> sortedData = List.from(_returnHeaderResponse!.data);
+                      sortedData.sort((a, b) {
+                        String typeA = (a.typeCatridgeTrx?.toUpperCase() ?? 'C');
+                        String typeB = (b.typeCatridgeTrx?.toUpperCase() ?? 'C');
+                        
+                        // Define sort order: C=0, D=1, P=2
+                        int getOrder(String type) {
+                          switch (type) {
+                            case 'C': return 0;
+                            case 'D': return 1;
+                            case 'P': return 2;
+                            default: return 0; // Default to C
+                          }
+                        }
+                        
+                        return getOrder(typeA).compareTo(getOrder(typeB));
+                      });
+                      
+                      // Build sections with sorted data
+                      for (int i = 0; i < sortedData.length; i++) {
                         if (i < _cartridgeSectionKeys.length) { // Safety check
-                          final data = _returnHeaderResponse!.data[i];
+                          final data = sortedData[i];
                           
                           // Debug the data
                           print('Data at index $i: id=${data.idTool}, code=${data.catridgeCode}, typeTrx=${data.typeCatridgeTrx}');
@@ -1598,21 +1679,24 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                           String sectionTitle;
                           final typeCatridgeTrx = data.typeCatridgeTrx?.toUpperCase() ?? 'C';
                           
+                          print('DEBUG: Processing data at index $i - typeCatridgeTrx: "${data.typeCatridgeTrx}" -> normalized: "$typeCatridgeTrx"');
+                          
                           switch (typeCatridgeTrx) {
                             case 'C':
-                              sectionTitle = 'Catridge ${i + 1}';
+                              sectionTitle = 'Catridge';
                               break;
                             case 'D':
-                              sectionTitle = 'Divert ${i + 1}';
+                              sectionTitle = 'Divert';
                               break;
                             case 'P':
                               sectionTitle = 'Pocket';
                               break;
                             default:
-                              sectionTitle = 'Catridge ${i + 1}';
+                              sectionTitle = 'Catridge';
+                              print('DEBUG: Using default title for unknown type: "$typeCatridgeTrx"');
                           }
                           
-                          print('Adding section: $sectionTitle for index $i');
+                          print('DEBUG: Final section title: "$sectionTitle" for typeCatridgeTrx: "$typeCatridgeTrx"');
                           
                           cartridgeSections.add(
                             Column(
@@ -1836,6 +1920,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   bool _bagCodeRemarkFilled = false;
   bool _sealCodeRemarkFilled = false;
   bool _catridgeFisikRemarkFilled = false;
+
+  // Focus node for Catridge Fisik validation
+  final FocusNode _catridgeFisikFocusNode = FocusNode();
 
   // NEW: Dropdown selection variables
   String? selectedBagCode;
@@ -2283,6 +2370,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     totalLembarController.text = '0';
     totalNominalController.text = _formatCurrency(0);
     
+    // Add focus listener for Catridge Fisik validation
+    _catridgeFisikFocusNode.addListener(_onCatridgeFisikFocusChanged);
+    
     // Debug log
     print('INIT: scannedFields initialized: $scannedFields');
   }
@@ -2301,6 +2391,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     // NEW: Dispose total controllers
     totalLembarController.dispose();
     totalNominalController.dispose();
+    
+    // Dispose focus node
+    _catridgeFisikFocusNode.dispose();
+    
     super.dispose();
   }
   
@@ -2959,7 +3053,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     return isValid;
   }
   
-  // NEW: Streamlined barcode scanner for validation using stream approach
+  // NEW: Streamlined barcode scanner for validation using direct callback approach
   Future<void> _openBarcodeScanner(String label, TextEditingController controller, String fieldKey) async {
     try {
       print('🎯 OPENING SCANNER: $label for field $fieldKey in section $sectionId');
@@ -2967,24 +3061,40 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       // Clean field label for display
       String cleanLabel = label.replaceAll(':', '').trim();
       
-      // Navigate to barcode scanner with stream approach
-      await Navigator.push<String?>(
+      // Navigate to barcode scanner and wait for result
+      final String? scannedBarcode = await Navigator.push<String?>(
         context,
         MaterialPageRoute(
           builder: (context) => BarcodeScannerWidget(
             title: 'Scan $cleanLabel',
             fieldKey: fieldKey,
             fieldLabel: cleanLabel,
-            sectionId: sectionId, // NEW: Pass section ID to scanner
+            sectionId: sectionId,
             onBarcodeDetected: (String barcode) {
-              // Stream will handle the result, this is just for legacy compatibility
               print('🎯 SCANNER CALLBACK: $barcode for $fieldKey in section $sectionId');
             },
           ),
         ),
       );
       
-      print('🎯 SCANNER CLOSED: for $fieldKey in section $sectionId');
+      // Handle the scanned result directly
+      if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
+        print('🎯 SCANNER RESULT: $scannedBarcode for $fieldKey in section $sectionId');
+        
+        // Update the controller with scanned value
+        setState(() {
+          controller.text = scannedBarcode;
+        });
+        
+        // Trigger validation based on field type
+        if (fieldKey == 'catridgeFisik') {
+          _validateCatridgeFisikMatch();
+        }
+        
+        print('🎯 FIELD UPDATED: $fieldKey = $scannedBarcode');
+      } else {
+        print('🎯 SCANNER CANCELLED: No barcode scanned for $fieldKey');
+      }
       
     } catch (e) {
       print('Error opening barcode scanner: $e');
@@ -3091,6 +3201,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       isScanInput: true, // Use scan input mode for this field
                       hasScanner: true, // Add scanner
                       readOnly: false, // Pengecualian: Catridge Fisik selalu bisa diinput
+                      focusNode: _catridgeFisikFocusNode,
                     ),
                     
                     const SizedBox(height: 12),
@@ -3262,7 +3373,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     bool hasScanner = false,
     bool isScanInput = false, 
     bool isLoading = false,
-    bool readOnly = false}
+    bool readOnly = false,
+    FocusNode? focusNode}
   ) {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
@@ -3299,6 +3411,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       isManualMode: isManualMode,
       hasAlasanRemark: hasAlasanRemark,
       isPreFilled: isPreFilled,
+      focusNode: focusNode,
       onScan: hasScanner ? () {
         // Open scanner for this field
         _openBarcodeScanner(label, controller, fieldKey);
@@ -3509,7 +3622,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     bool isManualMode = false,
     bool hasAlasanRemark = false,
     bool isPreFilled = false,
-    bool isPassword = false}
+    bool isPassword = false,
+    FocusNode? focusNode}
   ) {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
@@ -3557,6 +3671,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       Expanded(
                         child: TextField(
                           controller: controller,
+                          focusNode: focusNode,
                           readOnly: readOnly,
                           obscureText: isPassword,
                           style: TextStyle(
@@ -4153,6 +4268,28 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   String _formatCurrency(int amount) {
     return 'Rp. ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
   }
+
+  // Validation methods for Catridge Fisik
+  void _onCatridgeFisikFocusChanged() {
+    if (!_catridgeFisikFocusNode.hasFocus) {
+      // Trigger validation when field loses focus
+      _validateCatridgeFisikMatch();
+    }
+  }
+
+  void _validateCatridgeFisikMatch() {
+    final catridgeFisikValue = catridgeFisikController.text.trim();
+    final noCatridgeValue = noCatridgeController.text.trim();
+
+    if (catridgeFisikValue.isNotEmpty && noCatridgeValue.isNotEmpty) {
+      if (catridgeFisikValue != noCatridgeValue) {
+        CustomModals.showFailedModal(
+          context: context,
+          message: 'Catridge Fisik tidak sesuai dengan No. Catridge',
+        );
+      }
+    }
+  }
 }
 
 class DetailSection extends StatelessWidget {
@@ -4240,14 +4377,21 @@ class DetailSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 24),
-          const Row(
+          Row(
             children: [
-              Text(
+              const Text(
                 'Grand Total :',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              SizedBox(width: 8),
-              Text('Rp'),
+              const SizedBox(width: 8),
+              Text(
+                'Rp ${_formatCurrency(_calculateGrandTotal())}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.green,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -4386,5 +4530,42 @@ class DetailSection extends StatelessWidget {
           ),
         )
         .toList();
+  }
+
+  // Calculate grand total from all nominal values
+  int _calculateGrandTotal() {
+    int total = 0;
+    print('=== DEBUG GRAND TOTAL CALCULATION ===');
+    for (var entry in detailReturnNominalControllers.entries) {
+      final text = entry.value.text;
+      print('Denom: ${entry.key}, Text: "$text"');
+      if (text.isNotEmpty) {
+        // Remove "Rp. " prefix (with space) and dots, keep only digits
+        final cleanText = text.replaceAll('Rp. ', '').replaceAll('.', '');
+        print('  Clean text: "$cleanText"');
+        if (cleanText.isNotEmpty) {
+          final value = int.tryParse(cleanText) ?? 0;
+          print('  Parsed value: $value');
+          total += value;
+        }
+      }
+    }
+    print('Total calculated: $total');
+    print('=== END DEBUG ===');
+    return total;
+  }
+
+  // Format currency with Rp. prefix and thousand separators
+  String _formatCurrencyWithPrefix(int amount) {
+    final formatter = NumberFormat('#,###', 'id_ID');
+    return 'Rp. ${formatter.format(amount)}';
+  }
+
+  // Format currency for display
+  String _formatCurrency(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
   }
 }
