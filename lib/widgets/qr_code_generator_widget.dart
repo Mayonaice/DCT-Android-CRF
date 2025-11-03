@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import '../services/auth_service.dart';
 import '../models/prepare_model.dart';
 
@@ -8,14 +10,20 @@ class QRCodeGeneratorWidget extends StatefulWidget {
   final String action; // 'PREPARE' atau 'RETURN'
   final String idTool;
   final VoidCallback? onExpired;
-  final List<CatridgeQRData>? catridgeData; // Data catridge untuk dikirimkan dalam QR
+  final List<PrepareCatridgeQRData>? prepareCatridgeData; // Data catridge untuk PREPARE
+  final List<ReturnCatridgeQRData>? returnCatridgeData; // Data catridge untuk RETURN
+  final PrepareDetailsQRData? prepareDetails; // Details untuk PREPARE
+  final ReturnDetailsQRData? returnDetails; // Details untuk RETURN
 
   const QRCodeGeneratorWidget({
     Key? key,
     required this.action,
     required this.idTool,
     this.onExpired,
-    this.catridgeData, // Optional parameter untuk data catridge
+    this.prepareCatridgeData,
+    this.returnCatridgeData,
+    this.prepareDetails,
+    this.returnDetails,
   }) : super(key: key);
 
   @override
@@ -39,6 +47,53 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
   Future<void> _initializeQRCode() async {
     await _generateQRCode();
     _startTimer();
+  }
+
+  // Compress JSON data using gzip compression
+  String _compressJsonData(Map<String, dynamic> data) {
+    try {
+      // Convert to JSON string
+      final jsonString = json.encode(data);
+      print('🗜️ [COMPRESSION] Original JSON size: ${jsonString.length} chars');
+      
+      // Compress using gzip
+      final bytes = utf8.encode(jsonString);
+      final compressed = gzip.encode(bytes);
+      
+      // Convert to base64 for QR code compatibility
+      final compressedBase64 = base64.encode(compressed);
+      print('🗜️ [COMPRESSION] Compressed size: ${compressedBase64.length} chars (${((1 - compressedBase64.length / jsonString.length) * 100).toStringAsFixed(1)}% reduction)');
+      
+      return compressedBase64;
+    } catch (e) {
+      print('❌ [COMPRESSION] Failed to compress data: $e');
+      // Fallback to original JSON if compression fails
+      return json.encode(data);
+    }
+  }
+
+  // Decompress data (for testing purposes)
+  Map<String, dynamic>? _decompressJsonData(String compressedData) {
+    try {
+      // Try to decode as base64 first
+      final compressedBytes = base64.decode(compressedData);
+      
+      // Decompress using gzip
+      final decompressed = gzip.decode(compressedBytes);
+      final jsonString = utf8.decode(decompressed);
+      
+      // Parse JSON
+      return json.decode(jsonString) as Map<String, dynamic>;
+    } catch (e) {
+      print('❌ [DECOMPRESSION] Failed to decompress data: $e');
+      // Try to parse as regular JSON (fallback)
+      try {
+        return json.decode(compressedData) as Map<String, dynamic>;
+      } catch (e2) {
+        print('❌ [DECOMPRESSION] Failed to parse as JSON: $e2');
+        return null;
+      }
+    }
   }
 
   Future<void> _generateQRCode() async {
@@ -103,12 +158,16 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
       // Buat data terenkripsi yang berisi kredensial TLSPV dan data catridge
       Map<String, dynamic> qrDataMap;
       
-      if (widget.catridgeData != null && widget.catridgeData!.isNotEmpty) {
-        // Format baru dengan data catridge
+      if (widget.action == 'PREPARE' && 
+          widget.prepareCatridgeData != null && 
+          widget.prepareCatridgeData!.isNotEmpty &&
+          widget.prepareDetails != null) {
+        // Format PREPARE dengan data catridge dan details
         final prepareQRData = PrepareQRData(
           action: widget.action,
           timestamp: timestamp,
-          catridges: widget.catridgeData!,
+          catridges: widget.prepareCatridgeData!,
+          details: widget.prepareDetails!,
         );
         
         qrDataMap = {
@@ -117,9 +176,32 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
           'password': password,
         };
         
-        print('Generated QR with catridge data: ${widget.catridgeData!.length} items');
+        print('🔧 [QR_PREPARE] Generated QR with ${widget.prepareCatridgeData!.length} catridge items and details');
+        print('🔧 [QR_PREPARE] Details: WSID=${widget.prepareDetails!.wsid}, Bank=${widget.prepareDetails!.bank}');
+        
+      } else if (widget.action == 'RETURN' && 
+                 widget.returnCatridgeData != null && 
+                 widget.returnCatridgeData!.isNotEmpty &&
+                 widget.returnDetails != null) {
+        // Format RETURN dengan data catridge dan details
+        final returnQRData = ReturnQRData(
+          action: widget.action,
+          timestamp: timestamp,
+          catridges: widget.returnCatridgeData!,
+          details: widget.returnDetails!,
+        );
+        
+        qrDataMap = {
+          ...returnQRData.toJson(),
+          'username': username,
+          'password': password,
+        };
+        
+        print('🔧 [QR_RETURN] Generated QR with ${widget.returnCatridgeData!.length} catridge items and details');
+        print('🔧 [QR_RETURN] Details: WSID=${widget.returnDetails!.wsid}, Bank=${widget.returnDetails!.bank}');
+        
       } else {
-        // Format lama tanpa data catridge
+        // Format lama tanpa data catridge (fallback)
         qrDataMap = {
           'action': widget.action,
           'idTool': widget.idTool,
@@ -127,6 +209,8 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
           'username': username,
           'password': password
         };
+        
+        print('⚠️ [QR_FALLBACK] Using fallback format - no catridge data or details provided');
       }
       
       // PERBAIKAN: Verifikasi bahwa username dan password ada di qrDataMap
@@ -134,9 +218,25 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
       print('Final QR username present: ${qrDataMap.containsKey('username')}');
       print('Final QR password present: ${qrDataMap.containsKey('password')}');
       
-      // Enkripsi data untuk QR code
-      _qrData = _authService.encryptDataForQR(qrDataMap);
-      print('Generated secure QR Code with TLSPV credentials');
+      // IMPLEMENTASI KOMPRESI: Compress data sebelum enkripsi untuk mengurangi ukuran
+      final compressedJsonData = _compressJsonData(qrDataMap);
+      
+      // Buat wrapper dengan flag kompresi
+      final compressedDataMap = {
+        'compressed': true,
+        'data': compressedJsonData,
+      };
+      
+      // Enkripsi data yang sudah dikompresi
+      final encryptedData = _authService.encryptDataForQR(compressedDataMap);
+      
+      _qrData = encryptedData;
+      print('Generated compressed & encrypted QR Code (${_qrData?.length} chars)');
+      
+      // Log data size untuk monitoring
+      if (_qrData != null && _qrData!.length > 1000) {
+        print('⚠️ [QR_SIZE] Large QR data detected (${_qrData!.length} chars) - scanner may need more time');
+      }
     } else {
       // Fallback ke format lama jika tidak ada kredensial
       print('No valid credentials available, using fallback format');
@@ -268,9 +368,21 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
                 child: QrImageView(
                   data: _qrData,
                   version: QrVersions.auto,
-                  size: 200.0,
+                  size: 320.0, // Increased from 280.0 for better readability
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
+                  errorCorrectionLevel: QrErrorCorrectLevel.L, // Changed to Low for maximum data capacity
+                  embeddedImageStyle: const QrEmbeddedImageStyle(
+                    size: Size(0, 0), // No embedded image to avoid interference
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square, // Square modules for better scanning
+                    color: Colors.black,
+                  ),
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square, // Square eyes for better detection
+                    color: Colors.black,
+                  ),
                 ),
               ),
             ],
@@ -362,4 +474,4 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
     _timer?.cancel();
     super.dispose();
   }
-} 
+}

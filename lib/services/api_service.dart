@@ -94,6 +94,19 @@ class ApiService {
       };
     }
   }
+
+  // Private method to get headers (alias for the public getter)
+  Future<Map<String, String>> _getHeaders() async {
+    return await headers;
+  }
+
+  // Execute request with retry logic
+  Future<http.Response> _executeWithRetry(
+    Future<http.Response> Function() request,
+    String description,
+  ) async {
+    return await _debugHttp(request, description);
+  }
   
   // Save working base URL
   Future<void> _saveBaseUrl(String url) async {
@@ -2547,6 +2560,117 @@ class ApiService {
       }
     } catch (e) {
       debugPrint('❌ Seal code validation API error: $e');
+      
+      String errorMessage = 'Network error: ${e.toString()}';
+      if (e is TimeoutException) {
+        errorMessage = 'Connection timeout: Please check your internet connection';
+      }
+      
+      return ApiResponse(
+        success: false,
+        message: errorMessage,
+        status: 'error'
+      );
+    }
+  }
+
+  // Method untuk insert return catridge (endpoint /rtn/atm/catridge)
+  Future<ApiResponse> insertReturnCatridge({
+    required String IdTool,
+    required String BagCode,
+    required String CatridgeCode,
+    required String SealCode,
+    required String CatridgeSeal,
+    required String DenomCode,
+    required String Qty,
+    required String UserInput,
+    required String IsBalikKaset,
+    required String CatridgeCodeOld,
+    required String ScanCatStatus,
+    required String ScanCatStatusRemark,
+    required String ScanSealStatus,
+    required String ScanSealStatusRemark,
+  }) async {
+    debugPrint('🚀 [API] Starting return catridge insert...');
+    debugPrint('📤 [API] Return catridge parameters:');
+    debugPrint('   - IdTool: $IdTool');
+    debugPrint('   - BagCode: $BagCode');
+    debugPrint('   - CatridgeCode: $CatridgeCode');
+    debugPrint('   - SealCode: $SealCode');
+    debugPrint('   - CatridgeSeal: $CatridgeSeal');
+    debugPrint('   - DenomCode: $DenomCode');
+    debugPrint('   - Qty: $Qty');
+    debugPrint('   - UserInput: $UserInput');
+    debugPrint('   - IsBalikKaset: $IsBalikKaset');
+    debugPrint('   - CatridgeCodeOld: $CatridgeCodeOld');
+
+    try {
+      final requestHeaders = await _getHeaders();
+      final requestBody = {
+        'IdTool': IdTool,
+        'BagCode': BagCode,
+        'CatridgeCode': CatridgeCode,
+        'SealCode': SealCode,
+        'CatridgeSeal': CatridgeSeal,
+        'DenomCode': DenomCode,
+        'Qty': Qty,
+        'UserInput': UserInput,
+        'IsBalikKaset': IsBalikKaset,
+        'CatridgeCodeOld': CatridgeCodeOld,
+        'ScanCatStatus': ScanCatStatus,
+        'ScanCatStatusRemark': ScanCatStatusRemark,
+        'ScanSealStatus': ScanSealStatus,
+        'ScanSealStatusRemark': ScanSealStatusRemark,
+      };
+
+      debugPrint('📤 [API] Return catridge request body: ${json.encode(requestBody)}');
+
+      final response = await _executeWithRetry(
+        () => _tryRequestWithFallback(
+          requestFn: (baseUrl) => http.post(
+            Uri.parse('$baseUrl/CRF/rtn/atm/catridge'),
+            headers: requestHeaders,
+            body: json.encode(requestBody),
+          ),
+        ),
+        'Return Catridge Insert'
+      );
+
+      if (response.statusCode == 200) {
+        try {
+          debugPrint('🔍 Raw return catridge insert response: ${response.body.substring(0, math.min(300, response.body.length))}...');
+          
+          final jsonData = json.decode(response.body);
+          final apiResponse = ApiResponse.fromJson(jsonData);
+          
+          debugPrint('📥 [API] Return catridge insert response: success=${apiResponse.success}, message=${apiResponse.message}');
+          return apiResponse;
+        } catch (e) {
+          debugPrint('❌ Error parsing return catridge insert JSON: $e');
+          return ApiResponse(
+            success: false,
+            message: 'Invalid data format from server',
+            status: 'error'
+          );
+        }
+      } else if (response.statusCode == 401) {
+        debugPrint('❌ 401 Unauthorized on return catridge insert!');
+        await _authService.logout();
+        return ApiResponse(
+          success: false,
+          message: 'Session expired: Please login again',
+          status: 'error'
+        );
+      } else {
+        debugPrint('❌ HTTP error on return catridge insert: ${response.statusCode}, body: ${response.body}');
+        return ApiResponse(
+          success: false,
+          message: 'Server error (${response.statusCode}): ${response.body}',
+          status: 'error'
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Return catridge insert API error: $e');
       
       String errorMessage = 'Network error: ${e.toString()}';
       if (e is TimeoutException) {

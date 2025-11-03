@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Test Samples</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .qr-container {
+            display: inline-block;
+            margin: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .qr-code {
+            margin: 10px 0;
+        }
+        .qr-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .qr-data {
+            font-size: 12px;
+            color: #666;
+            word-break: break-all;
+            max-width: 300px;
+            margin-top: 10px;
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+        .instructions {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>QR Code Test Samples untuk TL Scanner</h1>
+    
+    <div class="instructions">
+        <h3>Instruksi Testing:</h3>
+        <ol>
+            <li>Buka aplikasi Flutter CRF Android</li>
+            <li>Masuk ke TL QR Scanner</li>
+            <li>Arahkan kamera ke salah satu QR code di bawah</li>
+            <li>Periksa console log untuk melihat apakah QR code terdeteksi</li>
+            <li>Test dengan berbagai format QR code yang berbeda</li>
+        </ol>
+    </div>
+
+    <div id="qr-codes-container"></div>
+
+    <script>
+        const testData = [
+            {
+                title: "Simple Text QR",
+                data: "Hello World - Test QR Code"
+            },
+            {
+                title: "JSON Format QR",
+                data: JSON.stringify({
+                    action: "PREPARE",
+                    idTool: "TEST001",
+                    timestamp: Date.now(),
+                    catridges: [
+                        {
+                            id: "C001",
+                            denomination: 100000,
+                            quantity: 10
+                        }
+                    ]
+                })
+            },
+            {
+                title: "Delimited Format QR",
+                data: "PREPARE|TEST002|" + Date.now() + "|C002:50000:5"
+            },
+            {
+                title: "Base64 Encoded QR",
+                data: btoa(JSON.stringify({
+                    action: "PREPARE",
+                    idTool: "TEST003",
+                    timestamp: Date.now(),
+                    user: "testuser"
+                }))
+            },
+            {
+                title: "Long Text QR",
+                data: "This is a very long QR code content to test how the scanner handles longer data strings. It contains multiple sentences and should be properly detected by the QR scanner widget. The total length of this string is quite substantial to ensure proper testing of the scanning functionality."
+            },
+            {
+                title: "URL Format QR",
+                data: "https://example.com/qr-test?action=PREPARE&id=TEST004&timestamp=" + Date.now()
+            }
+        ];
+
+        const container = document.getElementById('qr-codes-container');
+
+        testData.forEach((item, index) => {
+            const qrContainer = document.createElement('div');
+            qrContainer.className = 'qr-container';
+            
+            const title = document.createElement('div');
+            title.className = 'qr-title';
+            title.textContent = item.title;
+            
+            const qrCanvas = document.createElement('canvas');
+            qrCanvas.className = 'qr-code';
+            
+            const dataDiv = document.createElement('div');
+            dataDiv.className = 'qr-data';
+            dataDiv.textContent = 'Data: ' + (item.data.length > 100 ? item.data.substring(0, 100) + '...' : item.data);
+            
+            qrContainer.appendChild(title);
+            qrContainer.appendChild(qrCanvas);
+            qrContainer.appendChild(dataDiv);
+            
+            container.appendChild(qrContainer);
+            
+            // Generate QR code
+            QRCode.toCanvas(qrCanvas, item.data, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            }, function (error) {
+                if (error) {
+                    console.error('Error generating QR code:', error);
+                    qrCanvas.style.display = 'none';
+                    const errorMsg = document.createElement('div');
+                    errorMsg.textContent = 'Error generating QR code';
+                    errorMsg.style.color = 'red';
+                    qrContainer.appendChild(errorMsg);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

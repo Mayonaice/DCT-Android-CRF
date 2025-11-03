@@ -4,6 +4,8 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import '../widgets/custom_modals.dart';
 import '../services/device_service.dart';
+import '../widgets/tl_header_widget.dart';
+import '../services/profile_service.dart';
 
 class TLDeviceInfoScreen extends StatefulWidget {
   const TLDeviceInfoScreen({Key? key}) : super(key: key);
@@ -18,6 +20,11 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
   String _osVersion = 'Loading...';
   String _androidId = 'Loading...';
   bool _isLoading = true;
+  
+  // Add user data for header
+  String _userName = 'Device User';
+  String _branchName = 'Device Info';
+  final ProfileService _profileService = ProfileService();
 
   @override
   void initState() {
@@ -135,41 +142,17 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.grey[50],
       body: SafeArea(
         child: Column(
           children: [
-            // Header putih dengan tombol back merah dan title "Device Info"
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(Icons.arrow_back_ios_new, color: Colors.red),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Device Info',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+            // Use TLHeaderWidget instead of custom header
+            TLHeaderWidget(
+              userName: _userName,
+              branchName: _branchName,
+              greetingText: 'Device Information',
+              profileService: _profileService,
             ),
-            const Divider(height: 1, color: Color(0xFFE0E0E0)),
 
             // Konten scrollable mengikuti layout tl_profile_screen.dart
             Expanded(

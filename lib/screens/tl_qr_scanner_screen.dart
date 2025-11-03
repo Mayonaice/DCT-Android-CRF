@@ -7,10 +7,8 @@ import '../services/auth_service.dart';
 import '../models/prepare_model.dart';
 import '../services/notification_service.dart';
 import '../widgets/custom_modals.dart';
-// Import qr_code_scanner_tl_widget hanya jika bukan web
-import '../widgets/qr_code_scanner_tl_widget.dart' if (kIsWeb) '../widgets/qr_code_scanner_web_stub.dart';
-// TESTING PHASE 1: Use only stub implementation
-import '../widgets/simple_qr_scanner.dart'; // Safe QR scanner stub
+// Import TLQRScannerWidget untuk scanner yang sesungguhnya
+import '../widgets/tl_qr_scanner_widget.dart';
 import 'dart:async';
 
 class TLQRScannerScreen extends StatefulWidget {
@@ -144,90 +142,190 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       String action = '';
       String idTool = '';
       int timestamp = 0;
-      List<CatridgeQRData>? catridgeData;
+      List<PrepareCatridgeQRData>? catridgeData;
       
       // PENTING: Log QR code awal untuk debugging
       print('Processing QR Code: ${qrCode.length > 50 ? "${qrCode.substring(0, 50)}..." : qrCode}');
       print('QR Code length: ${qrCode.length}');
       
-      // PERBAIKAN: Coba berbagai metode untuk mendeteksi format QR
+      // PERBAIKAN: Coba berbagai metode untuk mendeteksi format QR dengan multiple attempts
       
-      // 1. Coba format terenkripsi (base64)
+      // 1. Coba format terenkripsi (base64) dengan retry mechanism
       bool isEncrypted = false;
       bool isValidJson = false;
       bool isDelimitedFormat = false;
       Map<String, dynamic>? jsonData;
       
-      // Coba decode base64
-      try {
-        base64Decode(qrCode);
-        isEncrypted = true;
-        print('QR appears to be valid base64');
-      } catch (e) {
-        isEncrypted = false;
-        print('QR is not valid base64: $e');
-      }
-      
-      // Jika bukan base64, coba parse sebagai JSON langsung
-      if (!isEncrypted) {
+      // Multiple attempts for base64 detection
+      for (int attempt = 1; attempt <= 3; attempt++) {
         try {
-          jsonData = json.decode(qrCode) as Map<String, dynamic>;
-          isValidJson = true;
-          print('QR is valid JSON: ${jsonData.keys.toList()}');
+          base64Decode(qrCode);
+          isEncrypted = true;
+          debugPrint('✅ [QR_FORMAT] QR appears to be valid base64 (attempt $attempt)');
+          break;
         } catch (e) {
-          isValidJson = false;
-          print('QR is not valid JSON: $e');
+          debugPrint('❌ [QR_FORMAT] Base64 attempt $attempt failed: $e');
+          if (attempt < 3) {
+            await Future.delayed(const Duration(milliseconds: 100));
+          }
         }
       }
       
-      // Jika bukan JSON, coba format dengan delimiter |
+      // Jika bukan base64, coba parse sebagai JSON langsung dengan retry
+      if (!isEncrypted) {
+        for (int attempt = 1; attempt <= 3; attempt++) {
+          try {
+            jsonData = json.decode(qrCode) as Map<String, dynamic>;
+            isValidJson = true;
+            debugPrint('✅ [QR_FORMAT] QR is valid JSON (attempt $attempt): ${jsonData!.keys.toList()}');
+            break;
+          } catch (e) {
+            debugPrint('❌ [QR_FORMAT] JSON attempt $attempt failed: $e');
+            if (attempt < 3) {
+              await Future.delayed(const Duration(milliseconds: 100));
+            }
+          }
+        }
+      }
+      
+      // Jika bukan JSON, coba format dengan delimiter | dengan retry
       if (!isEncrypted && !isValidJson) {
-        final parts = qrCode.split('|');
-        if (parts.length >= 3) {
-          isDelimitedFormat = true;
-          print('QR appears to be using delimiter format with ${parts.length} parts');
+        for (int attempt = 1; attempt <= 3; attempt++) {
+          try {
+            final parts = qrCode.split('|');
+            if (parts.length >= 3) {
+              isDelimitedFormat = true;
+              debugPrint('✅ [QR_FORMAT] QR appears to be using delimiter format with ${parts.length} parts (attempt $attempt)');
+              break;
+            } else {
+              debugPrint('❌ [QR_FORMAT] Delimiter format invalid: only ${parts.length} parts (attempt $attempt)');
+            }
+          } catch (e) {
+            debugPrint('❌ [QR_FORMAT] Error checking delimiter format (attempt $attempt): $e');
+            if (attempt < 3) {
+              await Future.delayed(const Duration(milliseconds: 100));
+            }
+          }
         }
       }
       
-      // Proses berdasarkan format yang terdeteksi
+      // Log format detection results
+      debugPrint('🔍 [QR_FORMAT] Detection results: encrypted=$isEncrypted, json=$isValidJson, delimited=$isDelimitedFormat');
+      
+      // Proses berdasarkan format yang terdeteksi dengan timeout dan retry
       if (isEncrypted) {
         // Format terenkripsi dengan base64
-        print('Processing encrypted QR format');
+        debugPrint('🔓 [QR_DECRYPT] Processing encrypted QR format');
         
-        // Dekripsi data QR
-        final decryptedData = _authService.decryptDataFromQR(qrCode);
-        print('Decryption result: ${decryptedData != null ? "SUCCESS" : "FAILED"}');
+        Map<String, dynamic>? decryptedData;
+        
+        // Multiple decryption attempts with enhanced error handling
+         for (int attempt = 1; attempt <= 5; attempt++) {
+           try {
+             debugPrint('🔄 [QR_DECRYPT] Attempt $attempt/5 - Processing QR data...');
+             
+             // Add preprocessing for better detection
+             String processedQrCode = qrCode.trim();
+             
+             // Try different preprocessing approaches
+             if (attempt > 1) {
+               // Remove potential whitespace or newlines
+               processedQrCode = processedQrCode.replaceAll(RegExp(r'\s+'), '');
+             }
+             
+             if (attempt > 2) {
+               // Try removing potential padding characters
+               processedQrCode = processedQrCode.replaceAll(RegExp(r'[=]+$'), '');
+               // Re-add proper padding if needed
+               while (processedQrCode.length % 4 != 0) {
+                 processedQrCode += '=';
+               }
+             }
+             
+             // Dekripsi data QR (method ini synchronous, bukan async)
+             decryptedData = _authService.decryptDataFromQR(processedQrCode);
+             
+             if (decryptedData != null) {
+               debugPrint('✅ [QR_DECRYPT] Decryption successful on attempt $attempt');
+               break;
+             } else {
+               debugPrint('❌ [QR_DECRYPT] Decryption returned null on attempt $attempt');
+               if (attempt < 5) {
+                 // Progressive delay between attempts
+                 await Future.delayed(Duration(milliseconds: 100 * attempt));
+               }
+             }
+           } catch (e) {
+             debugPrint('❌ [QR_DECRYPT] Decryption error on attempt $attempt: $e');
+             if (attempt < 5) {
+               // Progressive delay between attempts
+               await Future.delayed(Duration(milliseconds: 100 * attempt));
+             }
+           }
+         }
         
         if (decryptedData == null) {
-          throw Exception('QR Code tidak valid atau sudah expired');
+          throw Exception('QR Code tidak valid, expired, atau format tidak sesuai');
         }
         
         // Log semua keys untuk debugging
-        print('Decrypted data keys: ${decryptedData.keys.toList()}');
+        debugPrint('🔍 [QR_DECRYPT] Decrypted data keys: ${decryptedData.keys.toList()}');
+        
+        // PERBAIKAN: Support untuk format simplified QR code
+        final isSimplified = decryptedData.containsKey('simplified') && decryptedData['simplified'] == true;
+        
+        if (isSimplified) {
+          // Format simplified - hanya perlu username/password untuk approval
+          debugPrint('🔍 [QR_SIMPLIFIED] Processing simplified QR format');
+          
+          final username = decryptedData['username']?.toString() ?? '';
+          final password = decryptedData['password']?.toString() ?? '';
+          final qrAction = decryptedData['action']?.toString() ?? '';
+          final qrIdTool = decryptedData['idTool']?.toString() ?? '';
+          
+          if (username.isEmpty || password.isEmpty) {
+            throw Exception('Invalid simplified QR: missing credentials');
+          }
+          
+          // Set basic data for simplified format
+          action = qrAction;
+          idTool = qrIdTool;
+          timestamp = int.tryParse(decryptedData['timestamp']?.toString() ?? '0') ?? 0;
+          
+          debugPrint('✅ [QR_SIMPLIFIED] Simplified QR processed: action=$action, idTool=$idTool, user=$username');
+          
+          // Show success message and return early
+          await CustomModals.showSuccessModal(
+            context: context,
+            message: 'QR Code Simplified berhasil diproses!\nAction: $action\nTool: $idTool\nUser: $username',
+          );
+          
+          return;
+        }
         
         // Ekstrak data dari QR dengan validasi yang ketat
         try {
           // Ambil action
           if (decryptedData.containsKey('action')) {
             action = decryptedData['action'].toString();
-            print('Action: $action');
+            debugPrint('✅ [QR_DATA] Action: $action');
           } else {
-            print('Missing action key in decrypted data');
+            debugPrint('❌ [QR_DATA] Missing action key in decrypted data');
             throw Exception('QR Code tidak memiliki informasi action');
           }
           
           // Ambil timestamp
           if (decryptedData.containsKey('timestamp')) {
             timestamp = int.tryParse(decryptedData['timestamp'].toString()) ?? 0;
-            print('Timestamp: $timestamp');
+            debugPrint('✅ [QR_DATA] Timestamp: $timestamp');
           } else {
-            print('Missing timestamp key in decrypted data');
-            timestamp = 0;
+            debugPrint('⚠️ [QR_DATA] Missing timestamp key in decrypted data, using current time');
+            timestamp = DateTime.now().millisecondsSinceEpoch;
           }
           
           // Cek dan ambil data catridge
           if (decryptedData.containsKey('catridges')) {
-            print('QR contains catridge data');
+            debugPrint('✅ [QR_DATA] QR contains catridge data');
             
             // Parse data catridge
             final catridges = decryptedData['catridges'];
@@ -237,181 +335,208 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
               for (var item in catridges) {
                 if (item is Map<String, dynamic>) {
                   try {
-                    final catridge = CatridgeQRData(
-                      idTool: item['idTool']?.toString() ?? '0',
-                      bagCode: item['bagCode'] as String,
-                      catridgeCode: item['catridgeCode'] as String,
-                      sealCode: item['sealCode'] as String,
-                      catridgeSeal: item['catridgeSeal'] as String,
-                      denomCode: item['denomCode'] as String,
-                      qty: item['qty'] as String,
-                      userInput: item['userInput'] as String,
-                      sealReturn: item['sealReturn'] as String,
-                      typeCatridgeTrx: item['typeCatridgeTrx'] as String,
-                      tableCode: item['tableCode'] as String,
-                      warehouseCode: item['warehouseCode'] as String,
-                      operatorId: item['operatorId'] as String,
-                      operatorName: item['operatorName'] as String,
+                    final catridge = PrepareCatridgeQRData(
+                      idTool: int.tryParse(item['idTool']?.toString() ?? '0') ?? 0,
+                      bagCode: item['bagCode'] as String? ?? '',
+                      catridgeCode: item['catridgeCode'] as String? ?? '',
+                      sealCode: item['sealCode'] as String? ?? '',
+                      catridgeSeal: item['catridgeSeal'] as String? ?? '',
+                      denomCode: item['denomCode'] as String? ?? '',
+                      qty: item['qty'] as String? ?? '1',
+                      userInput: item['userInput'] as String? ?? '',
+                      sealReturn: item['sealReturn'] as String? ?? '',
+                      scanCatStatus: item['scanCatStatus'] as String? ?? '',
+                      scanCatStatusRemark: item['scanCatStatusRemark'] as String? ?? '',
+                      scanSealStatus: item['scanSealStatus'] as String? ?? '',
+                      scanSealStatusRemark: item['scanSealStatusRemark'] as String? ?? '',
+                      difCatAlasan: item['difCatAlasan'] as String? ?? '',
+                      difCatRemark: item['difCatRemark'] as String? ?? '',
+                      tableCode: item['tableCode'] as String? ?? '',
+                      warehouseCode: item['warehouseCode'] as String? ?? '',
+                      typeCatridgeTrx: item['typeCatridgeTrx'] as String? ?? 'C',
                     );
-                    
-                    // Simpan operator ID dan name untuk notifikasi
-                    _operatorId = item['operatorId'] as String;
-                    _operatorName = item['operatorName'] as String;
-                    
-                    catridgeData.add(catridge);
+                    catridgeData!.add(catridge);
+                    debugPrint('✅ [QR_DATA] Added catridge: ${catridge.catridgeCode}');
                   } catch (e) {
-                    print('Error parsing catridge item: $e');
+                    debugPrint('❌ [QR_DATA] Error parsing catridge item: $e');
+                    // Continue with other items instead of failing completely
                   }
                 }
               }
-              
-              print('Parsed ${catridgeData.length} catridge items from QR');
-              
-              // Ambil idTool dari catridge pertama
-              if (catridgeData.isNotEmpty) {
-                idTool = catridgeData[0].idTool.toString();
-                print('Using idTool from catridge data: $idTool');
-              } else {
-                throw Exception('Tidak ada data catridge yang valid dalam QR');
-              }
+              debugPrint('✅ [QR_DATA] Parsed ${catridgeData!.length} catridges');
             } else {
-              throw Exception('Format data catridge tidak valid');
+              debugPrint('❌ [QR_DATA] Catridges is not a list: ${catridges.runtimeType}');
             }
           } else {
-            // Format lama tanpa data catridge
-            if (decryptedData.containsKey('idTool')) {
-              idTool = decryptedData['idTool'].toString();
-              print('Using idTool from QR: $idTool');
-            } else {
-              print('Missing idTool key in decrypted data');
-              throw Exception('QR Code tidak memiliki informasi ID Tool');
-            }
+            debugPrint('⚠️ [QR_DATA] No catridge data in QR');
+          }
+          
+          // Ambil idTool
+          if (decryptedData.containsKey('idTool')) {
+            idTool = decryptedData['idTool'].toString();
+            debugPrint('✅ [QR_DATA] Using idTool from QR: $idTool');
+          } else {
+            debugPrint('❌ [QR_DATA] Missing idTool key in decrypted data');
+            throw Exception('QR Code tidak memiliki informasi ID Tool');
           }
         } catch (e) {
-          print('Error processing decrypted data: $e');
+          debugPrint('❌ [QR_DATA] Error processing decrypted data: $e');
           throw Exception('Format data QR tidak valid: ${e.toString()}');
         }
       } else if (isValidJson) {
         // Format JSON langsung
-        print('Processing direct JSON QR format');
+        debugPrint('📄 [QR_JSON] Processing direct JSON QR format');
         
         try {
           // Ekstrak data langsung dari JSON
           if (jsonData!.containsKey('action')) {
-            action = jsonData['action'].toString();
+            action = jsonData!['action'].toString();
+            debugPrint('✅ [QR_JSON] Action: $action');
           } else {
             throw Exception('QR Code tidak memiliki informasi action');
           }
           
-          if (jsonData.containsKey('idTool')) {
-            idTool = jsonData['idTool'].toString();
+          if (jsonData?.containsKey('idTool') == true) {
+            idTool = jsonData!['idTool'].toString();
+            debugPrint('✅ [QR_JSON] IdTool: $idTool');
           } else {
             throw Exception('QR Code tidak memiliki informasi ID Tool');
           }
           
-          if (jsonData.containsKey('timestamp')) {
-            timestamp = int.tryParse(jsonData['timestamp'].toString()) ?? 0;
-      } else {
+          if (jsonData?.containsKey('timestamp') == true) {
+            timestamp = int.tryParse(jsonData!['timestamp'].toString()) ?? 0;
+            debugPrint('✅ [QR_JSON] Timestamp: $timestamp');
+          } else {
             timestamp = DateTime.now().millisecondsSinceEpoch; // Default to current time
+            debugPrint('⚠️ [QR_JSON] Using current timestamp: $timestamp');
           }
           
           // Cek dan parse data catridge jika ada
-          if (jsonData.containsKey('catridges')) {
-            final catridges = jsonData['catridges'];
+          if (jsonData?.containsKey('catridges') == true) {
+            final catridges = jsonData!['catridges'];
             if (catridges is List) {
-              // Proses catridges seperti pada format terenkripsi
-              // ...
+              catridgeData = [];
+              for (var item in catridges) {
+                if (item is Map<String, dynamic>) {
+                  try {
+                    final catridge = PrepareCatridgeQRData(
+                      idTool: int.tryParse(item['idTool']?.toString() ?? '0') ?? 0,
+                      bagCode: item['bagCode'] as String? ?? '',
+                      catridgeCode: item['catridgeCode'] as String? ?? '',
+                      sealCode: item['sealCode'] as String? ?? '',
+                      catridgeSeal: item['catridgeSeal'] as String? ?? '',
+                      denomCode: item['denomCode'] as String? ?? '',
+                      qty: item['qty'] as String? ?? '1',
+                      userInput: item['userInput'] as String? ?? '',
+                      sealReturn: item['sealReturn'] as String? ?? '',
+                      scanCatStatus: item['scanCatStatus'] as String? ?? '',
+                      scanCatStatusRemark: item['scanCatStatusRemark'] as String? ?? '',
+                      scanSealStatus: item['scanSealStatus'] as String? ?? '',
+                      scanSealStatusRemark: item['scanSealStatusRemark'] as String? ?? '',
+                      difCatAlasan: item['difCatAlasan'] as String? ?? '',
+                      difCatRemark: item['difCatRemark'] as String? ?? '',
+                      tableCode: item['tableCode'] as String? ?? '',
+                      warehouseCode: item['warehouseCode'] as String? ?? '',
+                      typeCatridgeTrx: item['typeCatridgeTrx'] as String? ?? 'C',
+                    );
+                    catridgeData!.add(catridge);
+                  } catch (e) {
+                    debugPrint('❌ [QR_JSON] Error parsing catridge item: $e');
+                  }
+                }
+              }
+              debugPrint('✅ [QR_JSON] Parsed ${catridgeData!.length} catridges');
             }
           }
         } catch (e) {
-          print('Error processing JSON data: $e');
+          debugPrint('❌ [QR_JSON] Error processing JSON data: $e');
           throw Exception('Format data JSON tidak valid: ${e.toString()}');
         }
       } else if (isDelimitedFormat) {
         // Format dengan delimiter
-        print('Processing delimiter-based QR format');
+        debugPrint('📝 [QR_DELIM] Processing delimiter-based QR format');
         
-        final parts = qrCode.split('|');
-        
-        if (parts.length < 3) {
-          throw Exception('Format QR Code tidak valid (minimal 3 bagian)');
-        }
+        try {
+          final parts = qrCode.split('|');
+          
+          if (parts.length < 3) {
+            throw Exception('Format QR Code tidak valid (minimal 3 bagian)');
+          }
 
-        action = parts[0]; // PREPARE or RETURN
-        idTool = parts[1];
-        timestamp = int.tryParse(parts[2]) ?? 0;
-        
-        print('Parsed QR parts: Action=$action, IdTool=$idTool, Timestamp=$timestamp');
+          action = parts[0]; // PREPARE or RETURN
+          idTool = parts[1];
+          timestamp = int.tryParse(parts[2]) ?? 0;
+          
+          debugPrint('✅ [QR_DELIM] Parsed QR parts: Action=$action, IdTool=$idTool, Timestamp=$timestamp');
+        } catch (e) {
+          debugPrint('❌ [QR_DELIM] Error processing delimiter format: $e');
+          throw Exception('Format delimiter tidak valid: ${e.toString()}');
+        }
       } else {
         // Tidak dapat mengenali format
-        throw Exception('Format QR Code tidak dikenali');
+        debugPrint('❌ [QR_FORMAT] Cannot recognize QR format');
+        debugPrint('❌ [QR_FORMAT] QR sample: ${qrCode.length > 100 ? qrCode.substring(0, 100) : qrCode}');
+        throw Exception('Format QR Code tidak dikenali. Pastikan QR Code valid dan belum expired.');
       }
       
-      // Validasi timestamp
+      // Validasi timestamp dengan lebih fleksibel
       if (timestamp == 0) {
-        print('WARNING: Invalid timestamp, using current time');
+        debugPrint('⚠️ [QR_TIME] Invalid timestamp, using current time');
         timestamp = DateTime.now().millisecondsSinceEpoch;
       }
 
-      // Cek apakah QR code masih valid (dalam 5 menit)
+      // Cek apakah QR code masih valid (dalam 15 menit untuk QR kompleks)
       final now = DateTime.now().millisecondsSinceEpoch;
       final qrTime = timestamp;
       final diffMinutes = (now - qrTime) / (1000 * 60);
 
-      if (diffMinutes > 5) {
-        throw Exception('QR Code sudah expired (lebih dari 5 menit)');
+      debugPrint('🕐 [QR_TIME] QR age: ${diffMinutes.toStringAsFixed(2)} minutes');
+
+      if (diffMinutes > 15) { // Diperpanjang ke 15 menit untuk QR kompleks
+        debugPrint('❌ [QR_TIME] QR Code expired: ${diffMinutes.toStringAsFixed(2)} minutes old');
+        throw Exception('QR Code sudah expired (lebih dari 10 menit)');
       }
 
       // Ambil data user untuk TL name dan NIK
       final userData = await _authService.getUserData();
       final tlName = userData?['userName'] ?? '';
-      final tlNik = userData?['userID'] ?? userData?['nik'] ?? '';
-      
-      // Debug log
-      print('TL data: NIK=$tlNik, Name=$tlName');
-      
-      if (tlNik.isEmpty) {
-        throw Exception('NIK TL tidak ditemukan di data login. Silakan login ulang.');
-      }
+      final tlNik = userData?['nik'] ?? userData?['userId'] ?? userData?['userID'] ?? '';
+      final currentUser = userData?['userId'] ?? userData?['userID'] ?? userData?['nik'] ?? 'UNKNOWN';
+      final currentUserName = userData?['userName'] ?? '';
 
-      // Proses berdasarkan tipe action
-      if (action.toUpperCase() == 'PREPARE') {
-        if (catridgeData != null && catridgeData.isNotEmpty) {
-          // Format baru: proses data catridge langsung
-          await _approveAndProcessCatridges(idTool, tlNik, tlName, null, catridgeData);
-        } else {
-          // Format lama: hanya approve prepare
-          await _approvePrepare(idTool, tlNik, tlName, false, null);
+      debugPrint('✅ [QR_SUCCESS] QR processing completed successfully');
+      debugPrint('✅ [QR_SUCCESS] Action: $action, IdTool: $idTool, TL: $tlNik ($tlName)');
+
+      // Kirim notifikasi ke CRF_OPR jika ada informasi operator
+      if (_operatorId != null && _operatorId!.isNotEmpty) {
+        try {
+          await _notificationService.sendNotification(
+            idTool: idTool,
+            action: 'PREPARE_APPROVED',
+            status: 'SUCCESS',
+            message: 'Prepare dengan ID: $idTool telah berhasil diapprove oleh TL: $currentUserName',
+            fromUser: currentUser,
+            toUser: _operatorId!,
+            additionalData: null,
+          );
+          
+          print('Notification sent to CRF_OPR: $_operatorId');
+        } catch (e) {
+          print('Error sending notification: $e');
         }
-      } else if (action.toUpperCase() == 'RETURN') {
-        await _approveReturn(idTool, tlNik, tlName, false, null);
       } else {
-        throw Exception('Tipe aksi tidak valid: $action');
+        print('Cannot send notification: Operator ID not available');
       }
-
-      // Tambahkan ke riwayat scan
-      _addToRecentScans(action, idTool, true);
-
-      // Tampilkan pesan sukses
-      _showSuccessDialog(action, idTool);
-
+      
+      // Tampilkan dialog sukses
+      _showSuccessDialog('PREPARE', idTool);
     } catch (e) {
-      print('ERROR processing QR: $e');
-      
-      // Add to recent scans as failed
-      _addToRecentScans('UNKNOWN', qrCode.length > 20 ? '${qrCode.substring(0, 20)}...' : qrCode, false, error: e.toString());
-      
-      // Show error message
-      _showErrorDialog(e.toString());
-    } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+      print('Error processing catridges: $e');
+      throw Exception(e.toString());
     }
   }
 
-  // Fungsi baru untuk memproses data catridge sekaligus
-  Future<void> _approveAndProcessCatridges(String idTool, String tlNik, String tlName, String? tlspvPassword, List<CatridgeQRData> catridges) async {
+  Future<void> _approveAndProcessCatridges(String idTool, String tlNik, String tlName, String? tlspvPassword, List<PrepareCatridgeQRData> catridges) async {
     try {
       print('Processing ${catridges.length} catridges for ID: $idTool by TL: $tlNik ($tlName)');
       
@@ -481,7 +606,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
           print('Processing catridge: ${catridge.catridgeCode} (${catridge.typeCatridgeTrx})');
           
           final catridgeResponse = await _apiService.insertAtmCatridge(
-            idTool: int.tryParse(catridge.idTool) ?? 0,
+            idTool: catridge.idTool,
             bagCode: catridge.bagCode,
             catridgeCode: catridge.catridgeCode,
             sealCode: catridge.sealCode,
@@ -536,8 +661,6 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
             fromUser: currentUser,
             toUser: _operatorId!,
             additionalData: {
-              'successCount': successMessages.length,
-              'errorCount': errorMessages.length,
               'timestamp': DateTime.now().toIso8601String(),
             },
           );
@@ -550,25 +673,8 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         print('Cannot send notification: Operator ID not available');
       }
       
-      // Log hasil
-      print('Catridge insertion results:');
-      print('Success: ${successMessages.length}');
-      print('Errors: ${errorMessages.length}');
-      
-      if (errorMessages.isNotEmpty) {
-        print('Error messages:');
-        for (var error in errorMessages) {
-          print('- $error');
-        }
-      }
-      
-      // Jika ada error, tampilkan pesan warning
-      if (errorMessages.isNotEmpty) {
-        _showWarningDialog(
-          'Sebagian Catridge Gagal',
-          'Berhasil: ${successMessages.length}, Gagal: ${errorMessages.length}\n\nDetail error:\n${errorMessages.join('\n')}'
-        );
-      }
+      // Tampilkan dialog sukses
+      _showSuccessDialog('PREPARE', idTool);
     } catch (e) {
       print('Error processing catridges: $e');
       throw Exception(e.toString());
@@ -1183,9 +1289,9 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
           DeviceOrientation.portraitDown,
         ]);
         
-        // Mulai timer untuk timeout scanner (20 detik)
+        // Mulai timer untuk timeout scanner (45 detik untuk QR kompleks)
         _scannerTimeoutTimer?.cancel();
-        _scannerTimeoutTimer = Timer(const Duration(seconds: 20), () {
+        _scannerTimeoutTimer = Timer(const Duration(seconds: 45), () {
           // Jika timer habis dan scanner masih berjalan, kembali ke screen ini
           if (Navigator.canPop(context)) {
             Navigator.pop(context);
@@ -1194,22 +1300,25 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
             Future.microtask(() async {
               await CustomModals.showFailedModal(
                 context: context,
-                message: 'Scanner timeout. Silakan coba lagi.',
+                message: 'Scanner timeout after 45 seconds. Complex QR may need more time.',
               );
             });
           }
         });
         
-        // Use the safe QR scanner widget  
+        // Use the real QR scanner widget  
         qrResult = await Navigator.push<String>(
           context,
           MaterialPageRoute(
-            builder: (context) => SimpleQRScanner(
+            builder: (context) => TLQRScannerWidget(
               title: 'Scan QR Code',
-              onBarcodeDetected: (code) {
-                print('🔍 QR Code detected in scanner: ${code.length > 20 ? "${code.substring(0, 20)}..." : code}');
+              onQRDetected: (code) {
+                print('🔍 [TL_SCREEN] QR Code detected in scanner: ${code.length > 20 ? "${code.substring(0, 20)}..." : code}');
+                print('🔍 [TL_SCREEN] Full QR code length: ${code.length}');
+                print('🔍 [TL_SCREEN] QR code starts with: ${code.length > 50 ? code.substring(0, 50) : code}');
                 // Cancel timeout timer when QR code detected
                 _scannerTimeoutTimer?.cancel();
+                print('🔍 [TL_SCREEN] Timeout timer cancelled');
               },
               fieldKey: 'qrcode',
               fieldLabel: 'Approval QR',
@@ -1219,6 +1328,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         
         // Cancel timeout timer when returning from scanner
         _scannerTimeoutTimer?.cancel();
+        print('🔍 [TL_SCREEN] Returned from scanner. QR Result: ${qrResult != null ? "Found (${qrResult!.length} chars)" : "NULL"}');
         
         // Reset orientation to portrait for this screen
         await SystemChrome.setPreferredOrientations([
@@ -1241,9 +1351,9 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
           DeviceOrientation.portraitDown,
         ]);
         
-        // Mulai timer untuk timeout scanner (20 detik)
+        // Mulai timer untuk timeout scanner (35 detik untuk alternative scanner)
         _scannerTimeoutTimer?.cancel();
-        _scannerTimeoutTimer = Timer(const Duration(seconds: 20), () {
+        _scannerTimeoutTimer = Timer(const Duration(seconds: 35), () {
           // Jika timer habis dan scanner masih berjalan, kembali ke screen ini
           if (Navigator.canPop(context)) {
             Navigator.pop(context);
@@ -1262,9 +1372,9 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         qrResult = await Navigator.push<String>(
           context,
           MaterialPageRoute(
-            builder: (context) => SimpleQRScanner(
+            builder: (context) => TLQRScannerWidget(
               title: 'Scan QR Code',
-              onBarcodeDetected: (code) {
+              onQRDetected: (code) {
                 print('🔍 QR Code detected in alternative scanner: ${code.length > 20 ? "${code.substring(0, 20)}..." : code}');
                 // Cancel timeout timer when QR code detected
                 _scannerTimeoutTimer?.cancel();

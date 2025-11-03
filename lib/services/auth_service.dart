@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -958,7 +959,7 @@ class AuthService {
     }
   }
   
-  // Dekripsi data dari QR code
+  // Dekripsi data dari QR code dengan support untuk kompresi
   Map<String, dynamic>? decryptDataFromQR(String encryptedData) {
     try {
       debugPrint('Decrypting QR data, length: ${encryptedData.length}');
@@ -1006,6 +1007,27 @@ class AuthService {
           return null;
         }
         
+        // IMPLEMENTASI DEKOMPRESI: Check if data is compressed
+        if (decodedData.containsKey('compressed') && decodedData['compressed'] == true) {
+          debugPrint('🗜️ [DECOMPRESSION] Detected compressed QR data');
+          
+          if (!decodedData.containsKey('data')) {
+            debugPrint('❌ [DECOMPRESSION] Missing compressed data field');
+            return null;
+          }
+          
+          final compressedDataString = decodedData['data'] as String;
+          final decompressedData = _decompressJsonData(compressedDataString);
+          
+          if (decompressedData == null) {
+            debugPrint('❌ [DECOMPRESSION] Failed to decompress QR data');
+            return null;
+          }
+          
+          debugPrint('✅ [DECOMPRESSION] Successfully decompressed QR data');
+          decodedData = decompressedData;
+        }
+        
         // Debug log untuk memeriksa data yang didekripsi
         debugPrint('Decrypted QR data keys: ${decodedData.keys.toList()}');
         
@@ -1040,6 +1062,30 @@ class AuthService {
     } catch (e) {
       debugPrint('Error decrypting QR data: $e');
       return null;
+    }
+  }
+
+  // Decompress JSON data using gzip decompression
+  Map<String, dynamic>? _decompressJsonData(String compressedData) {
+    try {
+      // Try to decode as base64 first
+      final compressedBytes = base64.decode(compressedData);
+      
+      // Decompress using gzip
+      final decompressed = gzip.decode(compressedBytes);
+      final jsonString = utf8.decode(decompressed);
+      
+      // Parse JSON
+      return json.decode(jsonString) as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('❌ [DECOMPRESSION] Failed to decompress data: $e');
+      // Try to parse as regular JSON (fallback)
+      try {
+        return json.decode(compressedData) as Map<String, dynamic>;
+      } catch (e2) {
+        debugPrint('❌ [DECOMPRESSION] Failed to parse as JSON: $e2');
+        return null;
+      }
     }
   }
 }

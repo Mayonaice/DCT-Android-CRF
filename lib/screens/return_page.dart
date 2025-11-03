@@ -615,7 +615,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       print('Updated nominal $denom: $formatted');
     });
     
-    // Force UI rebuild to update Grand Total
+    // Trigger setState to update Grand Total display
     setState(() {});
     
     print('=== END DEBUG _calculateAndUpdateDetailReturn ===');
@@ -796,6 +796,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           cartridgeData: cartridgeData,
           detailReturnLembarControllers: _detailReturnLembarControllers,
           detailReturnNominalControllers: _detailReturnNominalControllers,
+          idTool: _idToolController.text, // Pass idTool parameter
         ),
       ),
     );
@@ -1932,19 +1933,24 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   String? get bagCode => selectedBagCode;
   String? get sealCode => selectedSealCode;
   
-  // NEW: Getter untuk mengetahui apakah semua field telah di-scan (bagCode dan sealCode tidak perlu scan karena dropdown)
+  // NEW: Getter untuk mengetahui apakah semua field telah di-scan
   bool get allFieldsScanned => 
     scannedFields['noCatridge'] == true &&
-    scannedFields['noSeal'] == true;
+    scannedFields['noSeal'] == true &&
+    scannedFields['catridgeFisik'] == true &&
+    scannedFields['bagCode'] == true &&
+    scannedFields['sealCode'] == true;
   
   // NEW: Getter untuk mode validasi
   bool get isValidationComplete => allFieldsScanned;
 
-  // NEW APPROACH: Use a map to track which fields have been scanned (removed bagCode and sealCode)
+  // NEW APPROACH: Use a map to track which fields have been scanned
   Map<String, bool> scannedFields = {
     'noCatridge': false,
     'noSeal': false,
     'catridgeFisik': false,
+    'bagCode': false,
+    'sealCode': false,
   };
 
   // Helper methods to get dropdown data from parent
@@ -2602,10 +2608,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             
             if (catridgeData['bagCode'] != null) {
               bagCodeController.text = catridgeData['bagCode'] ?? '';
+              selectedBagCode = catridgeData['bagCode'];
             }
             
             if (catridgeData['sealCodeReturn'] != null) {
               sealCodeReturnController.text = catridgeData['sealCodeReturn'] ?? '';
+              selectedSealCode = catridgeData['sealCodeReturn'];
             }
             
             // Set validation flags
@@ -2962,17 +2970,25 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       print('📊 Setting controller values...');
       noCatridgeController.text = widget.returnData!.catridgeCode;
       noSealController.text = widget.returnData!.catridgeSeal;
-      // Clear catridgeFisik field - it will be filled by scanning
-      catridgeFisikController.text = '';
       
-      // If bagCode is available, use it
-      if (widget.returnData!.bagCode != null) {
-        bagCodeController.text = widget.returnData!.bagCode!;
+      // FIXED: Only clear catridgeFisik field if it's empty - preserve user input
+      if (catridgeFisikController.text.isEmpty) {
+        catridgeFisikController.text = '';
+        print('📊 catridgeFisik field was empty, keeping it empty');
+      } else {
+        print('📊 catridgeFisik field has content, preserving: "${catridgeFisikController.text}"');
       }
       
-      // Set sealCodeReturn from API response
+      // If bagCode is available, use it and set dropdown selection
+      if (widget.returnData!.bagCode != null) {
+        bagCodeController.text = widget.returnData!.bagCode!;
+        selectedBagCode = widget.returnData!.bagCode!;
+      }
+      
+      // Set sealCodeReturn from API response and set dropdown selection
       if (widget.returnData!.sealCodeReturn != null) {
         sealCodeReturnController.text = widget.returnData!.sealCodeReturn!;
+        selectedSealCode = widget.returnData!.sealCodeReturn!;
       }
       
       print('📊 Controller values set: noCatridge="${noCatridgeController.text}", noSeal="${noSealController.text}", bagCode="${bagCodeController.text}", sealCode="${sealCodeReturnController.text}"');
@@ -2980,16 +2996,22 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       // Reset validation state for pre-filled fields
       isNoCatridgeValid = noCatridgeController.text.isNotEmpty;
       isNoSealValid = noSealController.text.isNotEmpty;
-      isCatridgeFisikValid = false; // This needs to be scanned
+      isCatridgeFisikValid = catridgeFisikController.text.isNotEmpty; // Update based on current content
       isBagCodeValid = bagCodeController.text.isNotEmpty;
       isSealCodeReturnValid = sealCodeReturnController.text.isNotEmpty;
       
-      print('📊 Validation flags set: isNoCatridgeValid=$isNoCatridgeValid, isNoSealValid=$isNoSealValid, isBagCodeValid=$isBagCodeValid, isSealCodeReturnValid=$isSealCodeReturnValid');
+      print('📊 Validation flags set: isNoCatridgeValid=$isNoCatridgeValid, isNoSealValid=$isNoSealValid, isCatridgeFisikValid=$isCatridgeFisikValid, isBagCodeValid=$isBagCodeValid, isSealCodeReturnValid=$isSealCodeReturnValid');
       
       // IMPORTANT: Reset all scanned fields flags because user needs to validate by scanning
+      // BUT preserve catridgeFisik scan state if field has content
       print('📊 BEFORE RESET: scannedFields = $scannedFields');
       scannedFields.forEach((key, value) {
-        scannedFields[key] = false;
+        if (key == 'catridgeFisik' && catridgeFisikController.text.isNotEmpty) {
+          // Preserve catridgeFisik scan state if field has content
+          print('📊 Preserving catridgeFisik scan state: ${scannedFields[key]}');
+        } else {
+          scannedFields[key] = false;
+        }
       });
       print('📊 AFTER RESET: scannedFields = $scannedFields');
       
@@ -3000,6 +3022,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       setState(() {
         _isValidating = false;
       });
+      
       print('📊 _loadReturnData() completed');
     } else {
       print('📊 No return data to load');
@@ -3028,13 +3051,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     formIsValid = formIsValid && 
                   scannedFields['noCatridge'] == true &&
                   scannedFields['noSeal'] == true &&
+                  scannedFields['catridgeFisik'] == true &&
                   scannedFields['bagCode'] == true &&
                   scannedFields['sealCode'] == true;
            
     // Log validation status for debugging
     if (!formIsValid) {
       print('Form validation failed. Scan status: $scannedFields');
-      print('Required fields scanned: noCatridge=${scannedFields['noCatridge']}, noSeal=${scannedFields['noSeal']}'); // bagCode and sealCode now use dropdown
+      print('Required fields scanned: noCatridge=${scannedFields['noCatridge']}, noSeal=${scannedFields['noSeal']}, catridgeFisik=${scannedFields['catridgeFisik']}, bagCode=${scannedFields['bagCode']}, sealCode=${scannedFields['sealCode']}');
     }
     
     return formIsValid;
@@ -3084,6 +3108,18 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         // Update the controller with scanned value
         setState(() {
           controller.text = scannedBarcode;
+          
+          // IMPORTANT: Mark field as scanned
+          scannedFields[fieldKey] = true;
+          print('🎯 SCANNER [${sectionId}]: SETTING scannedFields[$fieldKey] = true for scanned value: $scannedBarcode');
+          
+          // Reset manual mode for Catridge Fisik when scanned (like prepare_mode)
+          if (fieldKey == 'catridgeFisik') {
+            _catridgeFisikManualMode = false;
+            _catridgeFisikAlasanController.clear();
+            _catridgeFisikRemarkController.clear();
+            print('🔄 RESET: Catridge Fisik manual mode reset after scan');
+          }
         });
         
         // Trigger validation based on field type
@@ -3215,6 +3251,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                         setState(() {
                           selectedBagCode = value;
                           bagCodeController.text = value ?? '';
+                          // IMPORTANT: Mark bagCode as scanned when selected from dropdown
+                          if (value != null && value.isNotEmpty) {
+                            scannedFields['bagCode'] = true;
+                            print('🎯 DROPDOWN [${sectionId}]: SETTING scannedFields[bagCode] = true for value: $value');
+                          }
                         });
                         _validateBagCode();
                       },
@@ -3233,6 +3274,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                         setState(() {
                           selectedSealCode = value;
                           sealCodeReturnController.text = value ?? '';
+                          // IMPORTANT: Mark sealCode as scanned when selected from dropdown
+                          if (value != null && value.isNotEmpty) {
+                            scannedFields['sealCode'] = true;
+                            print('🎯 DROPDOWN [${sectionId}]: SETTING scannedFields[sealCode] = true for value: $value');
+                          }
                         });
                         _validateSealCodeReturn();
                       },
@@ -3416,9 +3462,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         // Open scanner for this field
         _openBarcodeScanner(label, controller, fieldKey);
       } : null,
-      onManualModeToggle: isScanned ? null : () {
-        _toggleFieldManualMode(fieldKey);
-      },
+      // Remove manual mode for No. Catridge and Seal Catridge (No. Seal) fields
+      onManualModeToggle: (fieldKey == 'noCatridge' || fieldKey == 'noSeal') ? null : 
+        (isScanned ? null : () {
+          _toggleFieldManualMode(fieldKey);
+        }),
     );
   }
   
@@ -3674,6 +3722,17 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           focusNode: focusNode,
                           readOnly: readOnly,
                           obscureText: isPassword,
+                          onChanged: (value) {
+                            // Trigger specific validation for this field
+                            if (fieldKey == 'catridgeFisik') {
+                              _validateCatridgeFisik();
+                            } else if (fieldKey == 'bagCode') {
+                              _validateBagCode();
+                            } else if (fieldKey == 'sealCode') {
+                              _validateSealCodeReturn();
+                            }
+                            // Note: noCatridge and noSeal are pre-filled and don't need validation
+                          },
                           style: TextStyle(
                             fontSize: isSmallScreen ? 12 : 14,
                             color: isValid ? Colors.black : Colors.red,
@@ -3691,7 +3750,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       ),
                       
                       // Manual mode icon - hanya tampil jika onManualModeToggle tidak null dan field belum di-scan
-                      if (onManualModeToggle != null && !isScanned)
+                      // Untuk Catridge Fisik, hanya tampil jika field sudah ada isinya
+                      if (onManualModeToggle != null && !isScanned && 
+                          (fieldKey != 'catridgeFisik' || controller.text.isNotEmpty))
                         Container(
                           width: isSmallScreen ? 28 : 32,
                           height: isSmallScreen ? 28 : 32,
@@ -4230,6 +4291,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _noCatridgeRemarkController.text = result['remark']!;
             _noCatridgeRemarkFilled = true;
             isNoCatridgeValid = noCatridgeController.text.isNotEmpty;
+            scannedFields['noCatridge'] = true; // Mark as scanned in manual mode
             break;
           case 'noSeal':
             _noSealManualMode = true;
@@ -4237,6 +4299,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _noSealRemarkController.text = result['remark']!;
             _noSealRemarkFilled = true;
             isNoSealValid = noSealController.text.isNotEmpty;
+            scannedFields['noSeal'] = true; // Mark as scanned in manual mode
             break;
           case 'bagCode':
             _bagCodeManualMode = true;
@@ -4244,6 +4307,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _bagCodeRemarkController.text = result['remark']!;
             _bagCodeRemarkFilled = true;
             isBagCodeValid = selectedBagCode != null && selectedBagCode!.isNotEmpty;
+            scannedFields['bagCode'] = true; // Mark as scanned in manual mode
             break;
           case 'sealCode':
             _sealCodeManualMode = true;
@@ -4251,6 +4315,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _sealCodeRemarkController.text = result['remark']!;
             _sealCodeRemarkFilled = true;
             isSealCodeValid = selectedSealCode != null && selectedSealCode!.isNotEmpty;
+            scannedFields['sealCode'] = true; // Mark as scanned in manual mode
             break;
           case 'catridgeFisik':
             _catridgeFisikManualMode = true;
@@ -4258,6 +4323,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _catridgeFisikRemarkController.text = result['remark']!;
             _catridgeFisikRemarkFilled = true;
             isCatridgeFisikValid = catridgeFisikController.text.isNotEmpty;
+            scannedFields['catridgeFisik'] = true; // Mark as scanned in manual mode
             break;
         }
       });

@@ -13,6 +13,7 @@ class ReturnSummaryPage extends StatefulWidget {
   final List<Map<String, dynamic>> cartridgeData;
   final Map<String, TextEditingController> detailReturnLembarControllers;
   final Map<String, TextEditingController> detailReturnNominalControllers;
+  final String idTool; // Add idTool parameter
 
   const ReturnSummaryPage({
     Key? key,
@@ -20,6 +21,7 @@ class ReturnSummaryPage extends StatefulWidget {
     required this.cartridgeData,
     required this.detailReturnLembarControllers,
     required this.detailReturnNominalControllers,
+    required this.idTool, // Add idTool parameter
   }) : super(key: key);
 
   @override
@@ -65,33 +67,49 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
     super.dispose();
   }
 
-  List<CatridgeQRData> _prepareReturnQRData() {
-    print('🔧 [QR_DATA] Preparing return QR data...');
-    List<CatridgeQRData> qrDataList = [];
+  List<ReturnCatridgeQRData> _prepareReturnQRData() {
+    print('🔧 [QR_DATA] Preparing return QR data for RETURN...');
+    List<ReturnCatridgeQRData> qrDataList = [];
     
     for (var cartridge in widget.cartridgeData) {
-      final qrData = CatridgeQRData(
-        idTool: widget.returnData?.header?.atmCode ?? '0',
-        bagCode: cartridge['bagCode']?.toString() ?? '',
-        catridgeCode: cartridge['noCatridge']?.toString() ?? '',
-        sealCode: cartridge['sealCode']?.toString() ?? '',
-        catridgeSeal: cartridge['noSeal']?.toString() ?? '',
-        denomCode: cartridge['catridgeFisik']?.toString() ?? '',
-        qty: cartridge['qty']?.toString() ?? '0',
-        userInput: 'RETURN',
-        sealReturn: cartridge['sealReturn']?.toString() ?? '',
-        typeCatridgeTrx: 'RETURN',
-        tableCode: 'RETURN',
-        warehouseCode: '',
-        operatorId: '',
-        operatorName: '',
+      final qrData = ReturnCatridgeQRData(
+        IdTool: widget.returnData?.header?.atmCode ?? '0',
+        BagCode: cartridge['bagCode']?.toString() ?? '',
+        CatridgeCode: cartridge['noCatridge']?.toString() ?? '',
+        SealCode: cartridge['sealCode']?.toString() ?? '',
+        CatridgeSeal: cartridge['noSeal']?.toString() ?? '',
+        DenomCode: cartridge['catridgeFisik']?.toString() ?? '',
+        Qty: cartridge['qty']?.toString() ?? '0',
+        UserInput: '925712095', // Sesuai contoh yang diberikan
+        IsBalikKaset: cartridge['isBalikKaset']?.toString() ?? 'false',
+        CatridgeCodeOld: cartridge['catridgeCodeOld']?.toString() ?? '',
+        ScanCatStatus: '',
+        ScanCatStatusRemark: '',
+        ScanSealStatus: '',
+        ScanSealStatusRemark: '',
       );
       qrDataList.add(qrData);
       print('   - Added return cartridge: ${cartridge['noCatridge']}');
     }
     
-    print('✅ [QR_DATA] Prepared ${qrDataList.length} return QR data items');
+    print('✅ [QR_DATA] Prepared ${qrDataList.length} return catridge QR data items');
     return qrDataList;
+  }
+
+  ReturnDetailsQRData _prepareReturnDetailsQRData() {
+    print('🔧 [QR_DETAILS] Preparing details QR data for RETURN...');
+    
+    final details = ReturnDetailsQRData(
+      wsid: widget.returnData?.header?.atmCode ?? '',
+      bank: widget.returnData?.header?.codeBank ?? widget.returnData?.header?.namaBank ?? '',
+      lokasi: widget.returnData?.header?.lokasi ?? '',
+      jenisMesin: widget.returnData?.header?.jnsMesin ?? '',
+      atmType: widget.returnData?.header?.idTypeAtm ?? widget.returnData?.header?.typeATM ?? '',
+      tglUnload: widget.returnData?.header?.timeSTReturn ?? '',
+    );
+    
+    print('✅ [QR_DETAILS] Prepared return details: WSID=${details.wsid}, Bank=${details.bank}, Lokasi=${details.lokasi}');
+    return details;
   }
 
   Future<void> _validateTLAndSubmit() async {
@@ -110,8 +128,15 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
       );
       
       if (tlResponse.success) {
-        // Submit return data
-        await _submitReturnData();
+        try {
+          // Update Planning RTN first
+          await _updatePlanningRTN();
+          
+          // Then submit return data
+          await _submitReturnData();
+        } catch (e) {
+          await _showErrorDialog(e.toString());
+        }
       } else {
         await _showErrorDialog(tlResponse.message ?? 'Validasi TL gagal');
       }
@@ -122,22 +147,161 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
     }
   }
 
-  Future<void> _submitReturnData() async {
+  Future<void> _updatePlanningRTN() async {
     try {
-      // Implementation for submitting return data
-      // This should match the existing submit logic from return_page.dart
+      print('Updating Planning RTN...');
       
-      await _showSuccessDialog('Data berhasil disubmit!');
+      // Get idTool from widget parameter
+      String idTool = widget.idTool;
       
-      // Navigate back to previous screens
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      if (idTool.isEmpty) {
+        throw Exception('ID Tool tidak ditemukan');
+      }
+      
+      final updateParams = {
+        "idTool": idTool,
+        "CashierReturnCode": _userData?['nik'] ?? '',
+        "TableReturnCode": _userData?['tableCode'] ?? '',
+        "DateStartReturn": DateTime.now().toIso8601String(),
+        "WarehouseCode": _userData?['warehouseCode'] ?? 'Cideng',
+        "UserATMReturn": _tlNikController.text,
+        "SPVBARusak": _tlNikController.text,
+        "IsManual": "N"
+      };
+      
+      final updateResponse = await _apiService.updatePlanningRTN(updateParams);
+      
+      if (!updateResponse.success) {
+        throw Exception('Gagal update planning RTN: ${updateResponse.message}');
+      }
+      
+      print('Planning RTN updated successfully!');
     } catch (e) {
+      throw Exception('Error update planning RTN: ${e.toString()}');
+    }
+  }
+
+  Future<void> _submitReturnData() async {
+    if (widget.returnData == null || widget.cartridgeData.isEmpty) {
+      await _showErrorDialog('Tidak ada data untuk disubmit');
+      return;
+    }
+
+    try {
+      // Get NIK from userData with proper error checking
+      String userNIK = '';
+      if (_userData != null) {
+        // Try all possible keys for NIK (case insensitive)
+        if (_userData!.containsKey('nik')) {
+          userNIK = _userData!['nik'].toString();
+        } else if (_userData!.containsKey('NIK')) {
+          userNIK = _userData!['NIK'].toString();
+        } else if (_userData!.containsKey('userId')) {
+          userNIK = _userData!['userId'].toString();
+        } else if (_userData!.containsKey('userID')) {
+          userNIK = _userData!['userID'].toString();
+        } else if (_userData!.containsKey('id')) {
+          userNIK = _userData!['id'].toString();
+        } else if (_userData!.containsKey('ID')) {
+          userNIK = _userData!['ID'].toString();
+        }
+        
+        // Log the NIK value for debugging
+        print('DEBUG - Using UserInput NIK: $userNIK');
+        print('DEBUG - Available userData keys: ${_userData!.keys.toList()}');
+        print('DEBUG - Complete userData: $_userData');
+      } else {
+        print('ERROR - userData is null, cannot get NIK');
+      }
+      
+      // If NIK is still empty, show error
+      if (userNIK.isEmpty) {
+        await _showErrorDialog('NIK pengguna tidak ditemukan. Silakan login ulang.');
+        return;
+      }
+      
+      // Get idTool from widget parameter
+      String idTool = widget.idTool;
+      if (idTool.isEmpty) {
+        await _showErrorDialog('ID Tool tidak ditemukan');
+        return;
+      }
+      
+      bool allSuccess = true;
+      List<String> errorMessages = [];
+      
+      // Submit data for each cartridge section
+      for (int i = 0; i < widget.cartridgeData.length; i++) {
+        final cartridgeData = widget.cartridgeData[i];
+        
+        // Log the parameters being sent to the API
+        print('DEBUG - Sending to API: idTool=$idTool, userInput=$userNIK');
+        print('DEBUG - Cartridge data: $cartridgeData');
+        
+        try {
+          // Implementasi parameter sesuai ketentuan
+          final response = await _apiService.insertReturnAtmCatridge(
+            // field Id Tool diisi ke IdTool
+            idTool: idTool,
+            // field No Bag diisi ke BagCode
+            bagCode: cartridgeData['bagCode'] ?? '',
+            // field No Catridge diisi ke CatridgeCode
+            catridgeCode: cartridgeData['noCatridge'] ?? '',
+            // field Seal Code diisi ke SealCode
+            sealCode: cartridgeData['sealCode'] ?? '',
+            // field No Seal diisi ke CatridgeSeal
+            catridgeSeal: cartridgeData['sealCatridge'] ?? '',
+            // DenomCode diisi TEST
+            denomCode: 'TEST',
+            // qty default diisi 0
+            qty: '0',
+            // nik saat login yang tersimpan akan mengisi ke UserInput
+            userInput: userNIK,
+            // N untuk isBalikKaset
+            isBalikKaset: 'N',
+            // CatridgeCodeOld diisi TEST
+            catridgeCodeOld: 'TEST',
+            // Parameter scan status
+            scanCatStatus: "SCAN",
+            scanCatStatusRemark: "Scanned from mobile app",
+            scanSealStatus: "SCAN",
+            scanSealStatusRemark: "Scanned from mobile app",
+          );
+          
+          if (!response.success) {
+            allSuccess = false;
+            errorMessages.add('Cartridge ${i + 1}: ${response.message}');
+            print('ERROR - API call failed for cartridge ${i + 1}: ${response.message}');
+          } else {
+            print('SUCCESS - API call successful for cartridge ${i + 1}');
+          }
+        } catch (e) {
+          allSuccess = false;
+          errorMessages.add('Cartridge ${i + 1}: ${e.toString()}');
+          print('EXCEPTION - API call exception for cartridge ${i + 1}: $e');
+        }
+      }
+      
+      if (allSuccess) {
+        // Tampilkan dialog sukses
+        await _showSuccessDialog('Data return berhasil disubmit!');
+        
+        // Navigate back to previous screens
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } else {
+        // Tampilkan error untuk yang gagal
+        String errorMessage = 'Beberapa data gagal disubmit:\n${errorMessages.join('\n')}';
+        await _showErrorDialog(errorMessage);
+      }
+      
+    } catch (e) {
+      print('CRITICAL ERROR - Submit failed: $e');
       await _showErrorDialog('Error submit data: ${e.toString()}');
     }
   }
 
   Future<void> _showErrorDialog(String message) async {
-    return CustomModals.showSuccessModal(
+    return CustomModals.showFailedModal(
       context: context,
       message: message,
     );
@@ -485,8 +649,9 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
                 QRCodeGeneratorWidget(
                    action: 'RETURN',
                    idTool: widget.returnData?.header?.atmCode ?? '0',
-                   catridgeData: _prepareReturnQRData(),
-                 ),
+                   returnCatridgeData: _prepareReturnQRData(),
+                   returnDetails: _prepareReturnDetailsQRData(),
+                ),
               ],
             ),
           ),

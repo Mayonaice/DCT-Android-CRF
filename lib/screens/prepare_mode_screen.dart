@@ -1185,60 +1185,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
       // NOTE: No. Catridge (index 0) and Seal Catridge (index 1) listeners are already handled 
       // in focus listeners above to prevent duplicate API calls
       
-      // Add listener for Bag Code (index 2) with duplicate validation
+      // Add listener for Bag Code (index 2) without duplicate validation
       _divertControllers[i][2].addListener(() {
         String value = _divertControllers[i][2].text.trim();
-        if (value.isNotEmpty) {
-          String fieldKey = 'divert_${i}_bag';
-          String fieldName = 'Bag Code (Divert ${i + 1})';
-          // Skip duplicate validation if modal is already showing to prevent double modals
-          if (!_isDuplicateModalShowing && !_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-            _divertControllers[i][2].clear();
-            return;
-          } else if (_isDuplicateModalShowing && _isDuplicateValue(value, fieldKey)) {
-            // Clear the field if duplicate found and modal is already showing
-            _divertControllers[i][2].clear();
-            return;
-          }
-        }
         _onDivertFieldChanged(i, 'bag_code', value);
       });
       
-      // Add listener for Seal Code (index 3) with duplicate validation
+      // Add listener for Seal Code (index 3) without duplicate validation
       _divertControllers[i][3].addListener(() {
         String value = _divertControllers[i][3].text.trim();
-        if (value.isNotEmpty) {
-          String fieldKey = 'divert_${i}_seal_code';
-          String fieldName = 'Seal Code (Divert ${i + 1})';
-          // Skip duplicate validation if modal is already showing to prevent double modals
-          if (!_isDuplicateModalShowing && !_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-            _divertControllers[i][3].clear();
-            return;
-          } else if (_isDuplicateModalShowing && _isDuplicateValue(value, fieldKey)) {
-            // Clear the field if duplicate found and modal is already showing
-            _divertControllers[i][3].clear();
-            return;
-          }
-        }
         _onDivertFieldChanged(i, 'seal_code', value);
       });
       
-      // Add listener for Seal Code Return (index 4) with duplicate validation
+      // Add listener for Seal Code Return (index 4) without duplicate validation
       _divertControllers[i][4].addListener(() {
         String value = _divertControllers[i][4].text.trim();
-        if (value.isNotEmpty) {
-          String fieldKey = 'divert_${i}_seal_return';
-          String fieldName = 'Seal Code Return (Divert ${i + 1})';
-          // Skip duplicate validation if modal is already showing to prevent double modals
-          if (!_isDuplicateModalShowing && !_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-            _divertControllers[i][4].clear();
-            return;
-          } else if (_isDuplicateModalShowing && _isDuplicateValue(value, fieldKey)) {
-            // Clear the field if duplicate found and modal is already showing
-            _divertControllers[i][4].clear();
-            return;
-          }
-        }
         _onDivertFieldChanged(i, 'seal_code_return', value);
       });
     }
@@ -1247,45 +1208,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
     // NOTE: No. Catridge (index 0) and Seal Catridge (index 1) listeners are already handled 
     // in focus listeners above to prevent duplicate API calls
     
-    // Bag Code (index 2) with duplicate validation
+    // Bag Code (index 2) without duplicate validation
     _pocketControllers[2].addListener(() {
       String value = _pocketControllers[2].text.trim();
-      if (value.isNotEmpty) {
-        String fieldKey = 'pocket_0_bag';
-        String fieldName = 'Bag Code (Pocket)';
-        if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-          _pocketControllers[2].clear();
-          return;
-        }
-      }
       _onPocketFieldChanged('bag_code', value);
     });
     
-    // Seal Code (index 3) with duplicate validation
+    // Seal Code (index 3) without duplicate validation
     _pocketControllers[3].addListener(() {
       String value = _pocketControllers[3].text.trim();
-      if (value.isNotEmpty) {
-        String fieldKey = 'pocket_0_seal_code';
-        String fieldName = 'Seal Code (Pocket)';
-        if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-          _pocketControllers[3].clear();
-          return;
-        }
-      }
       _onPocketFieldChanged('seal_code', value);
     });
     
-    // Seal Code Return (index 4) with duplicate validation
+    // Seal Code Return (index 4) without duplicate validation
     _pocketControllers[4].addListener(() {
       String value = _pocketControllers[4].text.trim();
-      if (value.isNotEmpty) {
-        String fieldKey = 'pocket_0_seal_return';
-        String fieldName = 'Seal Code Return (Pocket)';
-        if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-          _pocketControllers[4].clear();
-          return;
-        }
-      }
       _onPocketFieldChanged('seal_code_return', value);
     });
   }
@@ -1509,49 +1446,25 @@ class _PrepareModePageState extends State<PrepareModePage> {
         
         // Add listeners for other Catridge fields with duplicate validation
         if (_catridgeControllers[i].length > 2) {
-          // Bag Code (index 2) with duplicate validation
+          // Bag Code (index 2) without duplicate validation
           _catridgeControllers[i][2].addListener(() {
             String value = _catridgeControllers[i][2].text.trim();
-            if (value.isNotEmpty) {
-              String fieldKey = 'catridge_${i}_bag';
-              String fieldName = 'Bag Code (Catridge ${i + 1})';
-              if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-                _catridgeControllers[i][2].clear();
-                return;
-              }
-            }
             _onCatridgeFieldChanged(i, 2);
           });
         }
         
         if (_catridgeControllers[i].length > 3) {
-          // Seal Code (index 3) with duplicate validation
+          // Seal Code (index 3) without duplicate validation
           _catridgeControllers[i][3].addListener(() {
             String value = _catridgeControllers[i][3].text.trim();
-            if (value.isNotEmpty) {
-              String fieldKey = 'catridge_${i}_seal_code';
-              String fieldName = 'Seal Code (Catridge ${i + 1})';
-              if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-                _catridgeControllers[i][3].clear();
-                return;
-              }
-            }
             _onCatridgeFieldChanged(i, 3);
           });
         }
         
         if (_catridgeControllers[i].length > 4) {
-          // Seal Code Return (index 4) with duplicate validation
+          // Seal Code Return (index 4) without duplicate validation
           _catridgeControllers[i][4].addListener(() {
             String value = _catridgeControllers[i][4].text.trim();
-            if (value.isNotEmpty) {
-              String fieldKey = 'catridge_${i}_seal_return';
-              String fieldName = 'Seal Code Return (Catridge ${i + 1})';
-              if (!_validateFieldForDuplicates(value, fieldKey, fieldName)) {
-                _catridgeControllers[i][4].clear();
-                return;
-              }
-            }
             _onCatridgeFieldChanged(i, 4);
           });
         }
@@ -1962,11 +1875,12 @@ class _PrepareModePageState extends State<PrepareModePage> {
           sealReturn: fieldName == 'sealReturn' ? value : currentItem.sealReturn,
         );
         
-        // Also update corresponding item in _detailCatridgeItems
-        int detailIndex = _detailCatridgeItems.indexWhere((item) => item.index == currentItem.index);
-        if (detailIndex != -1) {
-          _detailCatridgeItems[detailIndex] = DetailCatridgeItem(
-            index: currentItem.index,
+        // GENIUS LOGIC: Also update corresponding item in _detailCatridgeItems using the correct index mapping
+        int detailIndex = 100 + divertIndex; // Divert items use index 100 + sectionIndex
+        int existingItemIndex = _detailCatridgeItems.indexWhere((item) => item.index == detailIndex);
+        if (existingItemIndex != -1) {
+          _detailCatridgeItems[existingItemIndex] = DetailCatridgeItem(
+            index: detailIndex,
             noCatridge: currentItem.noCatridge,
             sealCatridge: currentItem.sealCatridge,
             value: currentItem.value,
@@ -1976,6 +1890,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
             sealCode: fieldName == 'sealCode' ? value : currentItem.sealCode,
             sealReturn: fieldName == 'sealReturn' ? value : currentItem.sealReturn,
           );
+          print('🔄 DIVERT GENIUS: Updated existing item in _detailCatridgeItems at index $existingItemIndex with $fieldName: $value');
         }
       } else {
         // Create new item if it doesn't exist
@@ -2001,10 +1916,17 @@ class _PrepareModePageState extends State<PrepareModePage> {
         
         _divertDetailItems[divertIndex] = newItem;
         
-        // Also add to _detailCatridgeItems
-        _detailCatridgeItems.add(newItem);
-        
-        print('🔄 DIVERT FIELD: Created new divert item for section $divertIndex with $fieldName: $value');
+        // GENIUS LOGIC: Check if item already exists in _detailCatridgeItems before adding
+        int existingItemIndex = _detailCatridgeItems.indexWhere((item) => item.index == itemIndex);
+        if (existingItemIndex != -1) {
+          // Update existing item
+          _detailCatridgeItems[existingItemIndex] = newItem;
+          print('🔄 DIVERT GENIUS: Updated existing item in _detailCatridgeItems for section $divertIndex with $fieldName: $value');
+        } else {
+          // Add new item
+          _detailCatridgeItems.add(newItem);
+          print('🔄 DIVERT GENIUS: Created new divert item for section $divertIndex with $fieldName: $value');
+        }
       }
     });
   }
@@ -2759,6 +2681,17 @@ class _PrepareModePageState extends State<PrepareModePage> {
           }
         }
         
+        // Get existing values from controllers to preserve user input
+        String existingBagCode = '';
+        String existingSealCode = '';
+        String existingSealReturn = '';
+        
+        if (_catridgeControllers.length > catridgeIndex && _catridgeControllers[catridgeIndex].length >= 5) {
+          existingBagCode = _catridgeControllers[catridgeIndex][2].text.trim();
+          existingSealCode = _catridgeControllers[catridgeIndex][3].text.trim();
+          existingSealReturn = _catridgeControllers[catridgeIndex][4].text.trim();
+        }
+        
         // Create initial detail item
         final detailItem = DetailCatridgeItem(
           index: catridgeIndex + 1,
@@ -2767,9 +2700,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
           value: actualStandValue,
           total: formattedTotal,
           denom: denomText,
-          bagCode: '',
-          sealCode: '',
-          sealReturn: '',
+          bagCode: existingBagCode,
+          sealCode: existingSealCode,
+          sealReturn: existingSealReturn,
         );
         
         setState(() {
@@ -3436,8 +3369,15 @@ class _PrepareModePageState extends State<PrepareModePage> {
       bool isMainCatridge = item.index < 100;
       bool valueValid = isMainCatridge ? item.value > 0 : item.value >= 0;
       
-      if (item.noCatridge.isEmpty || item.sealCatridge.isEmpty || !valueValid) {
+      // BYPASS: Skip validation for noCatridge and sealCatridge ONLY if isNoBag is true (NOT for isEmpty)
+      bool skipBagSealValidation = (_prepareData?.isNoBag ?? false);
+      
+      if (!skipBagSealValidation && (item.noCatridge.isEmpty || item.sealCatridge.isEmpty || !valueValid)) {
         print('🔍 VALIDATION: Item is incomplete - noCatridge empty: ${item.noCatridge.isEmpty}, sealCatridge empty: ${item.sealCatridge.isEmpty}, value invalid: ${!valueValid} (isMain: $isMainCatridge, value: ${item.value})');
+        return false;
+      } else if (skipBagSealValidation && !valueValid) {
+        // When bypassing bag/seal validation due to isNoBag, still check value validity
+        print('🔍 VALIDATION: Item value invalid (isNoBag bypass mode) - value invalid: ${!valueValid} (isMain: $isMainCatridge, value: ${item.value})');
         return false;
       }
     }
@@ -3481,17 +3421,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
       }
       
       // Check required fields
-      if (item.noCatridge.isEmpty) {
-        return 'Catridge ${i + 1}: Nomor catridge harus diisi.';
-      }
-      
-      if (item.sealCatridge.isEmpty) {
-        return 'Catridge ${i + 1} (${item.noCatridge}): Seal catridge harus diisi.';
+      // BYPASS: Skip No. Catridge and Seal Catridge validation if isNoBag OR isEmpty is true
+      if (!(_prepareData?.isNoBag ?? false) && !(_prepareData?.isEmpty ?? false)) {
+        if (item.noCatridge.isEmpty) {
+          return 'Catridge ${i + 1}: Nomor catridge harus diisi.';
+        }
+        
+        if (item.sealCatridge.isEmpty) {
+          return 'Catridge ${i + 1} (${item.noCatridge}): Seal catridge harus diisi.';
+        }
       }
       
       
       // NEW: Validate Seal Code Return for each catridge
-      if (i < _catridgeControllers.length) {
+      // BYPASS: Skip Seal Code Return validation ONLY if isNoBag is true (NOT for isEmpty)
+      if (i < _catridgeControllers.length && !(_prepareData?.isNoBag ?? false)) {
         String sealReturn = _catridgeControllers[i][4].text.trim(); // Seal Code Return field
         if (sealReturn.isEmpty) {
           return 'Catridge ${i + 1} (${item.noCatridge}): Seal Code Return harus diisi.';
@@ -3571,9 +3515,19 @@ class _PrepareModePageState extends State<PrepareModePage> {
     }
 
     // NEW: Validate that all catridge sections are completely filled (5 columns each)
+    // BYPASS: Skip No. Catridge and Seal Catridge validation ONLY if isNoBag is true (NOT for isEmpty)
+    // BYPASS: Skip Bag Code, Seal Code, and Seal Code Return validation if isNoBag is true
     for (int i = 0; i < _catridgeControllers.length; i++) {
       bool isCompletelyFilled = true;
       for (int j = 0; j < _catridgeControllers[i].length; j++) {
+        // Skip validation for No. Catridge (index 0) and Seal Catridge (index 1) ONLY if isNoBag is true (NOT for isEmpty)
+        if ((_prepareData?.isNoBag ?? false) && (j == 0 || j == 1)) {
+          continue;
+        }
+        // Skip validation for Bag Code (index 2), Seal Code (index 3), and Seal Code Return (index 4) if isNoBag is true
+        if ((_prepareData?.isNoBag ?? false) && (j == 2 || j == 3 || j == 4)) {
+          continue;
+        }
         if (_catridgeControllers[i][j].text.trim().isEmpty) {
           isCompletelyFilled = false;
           break;
@@ -3585,11 +3539,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
     }
     
     // NEW: Validate that Divert 1 section is completely filled (5 columns)
+    // BYPASS: Skip No. Catridge and Seal Catridge validation ONLY if isNoBag is true (NOT for isEmpty)
+    // BYPASS: Skip Bag Code, Seal Code, and Seal Code Return validation if isNoBag is true
     bool isDivert1Complete = true;
     
     // Check only Divert 1 section (first divert section with 5 controllers)
     if (_divertControllers.isNotEmpty && _divertControllers[0].length >= 5) {
       for (int j = 0; j < _divertControllers[0].length; j++) {
+        // Skip validation for No. Catridge (index 0) and Seal Catridge (index 1) ONLY if isNoBag is true (NOT for isEmpty)
+        if ((_prepareData?.isNoBag ?? false) && (j == 0 || j == 1)) {
+          continue;
+        }
+        // Skip validation for Bag Code (index 2), Seal Code (index 3), and Seal Code Return (index 4) if isNoBag is true
+        if ((_prepareData?.isNoBag ?? false) && (j == 2 || j == 3 || j == 4)) {
+          continue;
+        }
         String value = _divertControllers[0][j].text.trim();
         if (value.isEmpty) {
           isDivert1Complete = false;
@@ -3605,27 +3569,31 @@ class _PrepareModePageState extends State<PrepareModePage> {
     }
     
     // Validate Seal Code Return for sections that have data
-    for (int i = 0; i < _divertControllers.length; i++) {
-      // Check if any controller in this divert section has data
-      bool hasDivertSectionData = false;
-      for (int j = 0; j < _divertControllers[i].length; j++) {
-        if (_divertControllers[i][j].text.trim().isNotEmpty) {
-          hasDivertSectionData = true;
-          break;
+    // BYPASS: Skip Seal Code Return validation if isNoBag is true
+    if (!(_prepareData?.isNoBag ?? false)) {
+      for (int i = 0; i < _divertControllers.length; i++) {
+        // Check if any controller in this divert section has data
+        bool hasDivertSectionData = false;
+        for (int j = 0; j < _divertControllers[i].length; j++) {
+          if (_divertControllers[i][j].text.trim().isNotEmpty) {
+            hasDivertSectionData = true;
+            break;
+          }
         }
-      }
-      
-      // If this divert section has data, validate Seal Code Return
-      if (hasDivertSectionData) {
-        String sealReturn = _divertControllers[i][4].text.trim(); // Seal Code Return field
-        if (sealReturn.isEmpty) {
-          return 'Divert ${i + 1}: Seal Code Return harus diisi.';
+        
+        // If this divert section has data, validate Seal Code Return
+        if (hasDivertSectionData) {
+          String sealReturn = _divertControllers[i][4].text.trim(); // Seal Code Return field
+          if (sealReturn.isEmpty) {
+            return 'Divert ${i + 1}: Seal Code Return harus diisi.';
+          }
         }
       }
     }
     
     // NEW: Validate Pocket Seal Code Return if Pocket has data
-    if (_pocketDetailItem != null) {
+    // BYPASS: Skip Seal Code Return validation ONLY if isNoBag is true (NOT for isEmpty)
+    if (_pocketDetailItem != null && !(_prepareData?.isNoBag ?? false)) {
       String sealReturn = _pocketControllers[4].text.trim(); // Seal Code Return field
       if (sealReturn.isEmpty) {
         return 'Pocket: Seal Code Return harus diisi.';
@@ -4150,12 +4118,23 @@ class _PrepareModePageState extends State<PrepareModePage> {
         if (hasData) {
           String sealReturn = _divertControllers[i][4].text.trim();
           // sealReturn validation already done in _getValidationMessage
-          bool isManualMode = _divertManualMode[i];
-          String? alasan = isManualMode 
-              ? _divertAlasanControllers[i].text.trim() 
+          
+          // Get No. Catridge manual mode data for Divert
+          bool isNoManualMode = i < _divertNoManualMode.length && _divertNoManualMode[i];
+          String? noAlasan = isNoManualMode && i < _divertNoAlasanControllers.length
+              ? _divertNoAlasanControllers[i].text.trim() 
               : null;
-          String? remark = isManualMode 
-              ? _divertRemarkControllers[i].text.trim() 
+          String? noRemark = isNoManualMode && i < _divertNoRemarkControllers.length
+              ? _divertNoRemarkControllers[i].text.trim() 
+              : null;
+          
+          // Get Seal Catridge manual mode data for Divert
+          bool isSealManualMode = i < _divertSealManualMode.length && _divertSealManualMode[i];
+          String? sealAlasan = isSealManualMode && i < _divertSealAlasanControllers.length
+              ? _divertSealAlasanControllers[i].text.trim() 
+              : null;
+          String? sealRemark = isSealManualMode && i < _divertSealRemarkControllers.length
+              ? _divertSealRemarkControllers[i].text.trim() 
               : null;
           
           await insertCatridge(
@@ -4166,10 +4145,10 @@ class _PrepareModePageState extends State<PrepareModePage> {
             sealReturn: sealReturn,
             typeCatridgeTrx: 'D',
             section: 'Divert ${i + 1}',
-            scanCatStatus: alasan?.isNotEmpty == true ? alasan : null,
-            scanCatStatusRemark: remark?.isNotEmpty == true ? remark : null,
-            scanSealStatus: null,
-            scanSealStatusRemark: null,
+            scanCatStatus: noAlasan?.isNotEmpty == true ? noAlasan : null,
+            scanCatStatusRemark: noRemark?.isNotEmpty == true ? noRemark : null,
+            scanSealStatus: sealAlasan?.isNotEmpty == true ? sealAlasan : null,
+            scanSealStatusRemark: sealRemark?.isNotEmpty == true ? sealRemark : null,
           );
         }
       }
@@ -4178,12 +4157,23 @@ class _PrepareModePageState extends State<PrepareModePage> {
       if (_pocketDetailItem != null) {
         String sealReturn = _pocketControllers[4].text.trim();
         // sealReturn validation already done in _getValidationMessage
-        bool isManualMode = _pocketManualMode;
-        String? alasan = isManualMode 
-            ? _pocketAlasanController.text.trim() 
+        
+        // Get No. Catridge manual mode data for Pocket
+        bool isNoManualMode = _pocketNoManualMode;
+        String? noAlasan = isNoManualMode 
+            ? _pocketNoAlasanController.text.trim() 
             : null;
-        String? remark = isManualMode 
-            ? _pocketRemarkController.text.trim() 
+        String? noRemark = isNoManualMode 
+            ? _pocketNoRemarkController.text.trim() 
+            : null;
+        
+        // Get Seal Catridge manual mode data for Pocket
+        bool isSealManualMode = _pocketSealManualMode;
+        String? sealAlasan = isSealManualMode 
+            ? _pocketSealAlasanController.text.trim() 
+            : null;
+        String? sealRemark = isSealManualMode 
+            ? _pocketSealRemarkController.text.trim() 
             : null;
         
         await insertCatridge(
@@ -4194,10 +4184,10 @@ class _PrepareModePageState extends State<PrepareModePage> {
           sealReturn: sealReturn,
           typeCatridgeTrx: 'P',
           section: 'Pocket',
-          scanCatStatus: alasan?.isNotEmpty == true ? alasan : null,
-          scanCatStatusRemark: remark?.isNotEmpty == true ? remark : null,
-          scanSealStatus: null,
-          scanSealStatusRemark: null,
+          scanCatStatus: noAlasan?.isNotEmpty == true ? noAlasan : null,
+          scanCatStatusRemark: noRemark?.isNotEmpty == true ? noRemark : null,
+          scanSealStatus: sealAlasan?.isNotEmpty == true ? sealAlasan : null,
+          scanSealStatusRemark: sealRemark?.isNotEmpty == true ? sealRemark : null,
         );
       }
 
@@ -4519,7 +4509,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                             child: _buildFormField(
                               label: 'ID CRF :',
                               controller: _idCRFController,
-                              enableScan: false,
+                              enableScan: true,
                               isSmallScreen: isSmallScreen,
                               hintText: 'Masukkan ID CRF',
                               focusNode: _idCRFFocusNode,
@@ -4543,13 +4533,14 @@ class _PrepareModePageState extends State<PrepareModePage> {
                           ),
                           
                           // TANPA BAG label - show when isNoBag is true
-                          if (_prepareData?.isNoBag == true) ...[
+                          // PENGOSONGAN label - show when isEmpty is true
+                          if (_prepareData?.isNoBag == true || _prepareData?.isEmpty == true) ...[
                             const SizedBox(width: 15),
                             Padding(
                               padding: const EdgeInsets.only(top: 25), // Align with form field
-                              child: const Text(
-                                'TANPA BAG',
-                                style: TextStyle(
+                              child: Text(
+                                _prepareData?.isEmpty == true ? 'PENGOSONGAN' : 'TANPA BAG',
+                                style: const TextStyle(
                                   color: Colors.red,
                                   fontSize: 20,
                                   fontWeight: FontWeight.w900, // Extra bold
@@ -5179,7 +5170,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: controllers[0],
                       focusNode: (index - 1 < _catridgeFocusNodes.length) ? _catridgeFocusNodes[index - 1][0] : null,
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(), // Read-only if ID CRF is not valid
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isEmpty == true), // Catridge section: tetap disabled ketika isEmpty == true
                       catridgeIndex: 100 + (index - 1), // Pass catridge index with offset 100
                       onChanged: (value) {
                         // Only trigger manual mode when user actually types
@@ -5196,7 +5187,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: controllers[1],
                       focusNode: (index - 1 < _catridgeFocusNodes.length) ? _catridgeFocusNodes[index - 1][1] : null,
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(), // Read-only if ID CRF is not valid
+                      isReadOnly: !_isIdCRFValid() || (_prepareData?.isEmpty == true), // Catridge section: tetap disabled ketika isEmpty == true
                       catridgeIndex: 100 + (index - 1), // Pass catridge index with offset 100
                       onChanged: (value) {
                         // Only trigger manual mode when user actually types
@@ -5916,7 +5907,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
             child: QRCodeGeneratorWidget(
               action: 'PREPARE',
               idTool: _prepareData?.id.toString() ?? _idCRFController.text,
-              catridgeData: _prepareCatridgeQRData(),
+              prepareCatridgeData: _prepareCatridgeQRData(),
+              prepareDetails: _prepareDetailsQRData(),
             ),
           ),
           
@@ -6846,7 +6838,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _divertControllers[sectionIndex][0],
                       focusNode: _divertFocusNodes[sectionIndex][0],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid(), // Divert section: No. Catridge tidak disabled ketika isEmpty == true
                       catridgeIndex: sectionIndex,
                       onChanged: (value) {
                         // Trigger manual mode when user types
@@ -6863,7 +6855,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _divertControllers[sectionIndex][1],
                       focusNode: _divertFocusNodes[sectionIndex][1],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid(), // Divert section: Seal Catridge tidak disabled ketika isEmpty == true
                       catridgeIndex: sectionIndex,
                       onChanged: (value) {
                         // Trigger manual mode when user types
@@ -7220,7 +7212,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _pocketControllers[0],
                       focusNode: _pocketFocusNodes[0],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid(), // Pocket section: No. Catridge tidak disabled ketika isEmpty == true
                       catridgeIndex: 50, // Use 50 for pocket section
                       onChanged: (value) {
                         // Only trigger manual mode when user actually types
@@ -7237,7 +7229,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                       controller: _pocketControllers[1],
                       focusNode: _pocketFocusNodes[1],
                       isSmallScreen: isSmallScreen,
-                      isReadOnly: !_isIdCRFValid(),
+                      isReadOnly: !_isIdCRFValid(), // Pocket section: Seal Catridge tidak disabled ketika isEmpty == true
                       catridgeIndex: 50, // Use 50 for pocket section
                       onChanged: (value) {
                         // Only trigger manual mode when user actually types
@@ -7570,6 +7562,12 @@ class _PrepareModePageState extends State<PrepareModePage> {
         setState(() {
           // Store data for specific section
           _divertCatridgeData[sectionIndex] = catridgeData;
+          
+          // Get existing values from controllers to preserve user input
+          String existingBagCode = sectionIndex < _divertControllers.length ? _divertControllers[sectionIndex][2].text.trim() : '';
+          String existingSealCode = sectionIndex < _divertControllers.length ? _divertControllers[sectionIndex][3].text.trim() : '';
+          String existingSealReturn = sectionIndex < _divertControllers.length ? _divertControllers[sectionIndex][4].text.trim() : '';
+          
           _divertDetailItems[sectionIndex] = DetailCatridgeItem(
             index: sectionIndex + 1,
             noCatridge: catridgeCode,
@@ -7577,9 +7575,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
             value: divertValue, // Set to 0 for divert
             total: divertTotal, // Set to 'Rp 0' for divert
             denom: denomAmount == 100000 ? 'Rp 100.000' : 'Rp 50.000',
-            bagCode: '',
-            sealCode: '',
-            sealReturn: '',
+            bagCode: existingBagCode,
+            sealCode: existingSealCode,
+            sealReturn: existingSealReturn,
           );
           
           // Add Divert data to main detail catridge items list
@@ -7596,12 +7594,33 @@ class _PrepareModePageState extends State<PrepareModePage> {
             value: divertValue, // Set to 0 for divert
             total: divertTotal, // Set to 'Rp 0' for divert
             denom: denomAmount == 100000 ? 'Rp 100.000' : 'Rp 50.000',
-            bagCode: '',
-            sealCode: '',
-            sealReturn: '',
+            bagCode: existingBagCode,
+            sealCode: existingSealCode,
+            sealReturn: existingSealReturn,
           );
           _detailCatridgeItems.add(divertDetailForList);
           print('🔍 DIVERT LOOKUP: Added divert data to _detailCatridgeItems with index $divertIndex for section $sectionIndex');
+          
+          // GENIUS LOGIC: Also update any existing items in _detailCatridgeItems that might have been created by _updateDetailDivertItemField
+          // This ensures that user input is preserved even if they entered data before scanning the cartridge
+          for (int i = 0; i < _detailCatridgeItems.length - 1; i++) {
+            if (_detailCatridgeItems[i].index == divertIndex) {
+              // Found existing item with same index, update it with the new cartridge data but preserve user input
+              _detailCatridgeItems[i] = DetailCatridgeItem(
+                index: divertIndex,
+                noCatridge: catridgeCode,
+                sealCatridge: '',
+                value: divertValue,
+                total: divertTotal,
+                denom: denomAmount == 100000 ? 'Rp 100.000' : 'Rp 50.000',
+                bagCode: _detailCatridgeItems[i].bagCode.isNotEmpty ? _detailCatridgeItems[i].bagCode : existingBagCode,
+                sealCode: _detailCatridgeItems[i].sealCode.isNotEmpty ? _detailCatridgeItems[i].sealCode : existingSealCode,
+                sealReturn: _detailCatridgeItems[i].sealReturn.isNotEmpty ? _detailCatridgeItems[i].sealReturn : existingSealReturn,
+              );
+              print('🔍 DIVERT GENIUS: Updated existing item at index $i with preserved user input');
+              break;
+            }
+          }
           
 
           
@@ -7762,14 +7781,14 @@ class _PrepareModePageState extends State<PrepareModePage> {
               index: _divertDetailItems[sectionIndex]!.index,
               noCatridge: _divertDetailItems[sectionIndex]!.noCatridge,
               sealCatridge: validatedSealCode,
-              value: _divertDetailItems[sectionIndex]!.value,
-              total: _divertDetailItems[sectionIndex]!.total,
+              value: 0, // Always set to 0 for divert section when seal is validated
+              total: 'Rp 0', // Reset total to match value 0
               denom: _divertDetailItems[sectionIndex]!.denom,
               bagCode: _divertDetailItems[sectionIndex]!.bagCode,
               sealCode: _divertDetailItems[sectionIndex]!.sealCode,
               sealReturn: _divertDetailItems[sectionIndex]!.sealReturn,
             );
-            print('🔒 DIVERT SEAL: Updated divert item for section $sectionIndex with validated seal: $validatedSealCode');
+            print('🔒 DIVERT SEAL: Updated divert item for section $sectionIndex with validated seal: $validatedSealCode, value reset to 0');
           } else {
             // Create new DetailCatridgeItem if not exists
             String noCatridge = sectionIndex < _divertControllers.length ? _divertControllers[sectionIndex][0].text.trim() : '';
@@ -7800,14 +7819,14 @@ class _PrepareModePageState extends State<PrepareModePage> {
                   index: _detailCatridgeItems[i].index,
                   noCatridge: _detailCatridgeItems[i].noCatridge,
                   sealCatridge: validatedSealCode,
-                  value: _detailCatridgeItems[i].value,
-                  total: _detailCatridgeItems[i].total,
+                  value: 0, // Always set to 0 for divert section when seal is validated
+                  total: 'Rp 0', // Reset total to match value 0
                   denom: _detailCatridgeItems[i].denom,
                   bagCode: _detailCatridgeItems[i].bagCode,
                   sealCode: _detailCatridgeItems[i].sealCode,
                   sealReturn: _detailCatridgeItems[i].sealReturn,
                 );
-                print('🔒 DIVERT SEAL: Updated corresponding item in _detailCatridgeItems with validated seal for section $sectionIndex');
+                print('🔒 DIVERT SEAL: Updated corresponding item in _detailCatridgeItems with validated seal for section $sectionIndex, value reset to 0');
                 foundInDetailCatridge = true;
                 break;
               }
@@ -7980,6 +7999,12 @@ class _PrepareModePageState extends State<PrepareModePage> {
         
         setState(() {
           _pocketCatridgeData = catridgeData;
+          
+          // Get existing values from controllers to preserve user input
+          String existingBagCode = _pocketControllers.length > 2 ? _pocketControllers[2].text.trim() : '';
+          String existingSealCode = _pocketControllers.length > 3 ? _pocketControllers[3].text.trim() : '';
+          String existingSealReturn = _pocketControllers.length > 4 ? _pocketControllers[4].text.trim() : '';
+          
           _pocketDetailItem = DetailCatridgeItem(
             index: 1,
             noCatridge: catridgeCode,
@@ -7987,9 +8012,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
             value: standValueInt,
             total: formattedTotal,
             denom: denomAmount == 100000 ? 'Rp 100.000' : 'Rp 50.000',
-            bagCode: '',
-            sealCode: '',
-            sealReturn: '',
+            bagCode: existingBagCode,
+            sealCode: existingSealCode,
+            sealReturn: existingSealReturn,
           );
           
           // Add Pocket data to main detail catridge items list
@@ -8005,9 +8030,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
             value: standValueInt,
             total: formattedTotal,
             denom: denomAmount == 100000 ? 'Rp 100.000' : 'Rp 50.000',
-            bagCode: '',
-            sealCode: '',
-            sealReturn: '',
+            bagCode: existingBagCode,
+            sealCode: existingSealCode,
+            sealReturn: existingSealReturn,
           );
           _detailCatridgeItems.add(pocketDetailForList);
           print('🔍 POCKET LOOKUP: Added pocket data to _detailCatridgeItems with index $nextIndex');
@@ -8302,8 +8327,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
     );
   }
 
-  // Konversi detail catridge items ke CatridgeQRData untuk QR code
-  List<CatridgeQRData> _prepareCatridgeQRData() {
+  // Konversi detail catridge items ke PrepareCatridgeQRData untuk QR code
+  List<PrepareCatridgeQRData> _prepareCatridgeQRData() {
     if (_detailCatridgeItems.isEmpty) {
       return [];
     }
@@ -8338,11 +8363,17 @@ class _PrepareModePageState extends State<PrepareModePage> {
       print('Error getting operator name for QR code: $e');
     }
     
-    // Convert each detail item to CatridgeQRData
-    List<CatridgeQRData> result = [];
+    // Convert each detail item to PrepareCatridgeQRData
+    List<PrepareCatridgeQRData> result = [];
     for (var item in _detailCatridgeItems) {
       // Skip items with errors or incomplete data
-      if (item.noCatridge.isEmpty || item.sealCatridge.isEmpty || item.value <= 0) {
+      // BYPASS: Skip validation for noCatridge and sealCatridge ONLY if isNoBag is true (NOT for isEmpty)
+      bool skipBagSealValidation = (_prepareData?.isNoBag ?? false);
+      
+      if (!skipBagSealValidation && (item.noCatridge.isEmpty || item.sealCatridge.isEmpty || item.value <= 0)) {
+        continue;
+      } else if (skipBagSealValidation && item.value <= 0) {
+        // When bypassing bag/seal validation, still check value validity
         continue;
       }
       
@@ -8351,28 +8382,32 @@ class _PrepareModePageState extends State<PrepareModePage> {
         continue;
       }
       
-      // Create CatridgeQRData
+      // Create PrepareCatridgeQRData
       try {
-        final catridgeData = CatridgeQRData(
-          idTool: _prepareData?.id?.toString() ?? _idCRFController.text,
-          bagCode: 'TEST', // Default value
+        final catridgeData = PrepareCatridgeQRData(
+          idTool: int.tryParse(_prepareData?.id?.toString() ?? _idCRFController.text) ?? 0,
+          bagCode: '', // Default value
           catridgeCode: item.noCatridge,
-          sealCode: 'TEST', // Default value
+          sealCode: '', // Default value
           catridgeSeal: item.sealCatridge,
-          denomCode: finalDenomCode,
+          denomCode: item.denom,
           qty: '1', // Default value
           userInput: userInput,
           sealReturn: '', // Default value
-          typeCatridgeTrx: 'C', // Default value for Catridge
-          tableCode: tableCode,
-          warehouseCode: warehouseCode,
-          operatorId: userInput,
-          operatorName: operatorName,
+          scanCatStatus: '',
+          scanCatStatusRemark: '',
+          scanSealStatus: '',
+          scanSealStatusRemark: '',
+          difCatAlasan: '',
+          difCatRemark: '',
+          tableCode: _prepareData?.tableCode ?? '',
+          warehouseCode: '',
+          typeCatridgeTrx: 'C',
         );
         
         result.add(catridgeData);
       } catch (e) {
-        print('Error creating CatridgeQRData: $e');
+        print('Error creating PrepareCatridgeQRData: $e');
       }
     }
     
@@ -8382,57 +8417,76 @@ class _PrepareModePageState extends State<PrepareModePage> {
       bool hasData = _divertControllers[i].any((controller) => controller.text.trim().isNotEmpty);
       if (hasData) {
       try {
-        final catridgeData = CatridgeQRData(
-          idTool: _prepareData?.id?.toString() ?? _idCRFController.text,
+        final catridgeData = PrepareCatridgeQRData(
+          idTool: int.tryParse(_prepareData?.id?.toString() ?? _idCRFController.text) ?? 0,
             bagCode: _divertControllers[i][2].text.isNotEmpty ? _divertControllers[i][2].text : 'TEST',
             catridgeCode: _divertControllers[i][0].text.trim(),
             sealCode: _divertControllers[i][3].text.isNotEmpty ? _divertControllers[i][3].text : 'TEST',
             catridgeSeal: _divertControllers[i][1].text.trim(),
-          denomCode: finalDenomCode,
+          denomCode: '', // Default denom for divert
           qty: '1', // Default value
           userInput: userInput,
             sealReturn: _divertControllers[i][4].text.isNotEmpty ? _divertControllers[i][4].text : '',
-          typeCatridgeTrx: 'D', // 'D' for Divert
-          tableCode: tableCode,
-          warehouseCode: warehouseCode,
-          operatorId: userInput,
-          operatorName: operatorName,
+          scanCatStatus: '',
+          scanCatStatusRemark: '',
+          scanSealStatus: '',
+          scanSealStatusRemark: '',
+          difCatAlasan: '',
+          difCatRemark: '',
+          tableCode: _prepareData?.tableCode ?? '',
+          warehouseCode: '',
+          typeCatridgeTrx: 'C',
         );
         
         result.add(catridgeData);
       } catch (e) {
-          print('Error creating Divert ${i + 1} CatridgeQRData: $e');
+          print('Error creating Divert ${i + 1} PrepareCatridgeQRData: $e');
         }
       }
     }
     
     if (_pocketDetailItem != null) {
       try {
-        final catridgeData = CatridgeQRData(
-          idTool: _prepareData?.id?.toString() ?? _idCRFController.text,
+        final catridgeData = PrepareCatridgeQRData(
+          idTool: int.tryParse(_prepareData?.id?.toString() ?? _idCRFController.text) ?? 0,
           bagCode: _pocketControllers[2].text.isNotEmpty ? _pocketControllers[2].text : 'TEST',
           catridgeCode: _pocketDetailItem!.noCatridge,
           sealCode: _pocketControllers[3].text.isNotEmpty ? _pocketControllers[3].text : 'TEST',
           catridgeSeal: _pocketDetailItem!.sealCatridge,
-          denomCode: finalDenomCode,
+          denomCode: _pocketDetailItem!.denom,
           qty: '1', // Default value
           userInput: userInput,
           sealReturn: _pocketControllers[4].text.isNotEmpty ? _pocketControllers[4].text : '',
-          typeCatridgeTrx: 'P', // 'P' for Pocket
-          tableCode: tableCode,
-          warehouseCode: warehouseCode,
-          operatorId: userInput,
-          operatorName: operatorName,
+          scanCatStatus: '',
+          scanCatStatusRemark: '',
+          scanSealStatus: '',
+          scanSealStatusRemark: '',
+          difCatAlasan: '',
+          difCatRemark: '',
+          tableCode: _prepareData?.tableCode ?? '',
+          warehouseCode: '',
+          typeCatridgeTrx: 'C',
         );
         
         result.add(catridgeData);
       } catch (e) {
-        print('Error creating Pocket CatridgeQRData: $e');
+        print('Error creating Pocket PrepareCatridgeQRData: $e');
       }
     }
     
     print('Prepared ${result.length} catridge items for QR code');
     return result;
+  }
+
+  // Konversi data prepare ke PrepareDetailsQRData untuk QR code
+  PrepareDetailsQRData _prepareDetailsQRData() {
+    return PrepareDetailsQRData(
+      wsid: _prepareData?.atmCode ?? '',
+      bank: _prepareData?.codeBank ?? '',
+      lokasi: _prepareData?.lokasi ?? '',
+      atmType: _prepareData?.jnsMesin ?? '',
+      jumlahKaset: _prepareData?.jmlKaset?.toString() ?? '0',
+    );
   }
 
   // Function to reset page to initial state

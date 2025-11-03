@@ -726,9 +726,9 @@ class TLSupervisorValidationResponse {
   }
 } 
 
-// Model untuk data catridge yang akan dikirimkan dalam QR code
-class CatridgeQRData {
-  final String idTool;
+// Model untuk data catridge PREPARE yang akan dikirimkan dalam QR code
+class PrepareCatridgeQRData {
+  final int idTool;
   final String bagCode;
   final String catridgeCode;
   final String sealCode;
@@ -737,13 +737,17 @@ class CatridgeQRData {
   final String qty;
   final String userInput;
   final String sealReturn;
-  final String typeCatridgeTrx;
+  final String scanCatStatus;
+  final String scanCatStatusRemark;
+  final String scanSealStatus;
+  final String scanSealStatusRemark;
+  final String difCatAlasan;
+  final String difCatRemark;
   final String tableCode;
   final String warehouseCode;
-  final String operatorId;
-  final String operatorName;
+  final String typeCatridgeTrx;
 
-  CatridgeQRData({
+  PrepareCatridgeQRData({
     required this.idTool,
     required this.bagCode,
     required this.catridgeCode,
@@ -753,11 +757,15 @@ class CatridgeQRData {
     required this.qty,
     required this.userInput,
     required this.sealReturn,
-    required this.typeCatridgeTrx,
+    required this.scanCatStatus,
+    required this.scanCatStatusRemark,
+    required this.scanSealStatus,
+    required this.scanSealStatusRemark,
+    required this.difCatAlasan,
+    required this.difCatRemark,
     required this.tableCode,
     required this.warehouseCode,
-    required this.operatorId,
-    required this.operatorName,
+    required this.typeCatridgeTrx,
   });
 
   Map<String, dynamic> toJson() {
@@ -771,17 +779,21 @@ class CatridgeQRData {
       'qty': qty,
       'userInput': userInput,
       'sealReturn': sealReturn,
-      'typeCatridgeTrx': typeCatridgeTrx,
+      'scanCatStatus': scanCatStatus,
+      'scanCatStatusRemark': scanCatStatusRemark,
+      'scanSealStatus': scanSealStatus,
+      'scanSealStatusRemark': scanSealStatusRemark,
+      'difCatAlasan': difCatAlasan,
+      'difCatRemark': difCatRemark,
       'tableCode': tableCode,
       'warehouseCode': warehouseCode,
-      'operatorId': operatorId,
-      'operatorName': operatorName,
+      'typeCatridgeTrx': typeCatridgeTrx,
     };
   }
 
-  factory CatridgeQRData.fromJson(Map<String, dynamic> json) {
-    return CatridgeQRData(
-      idTool: json['idTool']?.toString() ?? '0',
+  factory PrepareCatridgeQRData.fromJson(Map<String, dynamic> json) {
+    return PrepareCatridgeQRData(
+      idTool: json['idTool'] as int,
       bagCode: json['bagCode'] as String,
       catridgeCode: json['catridgeCode'] as String,
       sealCode: json['sealCode'] as String,
@@ -790,25 +802,182 @@ class CatridgeQRData {
       qty: json['qty'] as String,
       userInput: json['userInput'] as String,
       sealReturn: json['sealReturn'] as String,
-      typeCatridgeTrx: json['typeCatridgeTrx'] as String,
-      tableCode: json['tableCode'] as String,
-      warehouseCode: json['warehouseCode'] as String,
-      operatorId: json['operatorId'] as String,
-      operatorName: json['operatorName'] as String,
+      scanCatStatus: json['scanCatStatus'] as String,
+      scanCatStatusRemark: json['scanCatStatusRemark'] as String,
+      scanSealStatus: json['scanSealStatus'] as String,
+      scanSealStatusRemark: json['scanSealStatusRemark'] as String,
+      difCatAlasan: json['difCatAlasan'] as String,
+      difCatRemark: json['difCatRemark'] as String,
+      tableCode: json['tableCode'] as String? ?? '',
+      warehouseCode: json['warehouseCode'] as String? ?? '',
+      typeCatridgeTrx: json['typeCatridgeTrx'] as String? ?? 'C',
     );
   }
 }
 
-// Model untuk data QR code yang berisi informasi catridge dan kredensial TL
+// Model untuk data catridge RETURN yang akan dikirimkan dalam QR code
+class ReturnCatridgeQRData {
+  final String IdTool;
+  final String BagCode;
+  final String CatridgeCode;
+  final String SealCode;
+  final String CatridgeSeal;
+  final String DenomCode;
+  final String Qty;
+  final String UserInput;
+  final String IsBalikKaset;
+  final String CatridgeCodeOld;
+  final String ScanCatStatus;
+  final String ScanCatStatusRemark;
+  final String ScanSealStatus;
+  final String ScanSealStatusRemark;
+
+  ReturnCatridgeQRData({
+    required this.IdTool,
+    required this.BagCode,
+    required this.CatridgeCode,
+    required this.SealCode,
+    required this.CatridgeSeal,
+    required this.DenomCode,
+    required this.Qty,
+    required this.UserInput,
+    required this.IsBalikKaset,
+    required this.CatridgeCodeOld,
+    required this.ScanCatStatus,
+    required this.ScanCatStatusRemark,
+    required this.ScanSealStatus,
+    required this.ScanSealStatusRemark,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'IdTool': IdTool,
+      'BagCode': BagCode,
+      'CatridgeCode': CatridgeCode,
+      'SealCode': SealCode,
+      'CatridgeSeal': CatridgeSeal,
+      'DenomCode': DenomCode,
+      'Qty': Qty,
+      'UserInput': UserInput,
+      'IsBalikKaset': IsBalikKaset,
+      'CatridgeCodeOld': CatridgeCodeOld,
+      'ScanCatStatus': ScanCatStatus,
+      'ScanCatStatusRemark': ScanCatStatusRemark,
+      'ScanSealStatus': ScanSealStatus,
+      'ScanSealStatusRemark': ScanSealStatusRemark,
+    };
+  }
+
+  factory ReturnCatridgeQRData.fromJson(Map<String, dynamic> json) {
+    return ReturnCatridgeQRData(
+      IdTool: json['IdTool'] as String,
+      BagCode: json['BagCode'] as String,
+      CatridgeCode: json['CatridgeCode'] as String,
+      SealCode: json['SealCode'] as String,
+      CatridgeSeal: json['CatridgeSeal'] as String,
+      DenomCode: json['DenomCode'] as String,
+      Qty: json['Qty'] as String,
+      UserInput: json['UserInput'] as String,
+      IsBalikKaset: json['IsBalikKaset'] as String,
+      CatridgeCodeOld: json['CatridgeCodeOld'] as String,
+      ScanCatStatus: json['ScanCatStatus'] as String,
+      ScanCatStatusRemark: json['ScanCatStatusRemark'] as String,
+      ScanSealStatus: json['ScanSealStatus'] as String,
+      ScanSealStatusRemark: json['ScanSealStatusRemark'] as String,
+    );
+  }
+}
+
+// Model untuk detail summary PREPARE
+class PrepareDetailsQRData {
+  final String wsid;
+  final String bank;
+  final String lokasi;
+  final String atmType;
+  final String jumlahKaset;
+
+  PrepareDetailsQRData({
+    required this.wsid,
+    required this.bank,
+    required this.lokasi,
+    required this.atmType,
+    required this.jumlahKaset,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'wsid': wsid,
+      'bank': bank,
+      'lokasi': lokasi,
+      'atmType': atmType,
+      'jumlahKaset': jumlahKaset,
+    };
+  }
+
+  factory PrepareDetailsQRData.fromJson(Map<String, dynamic> json) {
+    return PrepareDetailsQRData(
+      wsid: json['wsid'] as String,
+      bank: json['bank'] as String,
+      lokasi: json['lokasi'] as String,
+      atmType: json['atmType'] as String,
+      jumlahKaset: json['jumlahKaset'] as String,
+    );
+  }
+}
+
+// Model untuk detail summary RETURN
+class ReturnDetailsQRData {
+  final String wsid;
+  final String bank;
+  final String lokasi;
+  final String jenisMesin;
+  final String atmType;
+  final String tglUnload;
+
+  ReturnDetailsQRData({
+    required this.wsid,
+    required this.bank,
+    required this.lokasi,
+    required this.jenisMesin,
+    required this.atmType,
+    required this.tglUnload,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'wsid': wsid,
+      'bank': bank,
+      'lokasi': lokasi,
+      'jenisMesin': jenisMesin,
+      'atmType': atmType,
+      'tglUnload': tglUnload,
+    };
+  }
+
+  factory ReturnDetailsQRData.fromJson(Map<String, dynamic> json) {
+    return ReturnDetailsQRData(
+      wsid: json['wsid'] as String,
+      bank: json['bank'] as String,
+      lokasi: json['lokasi'] as String,
+      jenisMesin: json['jenisMesin'] as String,
+      atmType: json['atmType'] as String,
+      tglUnload: json['tglUnload'] as String,
+    );
+  }
+}
+
+// Model untuk data QR code PREPARE yang berisi informasi catridge, details, dan kredensial TL
 class PrepareQRData {
   final String action;
   final int timestamp;
-  final List<CatridgeQRData> catridges;
+  final List<PrepareCatridgeQRData> catridges;
+  final PrepareDetailsQRData details;
 
   PrepareQRData({
     required this.action,
     required this.timestamp,
     required this.catridges,
+    required this.details,
   });
 
   Map<String, dynamic> toJson() {
@@ -816,6 +985,7 @@ class PrepareQRData {
       'action': action,
       'timestamp': timestamp,
       'catridges': catridges.map((c) => c.toJson()).toList(),
+      'details': details.toJson(),
     };
   }
 
@@ -824,8 +994,44 @@ class PrepareQRData {
       action: json['action'] as String,
       timestamp: json['timestamp'] as int,
       catridges: (json['catridges'] as List)
-          .map((c) => CatridgeQRData.fromJson(c as Map<String, dynamic>))
+          .map((c) => PrepareCatridgeQRData.fromJson(c as Map<String, dynamic>))
           .toList(),
+      details: PrepareDetailsQRData.fromJson(json['details'] as Map<String, dynamic>),
+    );
+  }
+}
+
+// Model untuk data QR code RETURN yang berisi informasi catridge, details, dan kredensial TL
+class ReturnQRData {
+  final String action;
+  final int timestamp;
+  final List<ReturnCatridgeQRData> catridges;
+  final ReturnDetailsQRData details;
+
+  ReturnQRData({
+    required this.action,
+    required this.timestamp,
+    required this.catridges,
+    required this.details,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'action': action,
+      'timestamp': timestamp,
+      'catridges': catridges.map((c) => c.toJson()).toList(),
+      'details': details.toJson(),
+    };
+  }
+
+  factory ReturnQRData.fromJson(Map<String, dynamic> json) {
+    return ReturnQRData(
+      action: json['action'] as String,
+      timestamp: json['timestamp'] as int,
+      catridges: (json['catridges'] as List)
+          .map((c) => ReturnCatridgeQRData.fromJson(c as Map<String, dynamic>))
+          .toList(),
+      details: ReturnDetailsQRData.fromJson(json['details'] as Map<String, dynamic>),
     );
   }
 }

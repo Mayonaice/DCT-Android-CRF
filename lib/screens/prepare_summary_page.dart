@@ -112,33 +112,52 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
     super.dispose();
   }
 
-  List<CatridgeQRData> _prepareCatridgeQRData() {
-    debugPrint('🔧 [QR_DATA] Preparing catridge QR data...');
-    List<CatridgeQRData> qrDataList = [];
+  List<PrepareCatridgeQRData> _prepareCatridgeQRData() {
+    debugPrint('🔧 [QR_DATA] Preparing catridge QR data for PREPARE...');
+    List<PrepareCatridgeQRData> qrDataList = [];
     
     for (var catridge in widget.catridgeData) {
-      final qrData = CatridgeQRData(
-        idTool: widget.prepareData?.atmCode ?? '0',
+      final qrData = PrepareCatridgeQRData(
+        idTool: int.tryParse(widget.prepareData?.atmCode ?? '0') ?? 0,
         bagCode: catridge.bagCode ?? '',
         catridgeCode: catridge.noCatridge ?? '',
         sealCode: catridge.sealCode ?? '',
         catridgeSeal: catridge.sealCatridge ?? '',
         denomCode: catridge.denom ?? '',
         qty: catridge.value?.toString() ?? '0',
-        userInput: 'PREPARE',
-        sealReturn: '',
-        typeCatridgeTrx: 'PREPARE',
-        tableCode: 'PREPARE',
+        userInput: '925712095', // Sesuai contoh yang diberikan
+        sealReturn: catridge.sealReturn ?? '',
+        scanCatStatus: '',
+        scanCatStatusRemark: '',
+        scanSealStatus: '',
+        scanSealStatusRemark: '',
+        difCatAlasan: 'TEST',
+        difCatRemark: '',
+        tableCode: widget.prepareData?.tableCode ?? '',
         warehouseCode: '',
-        operatorId: '',
-        operatorName: '',
+        typeCatridgeTrx: 'C',
       );
       qrDataList.add(qrData);
       debugPrint('   - Added catridge: ${catridge.noCatridge}');
     }
     
-    debugPrint('✅ [QR_DATA] Prepared ${qrDataList.length} catridge QR data items');
+    debugPrint('✅ [QR_DATA] Prepared ${qrDataList.length} catridge QR data items for PREPARE');
     return qrDataList;
+  }
+
+  PrepareDetailsQRData _prepareDetailsQRData() {
+    debugPrint('🔧 [QR_DETAILS] Preparing details QR data for PREPARE...');
+    
+    final details = PrepareDetailsQRData(
+      wsid: widget.prepareData?.atmCode ?? '',
+      bank: widget.prepareData?.codeBank ?? '',
+      lokasi: widget.prepareData?.lokasi ?? '',
+      atmType: widget.prepareData?.jnsMesin ?? '',
+      jumlahKaset: widget.prepareData?.jmlKaset?.toString() ?? '0',
+    );
+    
+    debugPrint('✅ [QR_DETAILS] Prepared details: WSID=${details.wsid}, Bank=${details.bank}, Lokasi=${details.lokasi}');
+    return details;
   }
 
   Future<void> _validateTLAndSubmit() async {
@@ -284,27 +303,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
         debugPrint('     - noRemark: ${widget.pocketData!['noRemark']}');
       }
       
-      // Insert catridge data (main catridge items) - STEP 2
-      debugPrint('💾 [PREPARE_SUMMARY] Starting catridge data insertion...');
-      await _insertCatridgeData(widget.catridgeData, 'C', planningId, atmCode, userId);
-      
-      // Insert divert data if exists
-      if (widget.divertData.isNotEmpty) {
-        debugPrint('💾 [PREPARE_SUMMARY] Starting divert data insertion...');
-        await _insertCatridgeData(widget.divertData, 'D', planningId, atmCode, userId);
-      } else {
-        debugPrint('ℹ️ [PREPARE_SUMMARY] No divert data to insert');
-      }
-      
-      // Insert pocket data if exists
-      if (widget.pocketData != null) {
-        debugPrint('💾 [PREPARE_SUMMARY] Starting pocket data insertion...');
-        await _insertCatridgeData([widget.pocketData!], 'P', planningId, atmCode, userId);
-      } else {
-        debugPrint('ℹ️ [PREPARE_SUMMARY] No pocket data to insert');
-      }
-      
-      // Update planning status - STEP 3 (moved to last)
+      // Update planning status - STEP 2 (moved to first before inserts)
       debugPrint('🔄 [PREPARE_SUMMARY] Calling updatePlanning API...');
       debugPrint('🌐 [UPDATE_PLANNING] Endpoint: POST /updatePlanning');
       debugPrint('📤 [UPDATE_PLANNING] Request Parameters:');
@@ -336,6 +335,26 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       }
       
       debugPrint('✅ [UPDATE_PLANNING] Success!');
+      
+      // Insert catridge data (main catridge items) - STEP 3
+      debugPrint('💾 [PREPARE_SUMMARY] Starting catridge data insertion...');
+      await _insertCatridgeData(widget.catridgeData, 'C', planningId, atmCode, userId);
+      
+      // Insert divert data if exists
+      if (widget.divertData.isNotEmpty) {
+        debugPrint('💾 [PREPARE_SUMMARY] Starting divert data insertion...');
+        await _insertCatridgeData(widget.divertData, 'D', planningId, atmCode, userId);
+      } else {
+        debugPrint('ℹ️ [PREPARE_SUMMARY] No divert data to insert');
+      }
+      
+      // Insert pocket data if exists
+      if (widget.pocketData != null) {
+        debugPrint('💾 [PREPARE_SUMMARY] Starting pocket data insertion...');
+        await _insertCatridgeData([widget.pocketData!], 'P', planningId, atmCode, userId);
+      } else {
+        debugPrint('ℹ️ [PREPARE_SUMMARY] No pocket data to insert');
+      }
       
       debugPrint('🎉 [PREPARE_SUMMARY] All data inserted successfully!');
       
@@ -1592,7 +1611,8 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
               QRCodeGeneratorWidget(
                  action: 'PREPARE',
                  idTool: widget.prepareData?.atmCode ?? '0',
-                 catridgeData: _prepareCatridgeQRData(),
+                 prepareCatridgeData: _prepareCatridgeQRData(),
+                 prepareDetails: _prepareDetailsQRData(),
                ),
             ],
           ),

@@ -377,6 +377,30 @@ class _HomePageState extends State<HomePage> {
     return roleSpecificMenus;
   }
 
+  // NEW: Complete refresh method that resets everything to initial state
+  Future<void> _refreshToInitialState() async {
+    try {
+      // Reset all state variables to their initial values
+      setState(() {
+        _userName = ' Putra'; // Reset to default
+        _branchName = 'JAKARTA - CIDENG'; // Reset to default
+        _userRole = null; // Reset to null
+        _availableMenus = []; // Reset to empty list
+        _belumPrepareCount = 0; // Reset to 0
+        _belumReturnCount = 0; // Reset to 0
+        _isLoadingCounts = true; // Reset to loading state
+        _groupId = null; // Reset to null
+      });
+
+      // Reload all data from scratch as if opening for the first time
+      await _loadUserData();
+      
+      print('🔄 HOME: Complete refresh completed - page reset to initial state');
+    } catch (e) {
+      print('🚨 HOME: Error during complete refresh: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get screen size for responsive layout
@@ -385,10 +409,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() {});
-          return Future.delayed(const Duration(seconds: 1));
-        },
+        onRefresh: _refreshToInitialState,
         child: Container(
           width: screenSize.width,
           height: screenSize.height,

@@ -8,6 +8,9 @@ import 'package:http/http.dart' as http;
 import '../widgets/tl_qr_scanner_widget.dart';
 import '../widgets/custom_modals.dart';
 import '../widgets/face_recognition_widget.dart';
+import '../widgets/tl_header_widget.dart';
+import '../screens/tl_approval_summary_screen.dart';
+import 'dart:math' as math;
 
 class TLHomePage extends StatefulWidget {
   const TLHomePage({super.key});
@@ -177,13 +180,13 @@ class _TLHomePageState extends State<TLHomePage> {
   }
 
   // Method to load dashboard counts
-  Future<void> _loadCounts() async {
+  Future<bool> _loadCounts() async {
     if (_groupId == null) {
       print('🚨 TL HOME: No groupId available for loading counts');
       setState(() {
         _isLoadingCounts = false;
       });
-      return;
+      return false;
     }
 
     setState(() {
@@ -206,11 +209,13 @@ class _TLHomePageState extends State<TLHomePage> {
       });
 
       print('🎯 TL HOME: Counts loaded - Belum Prepare: $_belumPrepareCount, Belum Return: $_belumReturnCount');
+      return true;
     } catch (e) {
       print('🚨 TL HOME: Error loading counts: $e');
       setState(() {
         _isLoadingCounts = false;
       });
+      return false;
     }
   }
 
@@ -241,7 +246,11 @@ class _TLHomePageState extends State<TLHomePage> {
               child: Column(
                 children: [
                   // Header Section
-                  _buildHeader(),
+                  TLHeaderWidget(
+                    userName: _userName,
+                    branchName: _branchName,
+                    profileService: _profileService,
+                  ),
                   const SizedBox(height: 16),
                   // Dashboard Section
                   _buildDashboard(),
@@ -256,148 +265,6 @@ class _TLHomePageState extends State<TLHomePage> {
         ),
       ),
       bottomNavigationBar: _buildBottomNavigation(),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            spreadRadius: 0,
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Profile Photo - smaller size
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(
-                color: Colors.grey.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: FutureBuilder<ImageProvider>(
-                future: _profileService.getProfilePhoto(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    return Image(
-                      image: snapshot.data!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[100],
-                          child: Icon(
-                            Icons.person,
-                            size: 24,
-                            color: Colors.grey[400],
-                          ),
-                        );
-                      },
-                    );
-                  }
-                  return Container(
-                    color: Colors.grey[100],
-                    child: Icon(
-                      Icons.person,
-                      size: 24,
-                      color: Colors.grey[400],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          // Greeting and Name Section - more compact
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Plain greeting text without background
-                const Text(
-                  'Selamat Datang !',
-                  style: TextStyle(
-                    color: Colors.black87,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // User name with green background
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    _userName,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 1),
-                // Branch location - smaller
-                Text(
-                  _branchName,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: const Color.fromARGB(255, 29, 29, 29),
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // ADVANTAGE Logo - 3x larger size
-          Container(
-            width: 150, // 3x from 70
-            height: 75, // 3x from 35
-            child: Image.asset(
-              'assets/images/adv-icon.png',
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.blue[600],
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'ADVANTAGE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 21, // 3x from 7
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -772,29 +639,18 @@ class _TLHomePageState extends State<TLHomePage> {
     );
   }
 
-  // Open face verification before QR scanner
+  // Open QR scanner first (new flow)
   Future<void> _showFaceRecognition() async {
-    // Get current user ID
-    final userData = await _authService.getUserData();
-    final userId = userData?['userId'] ?? userData?['userID'] ?? '';
+    debugPrint('🔄 [TL_APPROVAL] Starting new approval flow with QR scanner first...');
     
-    if (userId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User ID not found. Please login again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-    
-    // Smart face recognition will handle photo loading and verification
-    // Proceed directly with face verification using the smart ML Kit system
-    await _showFaceVerification();
+    // Start with QR scanner instead of face recognition
+    await _openQRScanner();
   }
 
-  // Show face verification widget
-  Future<void> _showFaceVerification() async {
+  // Show face verification widget (moved to after QR scan)
+  Future<bool> _showFaceVerification() async {
+    debugPrint('🎭 [FACE_VERIFICATION] Starting face verification...');
+    
     // Get user ID for face verification
     final userData = await _authService.getUserData();
     final userId = userData?['userId'] ?? userData?['userID'] ?? userData?['nik'] ?? '';
@@ -806,7 +662,7 @@ class _TLHomePageState extends State<TLHomePage> {
           backgroundColor: Colors.red,
         ),
       );
-      return;
+      return false;
     }
 
     final result = await Navigator.push<bool>(
@@ -822,16 +678,19 @@ class _TLHomePageState extends State<TLHomePage> {
     );
 
     if (result == true) {
-      // Face verification successful, proceed to QR scanner
-      _openQRScanner();
+      // Face verification successful, proceed to API calls
+      debugPrint('✅ [FACE_VERIFICATION] Face verification successful');
+      return true;
     } else {
       // Verification failed or cancelled
+      debugPrint('❌ [FACE_VERIFICATION] Face verification failed');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Face verification failed. Please try again.'),
           backgroundColor: Colors.red,
         ),
       );
+      return false;
     }
   }
 
@@ -871,7 +730,7 @@ class _TLHomePageState extends State<TLHomePage> {
     }
   }
 
-  // Process QR data and call planning/update and atm/catridge APIs
+  // Process QR data and show summary page
   Future<void> _processQRDataAndCallAPIs(String qrData) async {
     if (_isProcessingQR) return;
 
@@ -880,118 +739,101 @@ class _TLHomePageState extends State<TLHomePage> {
     });
 
     try {
-      print('🔍 Processing QR data: ${qrData.length > 100 ? "${qrData.substring(0, 100)}..." : qrData}');
+      debugPrint('🔍 [QR_PROCESS] Processing QR data...');
+      debugPrint('🔍 [QR_PROCESS] QR data length: ${qrData.length}');
       
-      // Parse QR JSON data
-      final Map<String, dynamic> qrJson = json.decode(qrData);
+      // Decrypt QR data
+      final decryptedData = _authService.decryptDataFromQR(qrData);
+      debugPrint('🔓 [QR_DECRYPT] Decrypted QR data: ${decryptedData.toString().substring(0, math.min(200, decryptedData.toString().length))}...');
       
-      // Extract planning data
-      final Map<String, dynamic>? planningData = qrJson['planning'];
-      final List<dynamic>? catridgesData = qrJson['catridges'];
-      
-      if (planningData == null || catridgesData == null) {
-        throw Exception('Invalid QR format: missing planning or catridges data');
-      }
-
-      // Get TL user data
-      final userData = await _authService.getUserData();
-      final tlUserId = userData?['userId'] ?? userData?['userID'] ?? '';
-      
-      if (tlUserId.isEmpty) {
-        throw Exception('TL User ID not found. Please login again.');
-      }
-
-      // Show processing dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              const Text('Processing QR approval...')
-            ],
-          ),
-        ),
-      );
-
-      // Step 1: Call planning/update API
-      print('=== STEP 1: UPDATE PLANNING ===');
-      final planningRequest = Map<String, dynamic>.from(planningData);
-      planningRequest['spvTLCode'] = tlUserId;
-      planningRequest['isManual'] = 'N';
-      
-      print('Planning request: $planningRequest');
-      
-      final planningResponse = await _apiService.updatePlanning(
-        idTool: planningRequest['idTool'],
-        cashierCode: planningRequest['cashierCode'],
-        spvTLCode: tlUserId,
-        tableCode: planningRequest['tableCode'],
-        warehouseCode: planningRequest['warehouseCode'],
-      );
-      
-      if (!planningResponse.success) {
-        throw Exception('Planning update failed: ${planningResponse.message}');
+      // Validate QR data structure
+      if (decryptedData == null || !decryptedData.containsKey('action')) {
+        throw Exception('Invalid QR data structure');
       }
       
-      print('✅ Planning update successful');
-
-      // Step 2: Call atm/catridge API for each catridge
-      print('=== STEP 2: INSERT ATM CATRIDGES ===');
+      // Process full QR data with all information intact
+      final action = decryptedData['action']?.toString() ?? '';
+      final idTool = decryptedData['idTool']?.toString() ?? '';
+      final username = decryptedData['username']?.toString() ?? '';
+      final password = decryptedData['password']?.toString() ?? '';
       
-      for (int i = 0; i < catridgesData.length; i++) {
-        final catridgeData = catridgesData[i] as Map<String, dynamic>;
-        print('Processing catridge ${i + 1}/${catridgesData.length}: ${catridgeData['catridgeCode']}');
+      // Validate required fields
+      if (action.isEmpty || idTool.isEmpty || username.isEmpty || password.isEmpty) {
+        throw Exception('QR Code tidak lengkap. Data yang diperlukan: action, idTool, username, password');
+      }
+      
+      // Check if this is a full data QR (with catridges and details)
+      final hasCatridges = decryptedData.containsKey('catridges');
+      final hasDetails = decryptedData.containsKey('details');
+      
+      if (hasCatridges && hasDetails) {
+        // Full approval flow with complete data
+        debugPrint('🔍 [QR_PROCESS] Processing full QR with catridges and details');
         
-        final catridgeResponse = await _apiService.insertAtmCatridge(
-          idTool: catridgeData['idTool'],
-          bagCode: catridgeData['bagCode'] ?? '',
-          catridgeCode: catridgeData['catridgeCode'] ?? '',
-          sealCode: catridgeData['sealCode'] ?? '',
-          catridgeSeal: catridgeData['catridgeSeal'] ?? '',
-          denomCode: catridgeData['denomCode'] ?? '',
-          qty: catridgeData['qty']?.toString() ?? '0',
-          userInput: catridgeData['userInput'] ?? '',
-          sealReturn: catridgeData['sealReturn'] ?? '',
-          scanCatStatus: catridgeData['scanCatStatus'] ?? '',
-          scanCatStatusRemark: catridgeData['scanCatStatusRemark'] ?? '',
-          scanSealStatus: catridgeData['scanSealStatus'] ?? '',
-          scanSealStatusRemark: catridgeData['scanSealStatusRemark'] ?? '',
-          difCatAlasan: catridgeData['difCatAlasan'] ?? '',
-          difCatRemark: catridgeData['difCatRemark'] ?? '',
-        );
-        
-        if (!catridgeResponse.success) {
-          throw Exception('Catridge ${i + 1} insert failed: ${catridgeResponse.message}');
+        // Validate catridges data
+        final catridges = decryptedData['catridges'];
+        if (catridges == null || (catridges is List && catridges.isEmpty)) {
+          throw Exception('Data catridge tidak ditemukan dalam QR Code');
         }
         
-        print('✅ Catridge ${i + 1} inserted successfully');
+        // Validate details data
+        final details = decryptedData['details'];
+        if (details == null) {
+          throw Exception('Data details tidak ditemukan dalam QR Code');
+        }
+        
+        // Show success message with full data info
+        await CustomModals.showSuccessModal(
+          context: context,
+          message: 'QR Code berhasil diproses!\n\n'
+              'Action: $action\n'
+              'ATM: $idTool\n'
+              'User: $username\n'
+              'Catridges: ${catridges is List ? catridges.length : 'N/A'} items\n'
+              'Details: Available',
+        );
+        
+        debugPrint('🔍 [QR_PROCESS] Detected action: $action');
+        return;
+      } else {
+        // Basic approval with essential data only
+        debugPrint('🔍 [QR_PROCESS] Processing basic QR with essential data');
+        
+        await CustomModals.showSuccessModal(
+          context: context,
+          message: 'QR Code berhasil diproses!\n\n'
+              'Action: $action\n'
+              'ATM: $idTool\n'
+              'User: $username\n'
+              'Mode: Basic Approval',
+        );
+        
+        debugPrint('🔍 [QR_PROCESS] Detected action: $action');
+        return;
       }
-
-      // Close processing dialog
-      Navigator.of(context).pop();
-
-      // Show success message
-      await CustomModals.showSuccessModal(
-        context: context,
-        message: 'QR approval completed successfully!\n\nPlanning updated and ${catridgesData.length} catridge(s) processed.',
-      );
-
+      
+      // Navigate to TL Approval Summary Screen only for full data QR
+      if (hasCatridges && hasDetails) {
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TLApprovalSummaryScreen(
+              qrData: decryptedData,
+              userName: _userName,
+              branchName: _branchName,
+            ),
+          ),
+        );
+        
+        debugPrint('🔄 [QR_PROCESS] Returned from approval summary with result: $result');
+      }
+      
     } catch (e) {
-      print('🚨 Error processing QR: $e');
+      debugPrint('❌ [QR_PROCESS] Error processing QR data: $e');
       
-      // Close processing dialog if open
-      if (Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-      
-      // Show error message
       await CustomModals.showFailedModal(
         context: context,
-        message: 'QR processing failed:\n${e.toString()}',
+        message: 'Error processing QR code: ${e.toString()}',
       );
     } finally {
       setState(() {

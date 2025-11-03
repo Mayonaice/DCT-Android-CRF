@@ -688,7 +688,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                         typeReturn = newValue;
                       });
                     },
-                    items: <String>['Type 1', 'Type 2', 'Type 3']
+                    items: <String>['Manual', 'Scan']
                         .map<DropdownMenuItem<String>>((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
