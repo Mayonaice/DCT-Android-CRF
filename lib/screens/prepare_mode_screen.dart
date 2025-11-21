@@ -3770,14 +3770,39 @@ class _PrepareModePageState extends State<PrepareModePage> {
    
   // Sync form data to models before navigation
   void _syncFormDataToModels() {
-    // Sync catridge data
+    // Sync catridge data - include scan status fields from manual mode
     for (int i = 0; i < _catridgeControllers.length; i++) {
       if (_catridgeControllers[i].length >= 5) {
         String bagCode = _catridgeControllers[i][2].text.trim();
         String sealCode = _catridgeControllers[i][3].text.trim();
         String sealReturn = _catridgeControllers[i][4].text.trim();
-        
-        // Update existing item or create new one
+
+        // Derive scan status from manual mode (No. Catridge)
+        String noStatus = '';
+        String noRemark = '';
+        bool isNoManual = i < _catridgeNoManualMode.length && _catridgeNoManualMode[i];
+        if (isNoManual) {
+          if (i < _catridgeNoAlasanControllers.length) {
+            noStatus = _catridgeNoAlasanControllers[i].text.trim();
+          }
+          if (i < _catridgeNoRemarkControllers.length) {
+            noRemark = _catridgeNoRemarkControllers[i].text.trim();
+          }
+        }
+
+        // Derive scan status from manual mode (Seal Catridge)
+        String sealStatus = '';
+        String sealStatusRemark = '';
+        bool isSealManual = i < _catridgeSealManualMode.length && _catridgeSealManualMode[i];
+        if (isSealManual) {
+          if (i < _catridgeSealAlasanControllers.length) {
+            sealStatus = _catridgeSealAlasanControllers[i].text.trim();
+          }
+          if (i < _catridgeSealRemarkControllers.length) {
+            sealStatusRemark = _catridgeSealRemarkControllers[i].text.trim();
+          }
+        }
+
         int existingIndex = _detailCatridgeItems.indexWhere((item) => item.index == i + 1);
         if (existingIndex >= 0) {
           DetailCatridgeItem currentItem = _detailCatridgeItems[existingIndex];
@@ -3791,45 +3816,126 @@ class _PrepareModePageState extends State<PrepareModePage> {
             bagCode: bagCode.isNotEmpty ? bagCode : currentItem.bagCode,
             sealCode: sealCode.isNotEmpty ? sealCode : currentItem.sealCode,
             sealReturn: sealReturn.isNotEmpty ? sealReturn : currentItem.sealReturn,
+            scanCatStatus: noStatus.isNotEmpty ? noStatus : currentItem.scanCatStatus,
+            scanCatStatusRemark: noRemark.isNotEmpty ? noRemark : currentItem.scanCatStatusRemark,
+            scanSealStatus: sealStatus.isNotEmpty ? sealStatus : currentItem.scanSealStatus,
+            scanSealStatusRemark: sealStatusRemark.isNotEmpty ? sealStatusRemark : currentItem.scanSealStatusRemark,
           );
         }
       }
     }
-    
-    // Sync divert data - use DetailCatridgeItem with index offset
+
+    // Sync divert data - include scan status fields
     for (int i = 0; i < _divertControllers.length; i++) {
-      if (_divertControllers[i].length >= 5) {
+      if (_divertControllers[i].length >= 5 && _divertDetailItems[i] != null) {
         String bagCode = _divertControllers[i][2].text.trim();
         String sealCode = _divertControllers[i][3].text.trim();
         String sealReturn = _divertControllers[i][4].text.trim();
-        
-        if (_divertDetailItems[i] != null) {
-          // Create a new DetailCatridgeItem for divert with index 100+
-          int divertIndex = _detailCatridgeItems.indexWhere((item) => item.index == 100 + i);
-          if (divertIndex >= 0) {
-            DetailCatridgeItem currentItem = _detailCatridgeItems[divertIndex];
-            _detailCatridgeItems[divertIndex] = DetailCatridgeItem(
-              index: currentItem.index,
-              noCatridge: currentItem.noCatridge,
-              sealCatridge: currentItem.sealCatridge,
-              value: currentItem.value,
-              total: currentItem.total,
-              denom: currentItem.denom,
-              bagCode: bagCode.isNotEmpty ? bagCode : currentItem.bagCode,
-              sealCode: sealCode.isNotEmpty ? sealCode : currentItem.sealCode,
-              sealReturn: sealReturn.isNotEmpty ? sealReturn : currentItem.sealReturn,
-            );
+
+        String noStatus = '';
+        String noRemark = '';
+        bool isNoManual = i < _divertNoManualMode.length && _divertNoManualMode[i];
+        if (isNoManual) {
+          if (i < _divertNoAlasanControllers.length) {
+            noStatus = _divertNoAlasanControllers[i].text.trim();
           }
+          if (i < _divertNoRemarkControllers.length) {
+            noRemark = _divertNoRemarkControllers[i].text.trim();
+          }
+        }
+
+        String sealStatus = '';
+        String sealStatusRemark = '';
+        bool isSealManual = i < _divertSealManualMode.length && _divertSealManualMode[i];
+        if (isSealManual) {
+          if (i < _divertSealAlasanControllers.length) {
+            sealStatus = _divertSealAlasanControllers[i].text.trim();
+          }
+          if (i < _divertSealRemarkControllers.length) {
+            sealStatusRemark = _divertSealRemarkControllers[i].text.trim();
+          }
+        }
+
+        // Update _divertDetailItems entry (used for summary payload)
+        DetailCatridgeItem currentDivert = _divertDetailItems[i]!;
+        _divertDetailItems[i] = DetailCatridgeItem(
+          index: currentDivert.index,
+          noCatridge: currentDivert.noCatridge,
+          sealCatridge: currentDivert.sealCatridge,
+          value: currentDivert.value,
+          total: currentDivert.total,
+          denom: currentDivert.denom,
+          bagCode: bagCode.isNotEmpty ? bagCode : currentDivert.bagCode,
+          sealCode: sealCode.isNotEmpty ? sealCode : currentDivert.sealCode,
+          sealReturn: sealReturn.isNotEmpty ? sealReturn : currentDivert.sealReturn,
+          scanCatStatus: noStatus.isNotEmpty ? noStatus : currentDivert.scanCatStatus,
+          scanCatStatusRemark: noRemark.isNotEmpty ? noRemark : currentDivert.scanCatStatusRemark,
+          scanSealStatus: sealStatus.isNotEmpty ? sealStatus : currentDivert.scanSealStatus,
+          scanSealStatusRemark: sealStatusRemark.isNotEmpty ? sealStatusRemark : currentDivert.scanSealStatusRemark,
+        );
+
+        // Also update corresponding item in _detailCatridgeItems (divert indices 100+)
+        int divertIndex = _detailCatridgeItems.indexWhere((item) => item.index == 100 + i);
+        if (divertIndex >= 0) {
+          DetailCatridgeItem currentItem = _detailCatridgeItems[divertIndex];
+          _detailCatridgeItems[divertIndex] = DetailCatridgeItem(
+            index: currentItem.index,
+            noCatridge: currentItem.noCatridge,
+            sealCatridge: currentItem.sealCatridge,
+            value: currentItem.value,
+            total: currentItem.total,
+            denom: currentItem.denom,
+            bagCode: bagCode.isNotEmpty ? bagCode : currentItem.bagCode,
+            sealCode: sealCode.isNotEmpty ? sealCode : currentItem.sealCode,
+            sealReturn: sealReturn.isNotEmpty ? sealReturn : currentItem.sealReturn,
+            scanCatStatus: noStatus.isNotEmpty ? noStatus : currentItem.scanCatStatus,
+            scanCatStatusRemark: noRemark.isNotEmpty ? noRemark : currentItem.scanCatStatusRemark,
+            scanSealStatus: sealStatus.isNotEmpty ? sealStatus : currentItem.scanSealStatus,
+            scanSealStatusRemark: sealStatusRemark.isNotEmpty ? sealStatusRemark : currentItem.scanSealStatusRemark,
+          );
         }
       }
     }
-    
-    // Sync pocket data - use DetailCatridgeItem with index 200
+
+    // Sync pocket data - include scan status fields
     if (_pocketControllers.length >= 5 && _pocketDetailItem != null) {
       String bagCode = _pocketControllers[2].text.trim();
       String sealCode = _pocketControllers[3].text.trim();
       String sealReturn = _pocketControllers[4].text.trim();
-      
+
+      String noStatus = '';
+      String noRemark = '';
+      if (_pocketNoManualMode) {
+        noStatus = _pocketNoAlasanController.text.trim();
+        noRemark = _pocketNoRemarkController.text.trim();
+      }
+
+      String sealStatus = '';
+      String sealStatusRemark = '';
+      if (_pocketSealManualMode) {
+        sealStatus = _pocketSealAlasanController.text.trim();
+        sealStatusRemark = _pocketSealRemarkController.text.trim();
+      }
+
+      // Update pocket item used in summary payload
+      DetailCatridgeItem currentPocket = _pocketDetailItem!;
+      _pocketDetailItem = DetailCatridgeItem(
+        index: currentPocket.index,
+        noCatridge: currentPocket.noCatridge,
+        sealCatridge: currentPocket.sealCatridge,
+        value: currentPocket.value,
+        total: currentPocket.total,
+        denom: currentPocket.denom,
+        bagCode: bagCode.isNotEmpty ? bagCode : currentPocket.bagCode,
+        sealCode: sealCode.isNotEmpty ? sealCode : currentPocket.sealCode,
+        sealReturn: sealReturn.isNotEmpty ? sealReturn : currentPocket.sealReturn,
+        scanCatStatus: noStatus.isNotEmpty ? noStatus : currentPocket.scanCatStatus,
+        scanCatStatusRemark: noRemark.isNotEmpty ? noRemark : currentPocket.scanCatStatusRemark,
+        scanSealStatus: sealStatus.isNotEmpty ? sealStatus : currentPocket.scanSealStatus,
+        scanSealStatusRemark: sealStatusRemark.isNotEmpty ? sealStatusRemark : currentPocket.scanSealStatusRemark,
+      );
+
+      // Also update corresponding item in _detailCatridgeItems (pocket index 200)
       int pocketIndex = _detailCatridgeItems.indexWhere((item) => item.index == 200);
       if (pocketIndex >= 0) {
         DetailCatridgeItem currentItem = _detailCatridgeItems[pocketIndex];
@@ -3843,6 +3949,10 @@ class _PrepareModePageState extends State<PrepareModePage> {
           bagCode: bagCode.isNotEmpty ? bagCode : currentItem.bagCode,
           sealCode: sealCode.isNotEmpty ? sealCode : currentItem.sealCode,
           sealReturn: sealReturn.isNotEmpty ? sealReturn : currentItem.sealReturn,
+          scanCatStatus: noStatus.isNotEmpty ? noStatus : currentItem.scanCatStatus,
+          scanCatStatusRemark: noRemark.isNotEmpty ? noRemark : currentItem.scanCatStatusRemark,
+          scanSealStatus: sealStatus.isNotEmpty ? sealStatus : currentItem.scanSealStatus,
+          scanSealStatusRemark: sealStatusRemark.isNotEmpty ? sealStatusRemark : currentItem.scanSealStatusRemark,
         );
       }
     }
@@ -3909,9 +4019,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
       
       // Step 1: Update Planning API
       print('=== STEP 1: UPDATE PLANNING ===');
+      // Resolve cashierCode from auth user data (same mapping as userInput)
+      String cashierCode = 'UNKNOWN';
+      try {
+        final userData = await _authService.getUserData();
+        if (userData != null) {
+          cashierCode = userData['userId'] ?? userData['userID'] ?? userData['nik'] ?? userData['username'] ?? userData['userCode'] ?? 'UNKNOWN';
+        }
+      } catch (e) {
+        print('Error getting cashierCode from user data: $e');
+        cashierCode = 'UNKNOWN';
+      }
       final planningResponse = await _apiService.updatePlanning(
         idTool: _prepareData!.id,
-        cashierCode: 'CURRENT_USER', // TODO: Get from auth service
+        cashierCode: cashierCode,
         spvTLCode: _nikTLController.text,
         tableCode: _prepareData!.tableCode,
       );
@@ -3942,12 +4063,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
         String? scanSealStatusRemark,
       }) async {
         try {
-          // Get current user data for userInput
+          // Get current user data for userInput (restore previous behavior)
           String userInput = 'UNKNOWN';
           try {
             final userData = await _authService.getUserData();
             if (userData != null) {
-              // Prioritas userId yang disimpan saat login
               userInput = userData['userId'] ?? userData['userID'] ?? userData['nik'] ?? userData['username'] ?? userData['userCode'] ?? 'UNKNOWN';
             }
           } catch (e) {
@@ -3985,10 +4105,10 @@ class _PrepareModePageState extends State<PrepareModePage> {
                 userInput: userInput,
                 sealReturn: sealReturn,
                 typeCatridgeTrx: typeCatridgeTrx,
-                scanCatStatus: scanCatStatus ?? 'TEST',
-                scanCatStatusRemark: scanCatStatusRemark ?? 'TEST',
-                scanSealStatus: scanSealStatus ?? 'TEST',
-                scanSealStatusRemark: scanSealStatusRemark ?? 'TEST',
+                scanCatStatus: scanCatStatus ?? '',
+                scanCatStatusRemark: scanCatStatusRemark ?? '',
+                scanSealStatus: scanSealStatus ?? '',
+                scanSealStatusRemark: scanSealStatusRemark ?? '',
               );
               
               if (catridgeResponse.success) {
@@ -6599,6 +6719,40 @@ class _PrepareModePageState extends State<PrepareModePage> {
                   });
                 }
               } else if (cleanLabel == 'Bag Code' || cleanLabel == 'Seal Code' || cleanLabel == 'Seal Code Return') {
+                 // Check if this is a Cartridge field (Bag Code, Seal Code, or Seal Code Return)
+                 for (int i = 0; i < _catridgeControllers.length; i++) {
+                   for (int j = 2; j < _catridgeControllers[i].length; j++) {
+                     if (_catridgeControllers[i][j] == controller) {
+                       // Update the detail catridge item field
+                       String fieldName = '';
+                       if (j == 2) fieldName = 'bagCode';
+                       else if (j == 3) fieldName = 'sealCode';
+                       else if (j == 4) fieldName = 'sealReturn';
+                       
+                       if (fieldName.isNotEmpty) {
+                         _updateDetailCatridgeItemField(i, fieldName, controller.text);
+                         print('🔄 UPDATE: Cartridge section $i field $fieldName updated with scanned value: ${controller.text}');
+                         
+                         // Trigger seal code validation if this is a seal-related field
+                         if (fieldName == 'sealCode' || fieldName == 'sealReturn') {
+                           String sealCode = _catridgeControllers[i][3].text.trim();
+                           String sealCodeReturn = _catridgeControllers[i][4].text.trim();
+                           if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
+                             _validateSealCode(
+                               sealCode: sealCode.isEmpty ? null : sealCode,
+                               sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
+                               fieldType: fieldName,
+                               sectionType: 'catridge',
+                               sectionIndex: i,
+                             );
+                           }
+                         }
+                       }
+                       break;
+                     }
+                   }
+                 }
+                 
                  // Check if this is a Divert field (Bag Code, Seal Code, or Seal Code Return)
                  for (int i = 0; i < _divertControllers.length; i++) {
                    for (int j = 2; j < _divertControllers[i].length; j++) {

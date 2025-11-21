@@ -573,6 +573,11 @@ class DetailCatridgeItem {
   String bagCode;
   String sealCode;
   String sealReturn;
+  // Added optional scan status fields to carry manual mode info
+  String scanCatStatus;
+  String scanCatStatusRemark;
+  String scanSealStatus;
+  String scanSealStatusRemark;
 
   DetailCatridgeItem({
     required this.index,
@@ -584,6 +589,10 @@ class DetailCatridgeItem {
     this.bagCode = '',
     this.sealCode = '',
     this.sealReturn = '',
+    this.scanCatStatus = '',
+    this.scanCatStatusRemark = '',
+    this.scanSealStatus = '',
+    this.scanSealStatusRemark = '',
   });
 
   Map<String, dynamic> toJson() {
@@ -597,6 +606,11 @@ class DetailCatridgeItem {
       'bagCode': bagCode,
       'sealCode': sealCode,
       'sealReturn': sealReturn,
+      // Include scan fields for downstream consumers that rely on JSON
+      'scanCatStatus': scanCatStatus,
+      'scanCatStatusRemark': scanCatStatusRemark,
+      'scanSealStatus': scanSealStatus,
+      'scanSealStatusRemark': scanSealStatusRemark,
     };
   }
 }

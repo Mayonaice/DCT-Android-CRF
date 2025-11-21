@@ -247,7 +247,13 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       // Get planning ID and ATM ID from prepareData
       final planningId = widget.prepareData?.id ?? 0;
       final atmCode = widget.prepareData?.atmCode ?? '';
-      final cashierCode = widget.prepareData?.cashierCode ?? '';
+      final cashierCode = userData?['userId']?.toString()
+          ?? userData?['userID']?.toString()
+          ?? userData?['nik']?.toString()
+          ?? userData?['username']?.toString()
+          ?? userData?['userCode']?.toString()
+          ?? '';
+
       final tableCode = widget.prepareData?.tableCode ?? '';
       
       debugPrint('📋 [PREPARE_SUMMARY] Prepare Data Info:');
@@ -431,10 +437,10 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
     String noRemark = '';
     
     // Handle different data types (DetailCatridgeItem vs Map)
-    String scanCatStatus = 'TEST';
-    String scanCatStatusRemark = 'TEST';
-    String scanSealStatus = 'TEST';
-    String scanSealStatusRemark = 'TEST';
+    String scanCatStatus = '';
+    String scanCatStatusRemark = '';
+    String scanSealStatus = '';
+    String scanSealStatusRemark = '';
     String catridgeSeal = '';
     String catridgeCode = '';
     
@@ -446,6 +452,11 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       value = item.value?.toString() ?? '0';
       catridgeCode = item.noCatridge ?? '';
       catridgeSeal = item.sealCatridge ?? '';
+      // Read scan fields from DetailCatridgeItem
+      scanCatStatus = item.scanCatStatus ?? '';
+      scanCatStatusRemark = item.scanCatStatusRemark ?? '';
+      scanSealStatus = item.scanSealStatus ?? '';
+      scanSealStatusRemark = item.scanSealStatusRemark ?? '';
       noAlasan = '';
       noRemark = '';
     } else if (item is Map<String, dynamic>) {
@@ -458,10 +469,10 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       catridgeSeal = item['sealCatridge']?.toString() ?? '';
       noAlasan = item['noAlasan']?.toString() ?? '';
       noRemark = item['noRemark']?.toString() ?? '';
-      scanCatStatus = item['scanCatStatus']?.toString() ?? 'TEST';
-      scanCatStatusRemark = item['scanCatStatusRemark']?.toString() ?? 'TEST';
-      scanSealStatus = item['scanSealStatus']?.toString() ?? 'TEST';
-      scanSealStatusRemark = item['scanSealStatusRemark']?.toString() ?? 'TEST';
+      scanCatStatus = item['scanCatStatus']?.toString() ?? '';
+      scanCatStatusRemark = item['scanCatStatusRemark']?.toString() ?? '';
+      scanSealStatus = item['scanSealStatus']?.toString() ?? '';
+      scanSealStatusRemark = item['scanSealStatusRemark']?.toString() ?? '';
     }
     
     debugPrint('🔧 [INSERT_CATRIDGE] Preparing API call with parameters:');
@@ -474,7 +485,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
      debugPrint('   - catridgeSeal: $catridgeSeal');
      debugPrint('   - denomCode: $denomAmount');
      debugPrint('   - qty: $value');
-     debugPrint('   - userInput: $userId');
+     debugPrint('   - userInput: ' + (item is DetailCatridgeItem ? userId : (item['userInput'] ?? userId).toString()));
      debugPrint('   - sealReturn: $sealReturn');
      debugPrint('   - scanCatStatus: $scanCatStatus');
      debugPrint('   - scanCatStatusRemark: $scanCatStatusRemark');
