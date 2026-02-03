@@ -213,9 +213,10 @@ class _LogActivityPageState extends State<LogActivityPage>
 
   Widget _buildHeader() {
     final isTablet = MediaQuery.of(context).size.width >= 768;
+    final minHeight = isTablet ? 80.0 : 70.0;
     
     return Container(
-      height: isTablet ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 32.0 : 24.0,
         vertical: isTablet ? 16.0 : 12.0,
@@ -280,17 +281,36 @@ class _LogActivityPageState extends State<LogActivityPage>
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
-                child: Text(
-                  'Meja: 010101',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6B7280),
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
+                child: FutureBuilder<Map<String, dynamic>?>(
+                  future: _authService.getUserData(),
+                  builder: (context, snapshot) {
+                    String meja = '';
+                    if (snapshot.hasData && snapshot.data != null) {
+                      meja = snapshot.data!['noMeja'] ?? 
+                            snapshot.data!['NoMeja'] ?? 
+                            '010101';
+                    } else {
+                      meja = '010101';
+                    }
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Meja: $meja',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          maxLines: 1,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -558,7 +578,7 @@ class _LogActivityPageState extends State<LogActivityPage>
                     ),
                   ),
                   Text(
-                    item.idTypeATM,
+                    item.jnsMesin,
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,

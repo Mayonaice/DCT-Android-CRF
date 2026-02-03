@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
+import 'dart:io';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../models/prepare_model.dart';
@@ -9,6 +10,8 @@ import '../services/notification_service.dart';
 import '../widgets/custom_modals.dart';
 // Import TLQRScannerWidget untuk scanner yang sesungguhnya
 import '../widgets/tl_qr_scanner_widget.dart';
+import './tl_prepare_confirmation_page.dart';
+import './tl_return_confirmation_page.dart';
 import 'dart:async';
 
 class TLQRScannerScreen extends StatefulWidget {
@@ -131,6 +134,44 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
     }
   }
 
+  Map<String, dynamic>? _decompressJsonData(String compressedData) {
+    try {
+      final compressedBytes = base64.decode(compressedData);
+      final decompressed = gzip.decode(compressedBytes);
+      final jsonString = utf8.decode(decompressed);
+      return json.decode(jsonString) as Map<String, dynamic>;
+    } catch (_) {
+      try {
+        return json.decode(compressedData) as Map<String, dynamic>;
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  String _normalizeQrPayload(String raw) {
+    String value = raw.trim();
+    if (value.isEmpty) return value;
+
+    value = value.replaceAll(RegExp(r'\s+'), '');
+
+    if (value.contains('-') || value.contains('_')) {
+      value = value.replaceAll('-', '+').replaceAll('_', '/');
+    }
+
+    if (value.contains(' ')) {
+      value = value.replaceAll(' ', '+');
+    }
+
+    if (RegExp(r'^[A-Za-z0-9+/=]+$').hasMatch(value)) {
+      while (value.length % 4 != 0) {
+        value += '=';
+      }
+    }
+
+    return value;
+  }
+
   Future<void> _processQRCode(String qrCode) async {
     if (_isProcessing) return;
 
@@ -147,6 +188,16 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       // PENTING: Log QR code awal untuk debugging
       print('Processing QR Code: ${qrCode.length > 50 ? "${qrCode.substring(0, 50)}..." : qrCode}');
       print('QR Code length: ${qrCode.length}');
+      debugPrint(
+        '🔍 [QR_RAW] whitespace=${RegExp(r"\\s").hasMatch(qrCode)}, dash=${qrCode.contains("-")}, underscore=${qrCode.contains("_")}, plus=${qrCode.contains("+")}, slash=${qrCode.contains("/")}, eq=${qrCode.contains("=")}',
+      );
+
+      final normalizedQrCode = _normalizeQrPayload(qrCode);
+      if (normalizedQrCode != qrCode) {
+        debugPrint(
+          '🔍 [QR_NORMALIZE] rawLen=${qrCode.length}, normalizedLen=${normalizedQrCode.length}, starts="${normalizedQrCode.length > 50 ? normalizedQrCode.substring(0, 50) : normalizedQrCode}"',
+        );
+      }
       
       // PERBAIKAN: Coba berbagai metode untuk mendeteksi format QR dengan multiple attempts
       
@@ -159,7 +210,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       // Multiple attempts for base64 detection
       for (int attempt = 1; attempt <= 3; attempt++) {
         try {
-          base64Decode(qrCode);
+          base64Decode(normalizedQrCode);
           isEncrypted = true;
           debugPrint('✅ [QR_FORMAT] QR appears to be valid base64 (attempt $attempt)');
           break;
@@ -225,7 +276,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
              debugPrint('🔄 [QR_DECRYPT] Attempt $attempt/5 - Processing QR data...');
              
              // Add preprocessing for better detection
-             String processedQrCode = qrCode.trim();
+             String processedQrCode = normalizedQrCode;
              
              // Try different preprocessing approaches
              if (attempt > 1) {
@@ -240,6 +291,10 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
                while (processedQrCode.length % 4 != 0) {
                  processedQrCode += '=';
                }
+             }
+
+             if (attempt > 3) {
+               processedQrCode = processedQrCode.replaceAll('-', '+').replaceAll('_', '/');
              }
              
              // Dekripsi data QR (method ini synchronous, bukan async)
@@ -270,36 +325,62 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         
         // Log semua keys untuk debugging
         debugPrint('🔍 [QR_DECRYPT] Decrypted data keys: ${decryptedData.keys.toList()}');
+
+        if (decryptedData.containsKey('compressed') &&
+            decryptedData['compressed'] == true &&
+            decryptedData['data'] is String) {
+          final decompressed = _decompressJsonData(decryptedData['data'] as String);
+          if (decompressed == null) {
+            throw Exception('Gagal membaca data QR (decompress gagal)');
+          }
+          decryptedData = decompressed;
+          debugPrint('🔍 [QR_DECRYPT] Decompressed data keys: ${decryptedData.keys.toList()}');
+        }
         
         // PERBAIKAN: Support untuk format simplified QR code
         final isSimplified = decryptedData.containsKey('simplified') && decryptedData['simplified'] == true;
         
         if (isSimplified) {
-          // Format simplified - hanya perlu username/password untuk approval
           debugPrint('🔍 [QR_SIMPLIFIED] Processing simplified QR format');
-          
-          final username = decryptedData['username']?.toString() ?? '';
-          final password = decryptedData['password']?.toString() ?? '';
-          final qrAction = decryptedData['action']?.toString() ?? '';
+          final source = decryptedData['source']?.toString() ?? '';
           final qrIdTool = decryptedData['idTool']?.toString() ?? '';
-          
-          if (username.isEmpty || password.isEmpty) {
-            throw Exception('Invalid simplified QR: missing credentials');
-          }
-          
-          // Set basic data for simplified format
-          action = qrAction;
+          final cashierCode = decryptedData['cashierCode']?.toString() ?? '';
+          final tableCode = decryptedData['tableCode']?.toString() ?? '';
+          final isManualFlag = decryptedData['isManual']?.toString().toUpperCase() == 'Y';
+          final totalNominal = int.tryParse(decryptedData['totalNominal']?.toString() ?? '');
+          final totalLembar = int.tryParse(decryptedData['totalLembar']?.toString() ?? '');
+          final jumlahKasetCatridge = int.tryParse(decryptedData['jumlahKasetCatridge']?.toString() ?? '');
+          final wsid = decryptedData['wsid']?.toString();
+          final bank = decryptedData['bank']?.toString();
+          final lokasi = decryptedData['lokasi']?.toString();
+          final atmType = decryptedData['atmType']?.toString();
+          final jumlahKaset = int.tryParse(decryptedData['jumlahKaset']?.toString() ?? '');
+          action = source.toUpperCase() == 'RETURN' ? 'RETURN' : 'PREPARE';
           idTool = qrIdTool;
           timestamp = int.tryParse(decryptedData['timestamp']?.toString() ?? '0') ?? 0;
-          
-          debugPrint('✅ [QR_SIMPLIFIED] Simplified QR processed: action=$action, idTool=$idTool, user=$username');
-          
-          // Show success message and return early
-          await CustomModals.showSuccessModal(
-            context: context,
-            message: 'QR Code Simplified berhasil diproses!\nAction: $action\nTool: $idTool\nUser: $username',
-          );
-          
+          final userData = await _authService.getUserData();
+          final spvTLCode = userData != null
+              ? (userData['nik']?.toString() ?? userData['userId']?.toString() ?? userData['userID']?.toString() ?? '')
+              : '';
+          if (action == 'PREPARE') {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => TLPrepareConfirmationPage(
+                  idTool: idTool,
+                  cashierCode: cashierCode,
+                  tableCode: tableCode,
+                  totalNominal: totalNominal,
+                  wsidFromQr: wsid,
+                  bankFromQr: bank,
+                  lokasiFromQr: lokasi,
+                  atmTypeFromQr: atmType,
+                  jumlahKasetFromQr: jumlahKaset,
+                ),
+              ),
+            );
+          } else {
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => TLReturnConfirmationPage(idTool: idTool, cashierCode: cashierCode, tableCode: tableCode, totalNominal: totalNominal, totalLembar: totalLembar, jumlahKasetCatridge: jumlahKasetCatridge)));
+          }
           return;
         }
         
@@ -359,7 +440,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
                     debugPrint('✅ [QR_DATA] Added catridge: ${catridge.catridgeCode}');
                   } catch (e) {
                     debugPrint('❌ [QR_DATA] Error parsing catridge item: $e');
-                    // Continue with other items instead of failing completely
+                    // Continue with other items instead of failing completely 
                   }
                 }
               }
@@ -411,7 +492,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
             debugPrint('⚠️ [QR_JSON] Using current timestamp: $timestamp');
           }
           
-          // Cek dan parse data catridge jika ada
+          // Cek dan parse data catridge jika ada 
           if (jsonData?.containsKey('catridges') == true) {
             final catridges = jsonData!['catridges'];
             if (catridges is List) {

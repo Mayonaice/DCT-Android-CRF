@@ -10,8 +10,8 @@ import 'package:crypto/crypto.dart'; // Tambahkan import untuk enkripsi
 
 class AuthService {
   // Make base URL more flexible - allow for fallback
-  static const String _primaryBaseUrl = 'http://10.10.0.223/LocalCRF/api';
-  static const String _fallbackBaseUrl = 'http://10.10.0.223:8080/LocalCRF/api'; // Fallback URL if primary fails
+  static const String _primaryBaseUrl = 'https://dev.advantagescm.com/LocalCRF/api';
+  static const String _fallbackBaseUrl = 'https://dev.advantagescm.com/LocalCRF/api'; // Fallback URL if primary fails
   static const String tokenKey = 'auth_token';
   static const String userDataKey = 'user_data';
   static const String baseUrlKey = 'base_url';
@@ -300,9 +300,21 @@ class AuthService {
       
       // Store user data
       Map<String, dynamic> userData = responseData['data'];
-      // Ensure branchCode is included
-      if (selectedBranch != null && !userData.containsKey('branchCode')) {
-        userData['branchCode'] = selectedBranch;
+      if (selectedBranch != null && selectedBranch.isNotEmpty) {
+        if (!userData.containsKey('branchName') || userData['branchName'] == null || userData['branchName'].toString().isEmpty) {
+          userData['branchName'] = selectedBranch;
+        }
+      }
+      final dynamic groupIdRaw = userData['groupId'] ??
+          userData['GroupId'] ??
+          userData['GroupID'] ??
+          userData['groupid'] ??
+          userData['groupID'];
+      if (groupIdRaw != null && groupIdRaw.toString().isNotEmpty) {
+        userData['groupId'] = groupIdRaw.toString();
+        if (!userData.containsKey('branchCode') || userData['branchCode'] == null || userData['branchCode'].toString().isEmpty) {
+          userData['branchCode'] = groupIdRaw.toString();
+        }
       }
       
       // Ensure noMeja is included in userData

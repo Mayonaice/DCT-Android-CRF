@@ -10,7 +10,7 @@ import '../models/pengurangan_data_model.dart';
 
 class KonsolApiService {
   // Base URL
-  static const String _baseUrl = 'http://10.10.0.223/LocalCRF/api';
+  static const String _baseUrl = 'https://dev.advantagescm.com/LocalCRF/api';
   
   // API timeout duration
   static const Duration _timeout = Duration(seconds: 15);

@@ -39,6 +39,29 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
   String _branchName = '';
   Map<String, dynamic>? _userData;
 
+  Map<String, int> _calculateOverallTotals() {
+    int totalLembar = 0;
+    int totalNominal = 0;
+
+    for (final cartridge in widget.cartridgeData) {
+      for (final denom in ['1K', '2K', '5K', '10K', '20K', '50K', '100K']) {
+        final lembar = int.tryParse(cartridge['lembar_$denom'] ?? '0') ?? 0;
+        final denomValue = _getDenomValue(denom);
+        totalLembar += lembar;
+        totalNominal += lembar * denomValue;
+      }
+    }
+
+    return {'totalLembar': totalLembar, 'totalNominal': totalNominal};
+  }
+
+  int _calculateJumlahKasetCatridgeOnly() {
+    return widget.cartridgeData.where((cartridge) {
+      final type = cartridge['typeCatridgeTrx']?.toString().toUpperCase() ?? 'C';
+      return type == 'C';
+    }).length;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -83,8 +106,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
         UserInput: '925712095', // Sesuai contoh yang diberikan
         IsBalikKaset: cartridge['isBalikKaset']?.toString() ?? 'false',
         CatridgeCodeOld: cartridge['catridgeCodeOld']?.toString() ?? '',
-        ScanCatStatus: '',
-        ScanCatStatusRemark: '',
+        ScanCatStatus: cartridge['scanCatStatus']?.toString() ?? '',
+        ScanCatStatusRemark: cartridge['scanCatStatusRemark']?.toString() ?? '',
         ScanSealStatus: '',
         ScanSealStatusRemark: '',
       );
@@ -94,6 +117,46 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
     
     print('✅ [QR_DATA] Prepared ${qrDataList.length} return catridge QR data items');
     return qrDataList;
+  }
+
+  Future<void> _showReturnManualDetailDialog({
+    required String title,
+    required String alasan,
+    required String remark,
+  }) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Alasan:',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(alasan.isEmpty ? '-' : alasan),
+              const SizedBox(height: 12),
+              Text(
+                'Remark:',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(remark.isEmpty ? '-' : remark),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   ReturnDetailsQRData _prepareReturnDetailsQRData() {
@@ -106,6 +169,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
       jenisMesin: widget.returnData?.header?.jnsMesin ?? '',
       atmType: widget.returnData?.header?.idTypeAtm ?? widget.returnData?.header?.typeATM ?? '',
       tglUnload: widget.returnData?.header?.timeSTReturn ?? '',
+      jumlahKaset: (widget.returnData?.data.length ?? 0).toString(),
     );
     
     print('✅ [QR_DETAILS] Prepared return details: WSID=${details.wsid}, Bank=${details.bank}, Lokasi=${details.lokasi}');
@@ -182,7 +246,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
   }
 
   Future<void> _submitReturnData() async {
-    if (widget.returnData == null || widget.cartridgeData.isEmpty) {
+    if (widget.returnData == null) {
       await _showErrorDialog('Tidak ada data untuk disubmit');
       return;
     }
@@ -227,71 +291,24 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
         return;
       }
       
-      bool allSuccess = true;
-      List<String> errorMessages = [];
-      
-      // Submit data for each cartridge section
-      for (int i = 0; i < widget.cartridgeData.length; i++) {
-        final cartridgeData = widget.cartridgeData[i];
-        
-        // Log the parameters being sent to the API
-        print('DEBUG - Sending to API: idTool=$idTool, userInput=$userNIK');
-        print('DEBUG - Cartridge data: $cartridgeData');
-        
-        try {
-          // Implementasi parameter sesuai ketentuan
-          final response = await _apiService.insertReturnAtmCatridge(
-            // field Id Tool diisi ke IdTool
-            idTool: idTool,
-            // field No Bag diisi ke BagCode
-            bagCode: cartridgeData['bagCode'] ?? '',
-            // field No Catridge diisi ke CatridgeCode
-            catridgeCode: cartridgeData['noCatridge'] ?? '',
-            // field Seal Code diisi ke SealCode
-            sealCode: cartridgeData['sealCode'] ?? '',
-            // field No Seal diisi ke CatridgeSeal
-            catridgeSeal: cartridgeData['sealCatridge'] ?? '',
-            // DenomCode diisi TEST
-            denomCode: 'TEST',
-            // qty default diisi 0
-            qty: '0',
-            // nik saat login yang tersimpan akan mengisi ke UserInput
-            userInput: userNIK,
-            // N untuk isBalikKaset
-            isBalikKaset: 'N',
-            // CatridgeCodeOld diisi TEST
-            catridgeCodeOld: 'TEST',
-            // Parameter scan status
-            scanCatStatus: "SCAN",
-            scanCatStatusRemark: "Scanned from mobile app",
-            scanSealStatus: "SCAN",
-            scanSealStatusRemark: "Scanned from mobile app",
-          );
-          
-          if (!response.success) {
-            allSuccess = false;
-            errorMessages.add('Cartridge ${i + 1}: ${response.message}');
-            print('ERROR - API call failed for cartridge ${i + 1}: ${response.message}');
-          } else {
-            print('SUCCESS - API call successful for cartridge ${i + 1}');
-          }
-        } catch (e) {
-          allSuccess = false;
-          errorMessages.add('Cartridge ${i + 1}: ${e.toString()}');
-          print('EXCEPTION - API call exception for cartridge ${i + 1}: $e');
+      try {
+        final idToolInt = int.tryParse(idTool) ?? 0;
+        if (idToolInt <= 0) {
+          await _showErrorDialog('ID Tool tidak valid untuk eksekusi');
+          return;
         }
-      }
-      
-      if (allSuccess) {
-        // Tampilkan dialog sukses
-        await _showSuccessDialog('Data return berhasil disubmit!');
-        
-        // Navigate back to previous screens
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      } else {
-        // Tampilkan error untuk yang gagal
-        String errorMessage = 'Beberapa data gagal disubmit:\n${errorMessages.join('\n')}';
-        await _showErrorDialog(errorMessage);
+        final execResponse = await _apiService.executeReturnAtmCatridgeByIdTool(
+          idTool: idToolInt,
+          userApproveReturn: _tlNikController.text.trim(),
+        );
+        if (execResponse.success) {
+          await _showSuccessDialog('Data return berhasil disubmit!');
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        } else {
+          await _showErrorDialog(execResponse.message);
+        }
+      } catch (e) {
+        await _showErrorDialog('Error submit data: ${e.toString()}');
       }
       
     } catch (e) {
@@ -370,7 +387,12 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
               Expanded(
                 child: Column(
                   children: [
-                    _buildCartridgeField('Cartridge Fisik', cartridge['catridgeFisik'] ?? ''),
+                    _buildCartridgeField(
+                      'Cartridge Fisik',
+                      cartridge['catridgeFisik'] ?? '',
+                      manualStatus: cartridge['scanCatStatus']?.toString() ?? '',
+                      manualRemark: cartridge['scanCatStatusRemark']?.toString() ?? '',
+                    ),
                     _buildCartridgeField('Bag Code', cartridge['bagCode'] ?? ''),
                   ],
                 ),
@@ -450,7 +472,15 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
     );
   }
 
-  Widget _buildCartridgeField(String label, String value) {
+  Widget _buildCartridgeField(
+    String label,
+    String value, {
+    String manualStatus = '',
+    String manualRemark = '',
+  }) {
+    bool hasManual = manualStatus.isNotEmpty || manualRemark.isNotEmpty;
+    bool isDone = manualStatus.isNotEmpty && manualRemark.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -463,7 +493,38 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
             ),
           ),
           Expanded(
-            child: Text(value),
+            child: Row(
+              children: [
+                Expanded(child: Text(value)),
+                if (hasManual)
+                  GestureDetector(
+                    onTap: () {
+                      _showReturnManualDetailDialog(
+                        title: label,
+                        alasan: manualStatus,
+                        remark: manualRemark,
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Image.asset(
+                        isDone
+                            ? 'assets/images/ManualModeIcon_done.png'
+                            : 'assets/images/ManualModeIcon_notdone.png',
+                        width: 20,
+                        height: 20,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.edit,
+                            size: 18,
+                            color: isDone ? Colors.green : Colors.grey,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -629,6 +690,78 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
             ),
           ),
           const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Menunggu Approval TL',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.orange,
+                ),
+              ),
+              IconButton(
+                onPressed: () async {
+                  if (_isSubmitting) return;
+                  final idToolInt = int.tryParse(widget.idTool) ?? 0;
+                  if (idToolInt <= 0) {
+                    await _showErrorDialog('ID Tool tidak valid');
+                    return;
+                  }
+                  setState(() {
+                    _isSubmitting = true;
+                  });
+                  try {
+                    final res = await _apiService.checkIsDone(idTool: idToolInt);
+                    final status = res.status?.toUpperCase() ?? '';
+                    if (status == 'DONE') {
+                      final approveUser = _userData?['nik']?.toString()
+                          ?? _userData?['userId']?.toString()
+                          ?? _userData?['userID']?.toString()
+                          ?? _userData?['username']?.toString()
+                          ?? '';
+                      final exec = await _apiService.executeReturnAtmCatridgeByIdTool(
+                        idTool: idToolInt,
+                        userApproveReturn: approveUser,
+                      );
+                      if (exec.success) {
+                        await CustomModals.showSuccessModal(
+                          context: context,
+                          message: 'Approval TL sudah berhasil',
+                        );
+                        if (mounted) {
+                          Navigator.of(context).popUntil((route) => route.isFirst);
+                        }
+                      } else {
+                        await CustomModals.showFailedModal(
+                          context: context,
+                          message: exec.message ?? 'Gagal eksekusi data',
+                        );
+                      }
+                    } else {
+                      final confirmed = await CustomModals.showConfirmationModal(
+                        context: context,
+                        message: 'Masih belum dilakukan approve oleh TL, atau apakah kamu ingin mengulangi langkah submit ini?',
+                        confirmText: 'Ya',
+                        cancelText: 'Tidak',
+                      );
+                      if (confirmed && mounted) {
+                        setState(() {});
+                      }
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isSubmitting = false;
+                      });
+                    }
+                  }
+                },
+                icon: const Icon(Icons.refresh, color: Colors.orange),
+              ),
+            ],
+          ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -646,12 +779,19 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                QRCodeGeneratorWidget(
-                   action: 'RETURN',
-                   idTool: widget.returnData?.header?.atmCode ?? '0',
-                   returnCatridgeData: _prepareReturnQRData(),
-                   returnDetails: _prepareReturnDetailsQRData(),
-                ),
+                Builder(builder: (context) {
+                  final totals = _calculateOverallTotals();
+                  final jumlahKasetCatridge = _calculateJumlahKasetCatridgeOnly();
+                  return QRCodeGeneratorWidget(
+                    action: 'RETURN',
+                    idTool: widget.idTool,
+                    returnCatridgeData: _prepareReturnQRData(),
+                    returnDetails: _prepareReturnDetailsQRData(),
+                    totalLembar: totals['totalLembar'],
+                    totalNominal: totals['totalNominal'],
+                    jumlahKasetCatridge: jumlahKasetCatridge,
+                  );
+                }),
               ],
             ),
           ),
@@ -823,6 +963,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
     final size = MediaQuery.of(context).size;
     final isTabletOrLandscapeMobile = size.width >= 600;
     final isTablet = isTabletOrLandscapeMobile;
+    final minHeight = isTabletOrLandscapeMobile ? 80.0 : 70.0;
 
     return Scaffold(
       appBar: null, // Remove default AppBar
@@ -830,7 +971,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
         children: [
           // Custom header - same as return_page
           Container(
-            height: isTabletOrLandscapeMobile ? 80 : 70,
+            constraints: BoxConstraints(minHeight: minHeight),
             padding: EdgeInsets.symmetric(
               horizontal: isTabletOrLandscapeMobile ? 32.0 : 24.0,
               vertical: isTabletOrLandscapeMobile ? 16.0 : 12.0,
@@ -898,8 +1039,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
-                    SizedBox(
-                      width: isTablet ? 100 : 80,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
                       child: FutureBuilder<Map<String, dynamic>?>(
                         future: _authService.getUserData(),
                         builder: (context, snapshot) {
@@ -911,15 +1052,21 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
                           } else {
                             meja = '010101';
                           }
-                          return Text(
-                            'Meja: $meja',
-                            style: TextStyle(
-                              fontSize: isTablet ? 16 : 14,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF6B7280),
+                          return Align(
+                            alignment: Alignment.centerRight,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'Meja: $meja',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 16 : 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF6B7280),
+                                ),
+                                maxLines: 1,
+                              ),
                             ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
                           );
                         },
                       ),

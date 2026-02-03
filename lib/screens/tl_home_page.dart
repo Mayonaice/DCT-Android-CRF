@@ -10,6 +10,8 @@ import '../widgets/custom_modals.dart';
 import '../widgets/face_recognition_widget.dart';
 import '../widgets/tl_header_widget.dart';
 import '../screens/tl_approval_summary_screen.dart';
+import '../screens/tl_prepare_confirmation_page.dart';
+import '../screens/tl_return_confirmation_page.dart';
 import 'dart:math' as math;
 
 class TLHomePage extends StatefulWidget {
@@ -33,6 +35,31 @@ class _TLHomePageState extends State<TLHomePage> {
   int _belumPrepareCount = 0;
   int _belumReturnCount = 0;
   bool _isLoadingCounts = true;
+
+  int _asInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value.trim()) ?? 0;
+    return 0;
+  }
+
+  int _extractCount(dynamic payload, List<String> keys) {
+    if (payload == null) return 0;
+    if (payload is int || payload is double || payload is String) {
+      return _asInt(payload);
+    }
+
+    if (payload is Map) {
+      for (final key in keys) {
+        if (payload.containsKey(key)) return _asInt(payload[key]);
+      }
+      if (payload.containsKey('count')) return _asInt(payload['count']);
+      if (payload.containsKey('data')) return _extractCount(payload['data'], keys);
+    }
+
+    return 0;
+  }
 
   @override
   void initState() {
@@ -115,7 +142,7 @@ class _TLHomePageState extends State<TLHomePage> {
   Future<int> _getBelumPrepareCount(String branchCode) async {
     try {
       final String url = 
-          'http://10.10.0.223/LocalCRF/api/CRF/belumprepare?branchCode=$branchCode';
+          'https://dev.advantagescm.com/LocalCRF/api/CRF/belumprepare?branchCode=$branchCode';
       
       print('🔍 TL HOME: Fetching belum prepare count from: $url');
       print('🔍 TL HOME: BranchCode parameter: $branchCode');
@@ -126,15 +153,14 @@ class _TLHomePageState extends State<TLHomePage> {
         final data = json.decode(response.body);
         print('🎯 TL HOME: Belum prepare response: $data');
         
-        // Handle different response formats
-        if (data is Map<String, dynamic> && data.containsKey('count')) {
-          return data['count'] ?? 0;
-        } else if (data is int) {
-          return data;
-        } else if (data is String) {
-          return int.tryParse(data) ?? 0;
-        }
-        return 0;
+        final count = _extractCount(data, const [
+          'belumPrepare',
+          'belum_prepare',
+          'BelumPrepare',
+          'BELUMPREPARE',
+        ]);
+        print('🎯 TL HOME: Belum prepare extracted count: $count');
+        return count;
       } else {
         print('🚨 TL HOME: Failed to fetch belum prepare count: ${response.statusCode}');
         return 0;
@@ -149,7 +175,7 @@ class _TLHomePageState extends State<TLHomePage> {
   Future<int> _getBelumReturnCount(String branchCode) async {
     try {
       final String url = 
-          'http://10.10.0.223/LocalCRF/api/CRF/belumreturn?branchCode=$branchCode';
+          'https://dev.advantagescm.com/LocalCRF/api/CRF/belumreturn?branchCode=$branchCode';
       
       print('🔍 TL HOME: Fetching belum return count from: $url');
       print('🔍 TL HOME: BranchCode parameter: $branchCode');
@@ -160,15 +186,14 @@ class _TLHomePageState extends State<TLHomePage> {
         final data = json.decode(response.body);
         print('🎯 TL HOME: Belum return response: $data');
         
-        // Handle different response formats
-        if (data is Map<String, dynamic> && data.containsKey('count')) {
-          return data['count'] ?? 0;
-        } else if (data is int) {
-          return data;
-        } else if (data is String) {
-          return int.tryParse(data) ?? 0;
-        }
-        return 0;
+        final count = _extractCount(data, const [
+          'belumReturn',
+          'belum_return',
+          'BelumReturn',
+          'BELUMRETURN',
+        ]);
+        print('🎯 TL HOME: Belum return extracted count: $count');
+        return count;
       } else {
         print('🚨 TL HOME: Failed to fetch belum return count: ${response.statusCode}');
         return 0;
@@ -742,13 +767,60 @@ class _TLHomePageState extends State<TLHomePage> {
       debugPrint('🔍 [QR_PROCESS] Processing QR data...');
       debugPrint('🔍 [QR_PROCESS] QR data length: ${qrData.length}');
       
-      // Decrypt QR data
       final decryptedData = _authService.decryptDataFromQR(qrData);
       debugPrint('🔓 [QR_DECRYPT] Decrypted QR data: ${decryptedData.toString().substring(0, math.min(200, decryptedData.toString().length))}...');
-      
-      // Validate QR data structure
-      if (decryptedData == null || !decryptedData.containsKey('action')) {
-        throw Exception('Invalid QR data structure');
+      if (decryptedData == null) {
+        throw Exception('Invalid QR data');
+      }
+
+      if (decryptedData.containsKey('simplified') && decryptedData['simplified'] == true) {
+        final source = decryptedData['source']?.toString() ?? '';
+        final qrIdTool = decryptedData['idTool']?.toString() ?? '';
+        final cashierCode = decryptedData['cashierCode']?.toString() ?? '';
+        final tableCode = decryptedData['tableCode']?.toString() ?? '';
+        final totalNominal = int.tryParse(decryptedData['totalNominal']?.toString() ?? '');
+        final totalLembar = int.tryParse(decryptedData['totalLembar']?.toString() ?? '');
+        final jumlahKasetCatridge = int.tryParse(decryptedData['jumlahKasetCatridge']?.toString() ?? '');
+        final wsid = decryptedData['wsid']?.toString();
+        final bank = decryptedData['bank']?.toString();
+        final lokasi = decryptedData['lokasi']?.toString();
+        final atmType = decryptedData['atmType']?.toString();
+        final jumlahKaset = int.tryParse(decryptedData['jumlahKaset']?.toString() ?? '');
+        final action = source.toUpperCase() == 'RETURN' ? 'RETURN' : 'PREPARE';
+        if (action == 'PREPARE') {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TLPrepareConfirmationPage(
+                idTool: qrIdTool,
+                cashierCode: cashierCode,
+                tableCode: tableCode,
+                totalNominal: totalNominal,
+                wsidFromQr: wsid,
+                bankFromQr: bank,
+                lokasiFromQr: lokasi,
+                atmTypeFromQr: atmType,
+                jumlahKasetFromQr: jumlahKaset,
+              ),
+            ),
+          );
+          return;
+        } else {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TLReturnConfirmationPage(
+                idTool: qrIdTool,
+                cashierCode: cashierCode,
+                tableCode: tableCode,
+                totalNominal: totalNominal,
+                totalLembar: totalLembar,
+                jumlahKasetCatridge: jumlahKasetCatridge,
+              ),
+            ),
+          );
+          return;
+        }
       }
       
       // Process full QR data with all information intact

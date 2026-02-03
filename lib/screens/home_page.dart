@@ -142,7 +142,7 @@ class _HomePageState extends State<HomePage> {
   Future<int> _getBelumPrepareCount(String branchCode) async {
     try {
       final url =
-          'http://10.10.0.223/LocalCRF/api/CRF/belumprepare?branchCode=$branchCode';
+          'https://dev.advantagescm.com/LocalCRF/api/CRF/belumprepare?branchCode=$branchCode';
       print('🔍 HOME: Calling BelumPrepare API with URL: $url');
       print('🔍 HOME: BranchCode parameter: $branchCode');
 
@@ -171,7 +171,7 @@ class _HomePageState extends State<HomePage> {
   Future<int> _getBelumReturnCount(String branchCode) async {
     try {
       final url =
-          'http://10.10.0.223/LocalCRF/api/CRF/belumreturn?branchCode=$branchCode';
+          'https://dev.advantagescm.com/LocalCRF/api/CRF/belumreturn?branchCode=$branchCode';
       print('🔍 HOME: Calling BelumReturn API with URL: $url');
       print('🔍 HOME: BranchCode parameter: $branchCode');
 
@@ -623,34 +623,60 @@ class _HomePageState extends State<HomePage> {
                           ),
 
                           SizedBox(width: isSmallScreen ? 10 : 15),
-
-                          // Clock icon
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const LogActivityPage(),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                    color: Colors.black,
-                                    width: isSmallScreen ? 1 : 2),
-                              ),
-                              child: CircleAvatar(
-                                radius: isSmallScreen ? 16 : 22,
-                                backgroundColor: Colors.white,
-                                child: Icon(
-                                  Icons.access_time,
-                                  color: Colors.black,
-                                  size: isSmallScreen ? 20 : 30,
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              GestureDetector(
+                                onTap: () async {
+                                  await _refreshToInitialState();
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.black,
+                                        width: isSmallScreen ? 1 : 2),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: isSmallScreen ? 16 : 22,
+                                    backgroundColor: Colors.white,
+                                    child: Icon(
+                                      Icons.refresh,
+                                      color: Colors.black,
+                                      size: isSmallScreen ? 20 : 30,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                              SizedBox(height: isSmallScreen ? 8 : 10),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const LogActivityPage(),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.black,
+                                        width: isSmallScreen ? 1 : 2),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: isSmallScreen ? 16 : 22,
+                                    backgroundColor: Colors.white,
+                                    child: Icon(
+                                      Icons.access_time,
+                                      color: Colors.black,
+                                      size: isSmallScreen ? 20 : 30,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

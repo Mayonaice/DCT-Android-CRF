@@ -38,13 +38,47 @@ class _TLApprovalSummaryScreenState extends State<TLApprovalSummaryScreen> {
   @override
   void initState() {
     super.initState();
-    // Force portrait orientation for CRF_TL
+    // 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
     ]);
     
     _parseQRData();
+  }
+
+  int _denomValue(String codeRaw) {
+    final code = codeRaw.trim().toUpperCase();
+    if (code.isEmpty) return 0;
+    switch (code) {
+      case 'A1':
+      case '1K':
+        return 1000;
+      case 'A2':
+      case '2K':
+        return 2000;
+      case 'A5':
+      case '5K':
+        return 5000;
+      case 'A10':
+      case '10K':
+        return 10000;
+      case 'A20':
+      case '20K':
+        return 20000;
+      case 'A50':
+      case '50K':
+        return 50000;
+      case 'A75':
+      case '75K':
+        return 75000;
+      case 'A100':
+      case '100K':
+        return 100000;
+    }
+    final numeric = int.tryParse(code.replaceAll(RegExp(r'[^0-9]'), ''));
+    if (numeric != null && numeric > 0) return numeric;
+    return 0;
   }
 
   void _parseQRData() {
@@ -55,11 +89,19 @@ class _TLApprovalSummaryScreenState extends State<TLApprovalSummaryScreen> {
     _details = widget.qrData['details'] as Map<String, dynamic>? ?? {};
     _catridges = widget.qrData['catridges'] as List<dynamic>? ?? [];
     
-    // Calculate total amount from catridges
+    //
     _totalAmount = 0;
     for (var catridge in _catridges) {
-      final qty = int.tryParse(catridge['qty']?.toString() ?? '0') ?? 0;
-      _totalAmount += qty;
+      if (catridge is! Map) continue;
+      final denomCode = (catridge['denomCode'] ?? catridge['DenomCode'] ?? '').toString();
+      final qtyRaw = (catridge['qty'] ?? catridge['Qty'] ?? '0').toString();
+      final qty = int.tryParse(qtyRaw) ?? 0;
+      final denomValue = _denomValue(denomCode);
+      if (denomValue > 0) {
+        _totalAmount += qty * denomValue;
+      } else {
+        _totalAmount += qty;
+      }
     }
     
     debugPrint('🔍 [TL_APPROVAL] Parsed data:');
@@ -478,7 +520,7 @@ class _TLApprovalSummaryScreenState extends State<TLApprovalSummaryScreen> {
                               color: Colors.white,
                               strokeWidth: 2,
                             )
-                          : const Text(
+                          : Text(
                               'Approve Data',
                               style: TextStyle(
                                 color: Colors.white,

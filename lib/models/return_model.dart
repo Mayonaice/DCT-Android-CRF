@@ -160,6 +160,7 @@ class CatridgeReplenishData {
   final String sealCode;
   final String sealCodeReturn;
   final String typeCatridgeTrx;
+  final String denomCode;
 
   CatridgeReplenishData({
     required this.dataType,
@@ -171,6 +172,7 @@ class CatridgeReplenishData {
     this.sealCode = '',
     this.sealCodeReturn = '',
     this.typeCatridgeTrx = '',
+    this.denomCode = '',
   });
 
   factory CatridgeReplenishData.fromJson(Map<String, dynamic> json) {
@@ -184,6 +186,7 @@ class CatridgeReplenishData {
       sealCode: json['sealCode'] ?? '',
       sealCodeReturn: json['sealCodeReturn'] ?? '',
       typeCatridgeTrx: json['typeCatridgeTrx'] ?? '',
+      denomCode: json['denomCode'] ?? json['DenomCode'] ?? '',
     );
   }
 }
@@ -244,10 +247,10 @@ class ReturnCatridgeData {
       idTool: json['idTool'] ?? '',
       catridgeCode: json['catridgeCode'] ?? json['CatridgeCode'] ?? '',
       catridgeSeal: json['catridgeSeal'] ?? json['CatridgeSeal'] ?? '',
-      denomCode: json['denomCode'] ?? '',
+      denomCode: json['denomCode'] ?? json['DenomCode'] ?? '',
       typeCatridge: json['typeCatridge'] ?? '',
       bagCode: json['bagCode'], // Tambahkan mapping untuk bagCode
-      qty: json['qty'], // Tambahkan mapping untuk qty
+      qty: json['qty'] ?? json['Qty'], // Tambahkan mapping untuk qty
       typeCatridgeTrx: json['typeCatridgeTrx'], // Remove default value to preserve null/actual value
       sealCodeReturn: json['sealCodeReturn'], // Add mapping for sealCodeReturn
     );
@@ -311,10 +314,10 @@ class ReturnInputData {
       'userInput': userInput,
       'isBalikKaset': isBalikKaset ? 'Y' : 'N',
       'catridgeCodeOld': catridgeCodeOld,
-      'scanCatStatus': 'TEST',
-      'scanCatStatusRemark': 'TEST',
-      'scanSealStatus': 'TEST',
-      'scanSealStatusRemark': 'TEST',
+      'scanCatStatus': '',
+      'scanCatStatusRemark': '',
+      'scanSealStatus': '',
+      'scanSealStatusRemark': '',
     };
   }
 }

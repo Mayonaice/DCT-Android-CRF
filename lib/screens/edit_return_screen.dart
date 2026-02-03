@@ -404,17 +404,26 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                 ),
               ),
             Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(isTablet ? 16.0 : 12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTitleSection(isTablet),
-                    SizedBox(height: isTablet ? 16 : 12),
-                    _buildInfoSection(isTablet),
-                    SizedBox(height: isTablet ? 24 : 16),
-                    _buildEditSection(isTablet),
-                  ],
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.translucent,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    isTablet ? 16.0 : 12.0,
+                    isTablet ? 16.0 : 12.0,
+                    isTablet ? 16.0 : 12.0,
+                    (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTitleSection(isTablet),
+                      SizedBox(height: isTablet ? 16 : 12),
+                      _buildInfoSection(isTablet),
+                      SizedBox(height: isTablet ? 24 : 16),
+                      _buildEditSection(isTablet),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -426,8 +435,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
   }
   
   Widget _buildHeader(bool isTablet) {
+    final minHeight = isTablet ? 80.0 : 70.0;
     return Container(
-      height: isTablet ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 32.0 : 24.0,
         vertical: isTablet ? 16.0 : 12.0,
@@ -711,294 +721,269 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
   }
   
   Widget _buildEditSection(bool isTablet) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Main content with box
-          Flexible(
-            child: SingleChildScrollView(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.white,
-                ),
-                padding: EdgeInsets.all(isTablet ? 20 : 16),
-                child: Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(8),
+            color: Colors.white,
+          ),
+          padding: EdgeInsets.all(isTablet ? 20 : 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Left column - Denom Awal
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+                    Text(
+                      'Denom Awal (Lembar)',
+                      style: TextStyle(
+                        fontSize: isTablet ? 18 : 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildOriginalDenomRow('A100', '${widget.returnData.a100 ?? 0}', isTablet),
+                    const SizedBox(height: 8),
+                    _buildOriginalDenomRow('A75', '${widget.returnData.a75 ?? 0}', isTablet),
+                    const SizedBox(height: 8),
+                    _buildOriginalDenomRow('A50', '${widget.returnData.a50 ?? 0}', isTablet),
+                    const SizedBox(height: 8),
+                    _buildOriginalDenomRow('A20', '${widget.returnData.a20 ?? 0}', isTablet),
+                    const SizedBox(height: 8),
+                    _buildOriginalDenomRow('A10', '${widget.returnData.a10 ?? 0}', isTablet),
+                    const SizedBox(height: 8),
+                    _buildOriginalDenomRow('A5', '${widget.returnData.a5 ?? 0}', isTablet),
+                    const SizedBox(height: 8),
+                    _buildOriginalDenomRow('A2', '${widget.returnData.a2 ?? 0}', isTablet),
+                    const SizedBox(height: 8),
+                    _buildOriginalDenomRow('A1', '${widget.returnData.a1 ?? 0}', isTablet),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        SizedBox(width: isTablet ? 100 : 80),
                         Text(
-                          'Denom Awal (Lembar)',
+                          'Total Lembar',
                           style: TextStyle(
-                            fontSize: isTablet ? 18 : 16,
+                            fontSize: isTablet ? 16 : 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        
-                        // Original values - show all denominations
-                        _buildOriginalDenomRow('A100', '${widget.returnData.a100 ?? 0}', isTablet),
-                        const SizedBox(height: 8),
-                        _buildOriginalDenomRow('A75', '${widget.returnData.a75 ?? 0}', isTablet),
-                        const SizedBox(height: 8),
-                        _buildOriginalDenomRow('A50', '${widget.returnData.a50 ?? 0}', isTablet),
-                        const SizedBox(height: 8),
-                        _buildOriginalDenomRow('A20', '${widget.returnData.a20 ?? 0}', isTablet),
-                        const SizedBox(height: 8),
-                        _buildOriginalDenomRow('A10', '${widget.returnData.a10 ?? 0}', isTablet),
-                        const SizedBox(height: 8),
-                        _buildOriginalDenomRow('A5', '${widget.returnData.a5 ?? 0}', isTablet),
-                        const SizedBox(height: 8),
-                        _buildOriginalDenomRow('A2', '${widget.returnData.a2 ?? 0}', isTablet),
-                        const SizedBox(height: 8),
-                        _buildOriginalDenomRow('A1', '${widget.returnData.a1 ?? 0}', isTablet),
-                        
-                        // Totals
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            SizedBox(width: isTablet ? 100 : 80),
-                            Text(
-                              'Total Lembar',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              ':',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              '${widget.returnData.tQty ?? 0}',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 16),
+                        Text(
+                          ':',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            SizedBox(width: isTablet ? 100 : 80),
-                            Text(
-                              'Total Nominal',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              ':',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              'Rp ${NumberFormat('#,###').format(widget.returnData.tValue ?? 0)}',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        const SizedBox(width: 16),
+                        Text(
+                          '${widget.returnData.tQty ?? 0}',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  
-                  // Vertical divider
-                  Container(
-                    width: 1,
-                    margin: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
-                    color: Colors.grey.shade300,
-                  ),
-                  
-                    // Right column - Denom Edit
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        SizedBox(width: isTablet ? 100 : 80),
                         Text(
-                          'Denom Edit (Lembar)',
+                          'Total Nominal',
                           style: TextStyle(
-                            fontSize: isTablet ? 18 : 16,
+                            fontSize: isTablet ? 16 : 14,
                             fontWeight: FontWeight.bold,
-                            color: Colors.orange,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        
-                          // Editable fields in two columns
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(width: 16),
+                        Text(
+                          ':',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'Rp ${NumberFormat('#,###').format(widget.returnData.tValue ?? 0)}',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 1,
+                margin: EdgeInsets.symmetric(horizontal: isTablet ? 24 : 16),
+                color: Colors.grey.shade300,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Denom Edit (Lembar)',
+                      style: TextStyle(
+                        fontSize: isTablet ? 18 : 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Left column
-                              Expanded(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                  _buildDenomEditField('A100', _a100Controller, isTablet),
-                                  const SizedBox(height: 8),
-                                  _buildDenomEditField('A75', _a75Controller, isTablet),
-                                  const SizedBox(height: 8),
-                                  _buildDenomEditField('A50', _a50Controller, isTablet),
-                                  const SizedBox(height: 8),
-                                  _buildDenomEditField('A20', _a20Controller, isTablet),
-                                ],
-                              ),
-                            ),
-                            
-                              // Right column
-                              Expanded(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                  _buildDenomEditField('A10', _a10Controller, isTablet),
-                                  const SizedBox(height: 8),
-                                  _buildDenomEditField('A5', _a5Controller, isTablet),
-                                  const SizedBox(height: 8),
-                                  _buildDenomEditField('A2', _a2Controller, isTablet),
-                                  const SizedBox(height: 8),
-                                  _buildDenomEditField('A1', _a1Controller, isTablet),
-                                ],
-                              ),
-                            ),
-                          ],
+                              _buildDenomEditField('A100', _a100Controller, isTablet),
+                              const SizedBox(height: 8),
+                              _buildDenomEditField('A75', _a75Controller, isTablet),
+                              const SizedBox(height: 8),
+                              _buildDenomEditField('A50', _a50Controller, isTablet),
+                              const SizedBox(height: 8),
+                              _buildDenomEditField('A20', _a20Controller, isTablet),
+                            ],
+                          ),
                         ),
-                        
-                        // Totals
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Total Lembar',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              ':',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              '$_totalLembar',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Text(
-                              'Total Nominal',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              ':',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Text(
-                              'Rp ${NumberFormat('#,###').format(_totalNominal)}',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildDenomEditField('A10', _a10Controller, isTablet),
+                              const SizedBox(height: 8),
+                              _buildDenomEditField('A5', _a5Controller, isTablet),
+                              const SizedBox(height: 8),
+                              _buildDenomEditField('A2', _a2Controller, isTablet),
+                              const SizedBox(height: 8),
+                              _buildDenomEditField('A1', _a1Controller, isTablet),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Text(
+                          'Total Lembar',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          ':',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          '$_totalLembar',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Text(
+                          'Total Nominal',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          ':',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'Rp ${NumberFormat('#,###').format(_totalNominal)}',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 16, right: 16),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: _isSubmitting ? null : _showTLSupervisorDialog,
+              child: Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 32 : 24,
+                  vertical: isTablet ? 16 : 12,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF22C55E),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: Colors.white,
+                      size: isTablet ? 24 : 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Submit Data',
+                      style: TextStyle(
+                        fontSize: isTablet ? 18 : 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
-          
-          // Submit button
-          Padding(
-            padding: const EdgeInsets.only(top: 16, right: 16),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: _isSubmitting ? null : _showTLSupervisorDialog,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 32 : 24,
-                    vertical: isTablet ? 16 : 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF22C55E),
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: Colors.white,
-                        size: isTablet ? 24 : 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Submit Data',
-                        style: TextStyle(
-                          fontSize: isTablet ? 18 : 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
   

@@ -36,6 +36,10 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
   
   // Selected konsol data
   KonsolData? _selectedKonsolData;
+  final ScrollController _tableHorizontalScrollController = ScrollController();
+  final ScrollController _detailHeaderScrollController = ScrollController();
+  final ScrollController _detailBodyScrollController = ScrollController();
+  bool _isSyncingDetailScroll = false;
 
   @override
   void initState() {
@@ -44,6 +48,27 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
+
+    _detailHeaderScrollController.addListener(() {
+      if (_isSyncingDetailScroll) return;
+      if (!_detailBodyScrollController.hasClients) return;
+      _isSyncingDetailScroll = true;
+      final max = _detailBodyScrollController.position.maxScrollExtent;
+      final target = _detailHeaderScrollController.offset.clamp(0.0, max);
+      _detailBodyScrollController.jumpTo(target);
+      _isSyncingDetailScroll = false;
+    });
+
+    _detailBodyScrollController.addListener(() {
+      if (_isSyncingDetailScroll) return;
+      if (!_detailHeaderScrollController.hasClients) return;
+      _isSyncingDetailScroll = true;
+      final max = _detailHeaderScrollController.position.maxScrollExtent;
+      final target = _detailBodyScrollController.offset.clamp(0.0, max);
+      _detailHeaderScrollController.jumpTo(target);
+      _isSyncingDetailScroll = false;
+    });
+
     _loadUserData();
   }
 
@@ -180,6 +205,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
 
   @override
   void dispose() {
+    _tableHorizontalScrollController.dispose();
+    _detailHeaderScrollController.dispose();
+    _detailBodyScrollController.dispose();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -197,23 +225,29 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
     
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(isTablet),
             _buildNavigationTabs(isTablet),
             Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(isTablet ? 24.0 : 16.0),
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.translucent,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    isTablet ? 24.0 : 16.0,
+                    isTablet ? 24.0 : 16.0,
+                    isTablet ? 24.0 : 16.0,
+                    (isTablet ? 24.0 : 16.0) + MediaQuery.viewInsetsOf(context).bottom,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildDataKonsolSection(isTablet),
                       SizedBox(height: isTablet ? 24 : 20),
-                      _buildDateRangeSection(isTablet),
-                      SizedBox(height: isTablet ? 24 : 20),
-                      _buildSearchSection(isTablet),
+                      _buildDateRangeAndSearchSection(isTablet),
                       SizedBox(height: isTablet ? 24 : 20),
                       _buildDataTable(isTablet, screenHeight),
                       SizedBox(height: isTablet ? 24 : 20),
@@ -231,8 +265,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
   }
 
   Widget _buildHeader(bool isTablet) {
+    final minHeight = isTablet ? 80.0 : 70.0;
     return Container(
-      height: isTablet ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 32.0 : 24.0,
         vertical: isTablet ? 16.0 : 12.0,
@@ -297,8 +332,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
                 child: FutureBuilder<Map<String, dynamic>?>(
                   future: _authService.getUserData(),
                   builder: (context, snapshot) {
@@ -310,15 +345,21 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
                     } else {
                       meja = '010101';
                     }
-                    return Text(
-                      'Meja: $meja',
-                      style: TextStyle(
-                        fontSize: isTablet ? 16 : 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6B7280),
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Meja: $meja',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          maxLines: 1,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     );
                   },
                 ),
@@ -692,6 +733,17 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
     );
   }
 
+  Widget _buildDateRangeAndSearchSection(bool isTablet) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: _buildDateRangeSection(isTablet)),
+        SizedBox(width: isTablet ? 24 : 16),
+        _buildSearchSection(isTablet),
+      ],
+    );
+  }
+
   Widget _buildDateField(DateTime date, bool isTablet, Function(DateTime) onChanged) {
     return GestureDetector(
       onTap: () async {
@@ -742,8 +794,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
 
   Widget _buildSearchSection(bool isTablet) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Spacer(),
         Text(
           'Search',
           style: TextStyle(
@@ -833,8 +885,12 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
         columnWidths[column] = baseColumnWidth * 0.8;
       }
     }
+    final totalWidth = columns.fold<double>(
+      0,
+      (sum, column) => sum + (columnWidths[column] ?? 0),
+    );
 
-    return Container(
+    return SizedBox(
       height: screenHeight * 0.4,
       child: Container(
         decoration: BoxDecoration(
@@ -842,188 +898,192 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade300),
         ),
-        child: Column(
-          children: [
-            // Table Header - With horizontal scrolling to prevent overflow
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: columns.map((column) {
-                    return Container(
-                      width: columnWidths[column],
-                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          right: BorderSide(color: Colors.grey.shade300),
-                        ),
+        child: Scrollbar(
+          controller: _tableHorizontalScrollController,
+          child: SingleChildScrollView(
+            controller: _tableHorizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: totalWidth,
+              child: Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300),
                       ),
-                      child: Text(
-                        column,
-                        style: TextStyle(
-                          fontSize: isTablet ? 12 : 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            
-            // Table body with data or loading indicator
-            Expanded(
-              child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                  ? Center(
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          color: Colors.red,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    )
-                  : _filteredData.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No data available for selected date range',
-                          style: TextStyle(
-                            fontSize: isTablet ? 16 : 14,
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
+                    ),
+                    child: Row(
+                      children: columns.map((column) {
+                        return Container(
+                          width: columnWidths[column],
+                          padding: EdgeInsets.all(isTablet ? 8 : 4),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              right: BorderSide(color: Colors.grey.shade300),
+                            ),
                           ),
-                        ),
-                      )
-                      : ListView.builder(
-                          itemCount: _filteredData.length,
-                          itemBuilder: (context, index) {
-                            final data = _filteredData[index];
-                            final isSelected = _selectedKonsolData?.id == data.id;
-                            
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedKonsolData = data;
-                                });
-                              },
-                              child: Container(
-                                color: isSelected ? Colors.blue.withOpacity(0.1) : null,
-                                child: Row(
-                                  children: columns.map((column) {
-                                    String value = '';
-                                    switch (column) {
-                                      case 'ID Tool':
-                                        value = data.id ?? '-';
-                                        break;
-                                      case 'Tanggal Replenish':
-                                        if (data.dateReplenish != null) {
-                                          try {
-                                            final date = DateTime.parse(data.dateReplenish!);
-                                            value = DateFormat('dd MMM yyyy').format(date);
-                                          } catch (e) {
-                                            value = 'Invalid';
-                                          }
-                                        } else {
-                                          value = 'N/A';
-                                        }
-                                        break;
-                                      case 'Actual Replenish':
-                                        if (data.actualDateReplenish != null) {
-                                          try {
-                                            final date = DateTime.parse(data.actualDateReplenish!);
-                                            value = DateFormat('dd MMM yyyy').format(date);
-                                          } catch (e) {
-                                            value = 'Invalid';
-                                          }
-                                        } else {
-                                          value = 'N/A';
-                                        }
-                                        break;
-                                      case 'Tanggal Proses':
-                                        if (data.timeStart != null) {
-                                          try {
-                                            final date = DateTime.parse(data.timeStart!);
-                                            value = DateFormat('dd MMM yyyy').format(date);
-                                          } catch (e) {
-                                            value = 'Invalid';
-                                          }
-                                        } else {
-                                          value = 'N/A';
-                                        }
-                                        break;
-                                      case 'WSID':
-                                        value = data.atmCode ?? '-';
-                                        break;
-                                      case 'A1':
-                                        value = '${data.a1Edit ?? 0}';
-                                        break;
-                                      case 'A2':
-                                        value = '${data.a2Edit ?? 0}';
-                                        break;
-                                      case 'A5':
-                                        value = '${data.a5Edit ?? 0}';
-                                        break;
-                                      case 'A10':
-                                        value = '${data.a10Edit ?? 0}';
-                                        break;
-                                      case 'A20':
-                                        value = '${data.a20Edit ?? 0}';
-                                        break;
-                                      case 'A50':
-                                        value = '${data.a50Edit ?? 0}';
-                                        break;
-                                      case 'A75':
-                                        value = '${data.a75Edit ?? 0}';
-                                        break;
-                                      case 'A100':
-                                        value = '${data.a100Edit ?? 0}';
-                                        break;
-                                      case 'QTY':
-                                        value = '${data.tQtyEdit ?? 0}';
-                                        break;
-                                      case 'Value':
-                                        value = 'Rp ${NumberFormat('#,###').format(data.tValueEdit ?? 0)}';
-                                        break;
-                                    }
-                                    
-                                    return Container(
-                                      width: columnWidths[column],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        value,
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 12 : 9,
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }).toList(),
+                          child: Text(
+                            column,
+                            style: TextStyle(
+                              fontSize: isTablet ? 12 : 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  Expanded(
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : _errorMessage.isNotEmpty
+                            ? Center(
+                                child: Text(
+                                  _errorMessage,
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 16 : 14,
+                                    color: Colors.red,
+                                    fontStyle: FontStyle.italic,
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
+                              )
+                            : _filteredData.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'No data available for selected date range',
+                                      style: TextStyle(
+                                        fontSize: isTablet ? 16 : 14,
+                                        color: Colors.grey.shade500,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    itemCount: _filteredData.length,
+                                    itemBuilder: (context, index) {
+                                      final data = _filteredData[index];
+                                      final isSelected = _selectedKonsolData?.id == data.id;
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedKonsolData = data;
+                                          });
+                                        },
+                                        child: Container(
+                                          color: isSelected ? Colors.blue.withOpacity(0.1) : null,
+                                          child: Row(
+                                            children: columns.map((column) {
+                                              String value = '';
+                                              switch (column) {
+                                                case 'ID Tool':
+                                                  value = data.id ?? '-';
+                                                  break;
+                                                case 'Tanggal Replenish':
+                                                  if (data.dateReplenish != null) {
+                                                    try {
+                                                      final date = DateTime.parse(data.dateReplenish!);
+                                                      value = DateFormat('dd MMM yyyy').format(date);
+                                                    } catch (e) {
+                                                      value = 'Invalid';
+                                                    }
+                                                  } else {
+                                                    value = 'N/A';
+                                                  }
+                                                  break;
+                                                case 'Actual Replenish':
+                                                  if (data.actualDateReplenish != null) {
+                                                    try {
+                                                      final date = DateTime.parse(data.actualDateReplenish!);
+                                                      value = DateFormat('dd MMM yyyy').format(date);
+                                                    } catch (e) {
+                                                      value = 'Invalid';
+                                                    }
+                                                  } else {
+                                                    value = 'N/A';
+                                                  }
+                                                  break;
+                                                case 'Tanggal Proses':
+                                                  if (data.timeStart != null) {
+                                                    try {
+                                                      final date = DateTime.parse(data.timeStart!);
+                                                      value = DateFormat('dd MMM yyyy').format(date);
+                                                    } catch (e) {
+                                                      value = 'Invalid';
+                                                    }
+                                                  } else {
+                                                    value = 'N/A';
+                                                  }
+                                                  break;
+                                                case 'WSID':
+                                                  value = data.atmCode ?? '-';
+                                                  break;
+                                                case 'A1':
+                                                  value = '${data.a1Edit ?? 0}';
+                                                  break;
+                                                case 'A2':
+                                                  value = '${data.a2Edit ?? 0}';
+                                                  break;
+                                                case 'A5':
+                                                  value = '${data.a5Edit ?? 0}';
+                                                  break;
+                                                case 'A10':
+                                                  value = '${data.a10Edit ?? 0}';
+                                                  break;
+                                                case 'A20':
+                                                  value = '${data.a20Edit ?? 0}';
+                                                  break;
+                                                case 'A50':
+                                                  value = '${data.a50Edit ?? 0}';
+                                                  break;
+                                                case 'A75':
+                                                  value = '${data.a75Edit ?? 0}';
+                                                  break;
+                                                case 'A100':
+                                                  value = '${data.a100Edit ?? 0}';
+                                                  break;
+                                                case 'QTY':
+                                                  value = '${data.tQtyEdit ?? 0}';
+                                                  break;
+                                                case 'Value':
+                                                  value = 'Rp ${NumberFormat('#,###').format(data.tValueEdit ?? 0)}';
+                                                  break;
+                                              }
+
+                                              return Container(
+                                                width: columnWidths[column],
+                                                padding: EdgeInsets.all(isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(color: Colors.grey.shade300),
+                                                    bottom: BorderSide(color: Colors.grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  value,
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 12 : 9,
+                                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                  ),
+                ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1150,13 +1210,23 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
     Map<String, double> columnWidths = {};
     for (var column in columns) {
       if (column == 'ID Tool') {
-        columnWidths[column] = baseColumnWidth * 1.2;
+        final minWidth = isTablet ? 150.0 : 120.0;
+        final maxWidth = isTablet ? 320.0 : 260.0;
+        final calculated = baseColumnWidth * 1.6;
+        double width = calculated < minWidth ? minWidth : calculated;
+        final idValueLength = _selectedKonsolData?.id?.length ?? 0;
+        if (idValueLength > 12) {
+          width += (idValueLength - 12) * (isTablet ? 8.0 : 7.0);
+        }
+        columnWidths[column] = width > maxWidth ? maxWidth : width;
       } else if (column == 'QTY' || column == 'Value') {
         columnWidths[column] = baseColumnWidth * 1.1;
       } else {
         columnWidths[column] = baseColumnWidth * 0.9;
       }
     }
+
+    final totalTableWidth = columns.fold<double>(0, (sum, column) => sum + (columnWidths[column] ?? 0));
     
     return Column(
       children: [
@@ -1172,31 +1242,38 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
               bottom: BorderSide(color: Color(0xFFD1D5DB)),
             ),
           ),
-          child: Row(
-            children: columns.map((column) {
-              return Container(
-                width: columnWidths[column],
-                height: isTablet ? 40 : 35,
-                padding: EdgeInsets.all(isTablet ? 4 : 2),
-                decoration: const BoxDecoration(
-                  border: Border(
-                    right: BorderSide(color: Color(0xFFD1D5DB)),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    column,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: isTablet ? 10 : 8,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            controller: _detailHeaderScrollController,
+            child: SizedBox(
+              width: totalTableWidth,
+              child: Row(
+                children: columns.map((column) {
+                  return Container(
+                    width: columnWidths[column],
+                    height: isTablet ? 40 : 35,
+                    padding: EdgeInsets.all(isTablet ? 4 : 2),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        right: BorderSide(color: Color(0xFFD1D5DB)),
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              );
-            }).toList(),
+                    child: Center(
+                      child: Text(
+                        column,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: isTablet ? 10 : 8,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           ),
         ),
         // Body
@@ -1222,8 +1299,19 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
                   ),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
+                    controller: _detailBodyScrollController,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          left: BorderSide(color: Color(0xFFD1D5DB)),
+                          right: BorderSide(color: Color(0xFFD1D5DB)),
+                          bottom: BorderSide(color: Color(0xFFD1D5DB)),
+                        ),
+                      ),
+                      child: SizedBox(
+                        width: totalTableWidth,
+                        child: Row(
+                          children: [
                       // ID Tool
                       Container(
                         width: columnWidths['ID Tool'],
@@ -1454,6 +1542,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
                         ),
                       ),
                       ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

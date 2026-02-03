@@ -117,17 +117,42 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   final TextEditingController _tlNikController = TextEditingController();
   final TextEditingController _tlPasswordController = TextEditingController();
   bool _isSubmitting = false;
+  bool _formsLocked = true;
+
+  bool get formsLocked => _formsLocked;
 
   // NEW: Stream subscription for barcode results
   StreamSubscription<Map<String, dynamic>>? _barcodeStreamSubscription;
+
+  static const String _branchMismatchMessage = 'Data yang ditemukan tidak tersedia di cabang ini';
+
+  bool _looksLikeBranchMismatch(String message) {
+    final m = message.toLowerCase();
+    return m.contains('cabang') || m.contains('branch');
+  }
+
+  void _resetAfterInvalidFetch({bool clearIdTool = true}) {
+    if (!mounted) return;
+    setState(() {
+      _returnHeaderResponse = null;
+      _cartridgeSectionKeys.clear();
+      _formsLocked = true;
+      _errorMessage = '';
+      if (clearIdTool) {
+        _idToolController.clear();
+      }
+      _jamMulaiController.clear();
+      _tanggalReplenishController.clear();
+    });
+  }
 
   // Helper method to get all bag codes from catridge data
   List<String> _getAllBagCodes() {
     if (_returnHeaderResponse?.data == null) return [];
     
     return _returnHeaderResponse!.data
-        .map((catridge) => catridge.bagCode)
-        .where((bagCode) => bagCode != null && bagCode.isNotEmpty)
+        .map((catridge) => catridge.bagCode?.trim() ?? '')
+        .where((bagCode) => bagCode.isNotEmpty)
         .cast<String>() // Cast to non-nullable String
         .toSet() // Remove duplicates
         .toList();
@@ -138,8 +163,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     if (_returnHeaderResponse?.data == null) return [];
     
     return _returnHeaderResponse!.data
-        .map((catridge) => catridge.sealCodeReturn)
-        .where((sealCode) => sealCode != null && sealCode.isNotEmpty)
+        .map((catridge) => catridge.sealCodeReturn?.trim() ?? '')
+        .where((sealCode) => sealCode.isNotEmpty)
         .cast<String>() // Cast to non-nullable String
         .toSet() // Remove duplicates
         .toList();
@@ -750,7 +775,67 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   }
 
   // Navigate to summary page with cartridge data
+  int _calculateQtyFromDenomControllers(Map<String, TextEditingController> denomControllers) {
+    int qtyCount = 0;
+    for (final denom in ['1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K']) {
+      final txt = denomControllers[denom]?.text ?? '';
+      if (txt.isEmpty) continue;
+      qtyCount += int.tryParse(txt) ?? 0;
+    }
+    return qtyCount;
+  }
+
   Future<void> _navigateToSummaryPage() async {
+    // Validate manual mode requirements before collecting data
+    for (int i = 0; i < _cartridgeSectionKeys.length; i++) {
+      final key = _cartridgeSectionKeys[i];
+      if (key.currentState != null) {
+        final state = key.currentState!;
+        if (state.catridgeFisikController.text.trim().isEmpty) {
+          await CustomModals.showFailedModal(
+            context: context,
+            message: 'Inputan masih ada yang belum lengkap',
+          );
+          return;
+        }
+        if (state._catridgeFisikManualMode) {
+          final alasanEmpty = state._catridgeFisikAlasanController.text.trim().isEmpty;
+          final remarkEmpty = state._catridgeFisikRemarkController.text.trim().isEmpty;
+          if (alasanEmpty || remarkEmpty) {
+            await CustomModals.showFailedModal(
+              context: context,
+              message: 'Alasan dan Remark wajib diisi untuk mode manual',
+            );
+            return;
+          }
+        }
+
+        // Validate required dropdowns
+        bool dropdownOk = true;
+        if (state.kondisiSeal == null) {
+          dropdownOk = false;
+          state.setState(() {
+            state.isKondisiSealValid = false;
+            state.kondisiSealError = 'Pilih kondisi seal';
+          });
+        }
+        if (state.kondisiCatridge == null) {
+          dropdownOk = false;
+          state.setState(() {
+            state.isKondisiCatridgeValid = false;
+            state.kondisiCatridgeError = 'Pilih kondisi catridge';
+          });
+        }
+        if (!dropdownOk) {
+          await CustomModals.showFailedModal(
+            context: context,
+            message: 'Inputan masih ada yang belum lengkap',
+          );
+          return;
+        }
+      }
+    }
+
     // Collect cartridge data from all sections
     List<Map<String, dynamic>> cartridgeData = [];
     
@@ -766,6 +851,12 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
         }
         
         // Collect data from each cartridge section
+        final String scanCatStatusVal = state._catridgeFisikManualMode
+            ? state._catridgeFisikAlasanController.text
+            : '';
+        final String scanCatRemarkVal = state._catridgeFisikManualMode
+            ? state._catridgeFisikRemarkController.text
+            : '';
         Map<String, dynamic> data = {
           'noCatridge': state.noCatridgeController.text,
           'sealCatridge': state.noSealController.text,
@@ -775,10 +866,13 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           'kondisiSeal': state.kondisiSeal,
           'kondisiCatridge': state.kondisiCatridge,
           'typeCatridgeTrx': typeCatridgeTrx,
+          'scanCatStatus': scanCatStatusVal,
+          'scanCatStatusRemark': scanCatRemarkVal,
+          'qty': _calculateQtyFromDenomControllers(state.denomControllers).toString(),
         };
         
         // Add denomination data
-        for (String denom in ['1K', '2K', '5K', '10K', '20K', '50K', '100K']) {
+        for (String denom in ['1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K']) {
           data['lembar_$denom'] = state.denomControllers[denom]?.text ?? '0';
           data['nominal_$denom'] = state.denomControllers[denom]?.text ?? '0';
         }
@@ -787,7 +881,77 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       }
     }
     
-    // Navigate to summary page
+    String idTool = _idToolController.text;
+    String userNIK = '';
+    if (_userData != null) {
+      if (_userData!.containsKey('nik')) {
+        userNIK = _userData!['nik'].toString();
+      } else if (_userData!.containsKey('NIK')) {
+        userNIK = _userData!['NIK'].toString();
+      } else if (_userData!.containsKey('userId')) {
+        userNIK = _userData!['userId'].toString();
+      } else if (_userData!.containsKey('userID')) {
+        userNIK = _userData!['userID'].toString();
+      } else if (_userData!.containsKey('id')) {
+        userNIK = _userData!['id'].toString();
+      } else if (_userData!.containsKey('ID')) {
+        userNIK = _userData!['ID'].toString();
+      }
+    }
+
+    bool allSuccess = true;
+    List<String> errorMessages = [];
+    for (int i = 0; i < cartridgeData.length; i++) {
+      final c = cartridgeData[i];
+      final sectionState = i < _cartridgeSectionKeys.length ? _cartridgeSectionKeys[i].currentState : null;
+      final String scanCatStatusVal = (sectionState != null && sectionState._catridgeFisikManualMode)
+          ? sectionState._catridgeFisikAlasanController.text
+          : '';
+      final String scanCatRemarkVal = (sectionState != null && sectionState._catridgeFisikManualMode)
+          ? sectionState._catridgeFisikRemarkController.text
+          : '';
+      try {
+        final String denomCodeVal = (
+          _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
+          _returnHeaderResponse!.data[i].denomCode.isNotEmpty
+        )
+            ? _returnHeaderResponse!.data[i].denomCode
+            : ((sectionState?._resolvedDenomCode ?? sectionState?.catridgeFisikController.text) ?? '');
+        final resp = await _apiService.insertReturnAtmCatridgeTemp(
+          idTool: idTool,
+          bagCode: (c['bagCode'] ?? '').toString(),
+          catridgeCode: (c['noCatridge'] ?? '').toString(),
+          sealCode: (c['sealCode'] ?? '').toString(),
+          catridgeSeal: (c['sealCatridge'] ?? '').toString(),
+          denomCode: denomCodeVal,
+          qty: (sectionState != null
+                  ? _calculateQtyFromDenomControllers(sectionState.denomControllers).toString()
+                  : (c['qty'] ?? '0').toString()),
+          userInput: userNIK,
+          isBalikKaset: 'N',
+          catridgeCodeOld: '',
+          scanCatStatus: scanCatStatusVal,
+          scanCatStatusRemark: scanCatRemarkVal,
+          scanSealStatus: '',
+          scanSealStatusRemark: '',
+        );
+        if (!resp.success) {
+          allSuccess = false;
+          errorMessages.add(resp.message);
+          break;
+        }
+      } catch (e) {
+        allSuccess = false;
+        errorMessages.add(e.toString());
+        break;
+      }
+    }
+
+    if (!allSuccess) {
+      await _showErrorDialog(errorMessages.isNotEmpty ? errorMessages.join('\n') : 'Gagal proses insert temp');
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -796,7 +960,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           cartridgeData: cartridgeData,
           detailReturnLembarControllers: _detailReturnLembarControllers,
           detailReturnNominalControllers: _detailReturnNominalControllers,
-          idTool: _idToolController.text, // Pass idTool parameter
+          idTool: idTool,
         ),
       ),
     );
@@ -896,8 +1060,22 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
         print('Processing catridge ${i+1} of ${_returnHeaderResponse!.data.length}: ${catridge.catridgeCode}');
         print('DEBUG - Sending to API: idTool=${_idToolController.text}, userInput=$userNIK');
         
+        final catridgeState = i < _cartridgeSectionKeys.length ? _cartridgeSectionKeys[i].currentState : null;
+        final String scanCatStatusVal = (catridgeState != null && catridgeState._catridgeFisikManualMode)
+            ? catridgeState._catridgeFisikAlasanController.text
+            : '';
+        final String scanCatRemarkVal = (catridgeState != null && catridgeState._catridgeFisikManualMode)
+            ? catridgeState._catridgeFisikRemarkController.text
+            : '';
+
         // Send to RTN endpoint dengan parameter sesuai ketentuan
-        final rtneResponse = await _apiService.insertReturnAtmCatridge(
+        final String denomCodeVal = (
+          _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
+          _returnHeaderResponse!.data[i].denomCode.isNotEmpty
+        )
+            ? _returnHeaderResponse!.data[i].denomCode
+            : ((catridgeState?._resolvedDenomCode ?? catridgeState?.catridgeFisikController.text) ?? '');
+        final rtneResponse = await _apiService.insertReturnAtmCatridgeTemp(
           // field Id Tool diisi ke IdTool
           idTool: _idToolController.text,
           // field No Bag diisi ke BagCode
@@ -908,21 +1086,31 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           sealCode: '0', // Use default or get from catridge data if available
           // field No Seal diisi ke CatridgeSeal
           catridgeSeal: catridge.catridgeSeal,
-          // DenomCode diisi TEST
-          denomCode: 'TEST',
-          // qty default diisi 0
-          qty: '0',
+          // DenomCode diisi dari response validate-and-get-replenish atau fallback ke Catridge Fisik
+          denomCode: denomCodeVal,
+          // qty diambil dari jumlah lembar per section (sum semua denom)
+          qty: (() {
+            int qtyCount = 0;
+            if (catridgeState != null) {
+              for (final denom in ['1K','2K','5K','10K','20K','50K','75K','100K']) {
+                final txt = catridgeState!.denomControllers[denom]?.text ?? '';
+                if (txt.isNotEmpty) {
+                  qtyCount += int.tryParse(txt) ?? 0;
+                }
+              }
+            }
+            return qtyCount.toString();
+          })(),
           // nik saat login yang tersimpan akan mengisi ke UserInput
           userInput: userNIK,
           // N untuk isBalikKaset
           isBalikKaset: "N",
-          // CatridgeCodeOld diisi TEST
-          catridgeCodeOld: "TEST",
-          // Parameter scan status - using default values for this endpoint
-          scanCatStatus: "SCAN", 
-          scanCatStatusRemark: "Auto-processed from return header",
-          scanSealStatus: "SCAN",
-          scanSealStatusRemark: "Auto-processed from return header"
+          // CatridgeCodeOld kosong jika tidak ada
+          catridgeCodeOld: "",
+          scanCatStatus: scanCatStatusVal,
+          scanCatStatusRemark: scanCatRemarkVal,
+          scanSealStatus: '',
+          scanSealStatusRemark: ''
         );
         
         if (!rtneResponse.success) {
@@ -961,6 +1149,47 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     if (_returnHeaderResponse == null || _returnHeaderResponse!.data.isEmpty) {
       if (mounted) setState(() { _errorMessage = 'Tidak ada data untuk disubmit'; });
       return;
+    }
+
+    // Validate manual mode requirements for each cartridge section
+    for (int i = 0; i < _cartridgeSectionKeys.length; i++) {
+      final key = _cartridgeSectionKeys[i];
+      if (key.currentState != null) {
+        final state = key.currentState!;
+        if (state.catridgeFisikController.text.trim().isEmpty) {
+          await _showErrorDialog('Inputan masih ada yang belum lengkap');
+          return;
+        }
+        if (state._catridgeFisikManualMode) {
+          final alasanEmpty = state._catridgeFisikAlasanController.text.trim().isEmpty;
+          final remarkEmpty = state._catridgeFisikRemarkController.text.trim().isEmpty;
+          if (alasanEmpty || remarkEmpty) {
+            await _showErrorDialog('Alasan dan Remark wajib diisi untuk mode manual');
+            return;
+          }
+        }
+
+        // Validate Kondisi Seal and Kondisi Catridge selections
+        bool dropdownOk = true;
+        if (state.kondisiSeal == null) {
+          dropdownOk = false;
+          state.setState(() {
+            state.isKondisiSealValid = false;
+            state.kondisiSealError = 'Pilih kondisi seal';
+          });
+        }
+        if (state.kondisiCatridge == null) {
+          dropdownOk = false;
+          state.setState(() {
+            state.isKondisiCatridgeValid = false;
+            state.kondisiCatridgeError = 'Pilih kondisi catridge';
+          });
+        }
+        if (!dropdownOk) {
+          await _showErrorDialog('Inputan masih ada yang belum lengkap');
+          return;
+        }
+      }
     }
 
     if (mounted) setState(() { _isLoading = true; _errorMessage = ''; });
@@ -1015,7 +1244,13 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
         print('DEBUG - Sending to API: idTool=${_idToolController.text}, userInput=$userNIK');
         
         // Implementasi parameter sesuai ketentuan
-        final response = await _apiService.insertReturnAtmCatridge(
+        final String denomCodeVal = (
+          _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
+          _returnHeaderResponse!.data[i].denomCode.isNotEmpty
+        )
+            ? _returnHeaderResponse!.data[i].denomCode
+            : (catridgeState._resolvedDenomCode ?? catridgeState.catridgeFisikController.text);
+        final response = await _apiService.insertReturnAtmCatridgeTemp(
           // field Id Tool diisi ke IdTool
           idTool: _idToolController.text,
           // field No Bag diisi ke BagCode
@@ -1026,25 +1261,33 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           sealCode: catridgeState.sealCode ?? '',
           // field No Seal diisi ke CatridgeSeal
           catridgeSeal: catridgeState.noSealController.text,
-          // DenomCode diisi TEST
-          denomCode: 'TEST',
-          // qty default diisi 0
-          qty: '0',
+          // DenomCode diisi dari response validate-and-get-replenish atau fallback
+          denomCode: denomCodeVal,
+          // qty diambil dari jumlah lembar per section (sum semua denom)
+          qty: (() {
+            int qtyCount = 0;
+            for (final denom in ['1K','2K','5K','10K','20K','50K','75K','100K']) {
+              final txt = catridgeState.denomControllers[denom]?.text ?? '';
+              if (txt.isNotEmpty) {
+                qtyCount += int.tryParse(txt) ?? 0;
+              }
+            }
+            return qtyCount.toString();
+          })(),
           // nik saat login yang tersimpan akan mengisi ke UserInput - make sure this is filled
           userInput: userNIK,
           // N untuk isBalikKaset
           isBalikKaset: 'N',
-          // CatridgeCodeOld diisi TEST
-          catridgeCodeOld: 'TEST',
-          // Parameter scan status - updated to use manual mode data
-          scanCatStatus: catridgeState._noCatridgeManualMode ? "MANUAL" : "SCAN",
-          scanCatStatusRemark: catridgeState._noCatridgeManualMode ? 
-            "${catridgeState._noCatridgeAlasanController.text} - ${catridgeState._noCatridgeRemarkController.text}" : 
-            "Scanned from mobile app",
-          scanSealStatus: catridgeState._noSealManualMode ? "MANUAL" : "SCAN",
-          scanSealStatusRemark: catridgeState._noSealManualMode ? 
-            "${catridgeState._noSealAlasanController.text} - ${catridgeState._noSealRemarkController.text}" : 
-            "Scanned from mobile app",
+          // CatridgeCodeOld kosong jika tidak ada
+          catridgeCodeOld: '',
+          scanCatStatus: catridgeState._catridgeFisikManualMode
+              ? catridgeState._catridgeFisikAlasanController.text
+              : '',
+          scanCatStatusRemark: catridgeState._catridgeFisikManualMode
+              ? catridgeState._catridgeFisikRemarkController.text
+              : '',
+          scanSealStatus: '',
+          scanSealStatusRemark: '',
           // Additional manual mode parameters - removed as these are not valid API parameters
         );
         
@@ -1062,6 +1305,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       _idToolController.clear();
       setState(() {
         _returnHeaderResponse = null;
+        _formsLocked = true;
       });
       
     } catch (e) {
@@ -1089,6 +1333,47 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
         branchCode: _branchCode
       );
 
+      final validationStatus = result.data?.validationStatus.toString().toUpperCase() ?? '';
+      final validationErrorMessage = result.data?.errorMessage.toString() ?? '';
+      final shouldTreatAsError = !result.success ||
+          result.data == null ||
+          validationStatus == 'ERROR';
+
+      if (shouldTreatAsError) {
+        String message = result.message.trim();
+        if (validationErrorMessage.trim().isNotEmpty) {
+          message = validationErrorMessage.trim();
+        }
+        if (message.isEmpty) {
+          message = 'Gagal mengambil data';
+        }
+        if (_looksLikeBranchMismatch(message)) {
+          message = _branchMismatchMessage;
+        }
+
+        await CustomModals.showFailedModal(
+          context: context,
+          message: message,
+          onPressed: () {
+            Navigator.of(context).pop();
+            _resetAfterInvalidFetch(clearIdTool: true);
+          },
+        );
+        return;
+      }
+
+      if (result.data!.catridges.isEmpty) {
+        await CustomModals.showFailedModal(
+          context: context,
+          message: 'Data catridge kosong',
+          onPressed: () {
+            Navigator.of(context).pop();
+            _resetAfterInvalidFetch(clearIdTool: true);
+          },
+        );
+        return;
+      }
+
       if (result.success && result.data != null) {
         setState(() {
           // Create a header response with all the new fields - ensure all values are converted to String
@@ -1110,7 +1395,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
               idTool: result.data!.idToolPrepare.toString(),
               catridgeCode: c.catridgeCode.toString(),
               catridgeSeal: c.catridgeSeal.toString(),
-              denomCode: '',
+              denomCode: c.denomCode.toString(),
               typeCatridge: c.typeCatridgeTrx.toString(),
               bagCode: c.bagCode.toString(),
               sealCodeReturn: c.sealCodeReturn.toString(),
@@ -1120,25 +1405,24 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           
           // Set current time to jam mulai when data is fetched successfully
           _setCurrentTime();
+          _formsLocked = false;
         });
-      } else {
-        // Show error using CustomModals instead of setting _errorMessage
-        await CustomModals.showFailedModal(
-          context: context,
-          message: result.message,
-        );
       }
     } catch (e) {
       // Show error using CustomModals instead of setting _errorMessage
       await CustomModals.showFailedModal(
         context: context,
         message: 'Terjadi kesalahan: ${e.toString()}',
+        onPressed: () {
+          Navigator.of(context).pop();
+          _resetAfterInvalidFetch(clearIdTool: true);
+        },
       );
     } finally {
       setState(() {
         _isLoading = false;
-                });
-              }
+        });
+      }
             }
 
   // Add method to set current time and date
@@ -1327,6 +1611,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     final size = MediaQuery.of(context).size;
     final isTabletOrLandscapeMobile = size.width >= 600;
     final isLandscape = size.width > size.height;
+    final minHeight = isTabletOrLandscapeMobile ? 80.0 : 70.0;
     
     return Scaffold(
       appBar: null, // Remove default AppBar
@@ -1334,7 +1619,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
         children: [
           // Custom header - matched with konsol_mode
           Container(
-            height: isTabletOrLandscapeMobile ? 80 : 70,
+            constraints: BoxConstraints(minHeight: minHeight),
             padding: EdgeInsets.symmetric(
               horizontal: isTabletOrLandscapeMobile ? 32.0 : 24.0,
               vertical: isTabletOrLandscapeMobile ? 16.0 : 12.0,
@@ -1402,8 +1687,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
                 child: FutureBuilder<Map<String, dynamic>?>(
                   future: _authService.getUserData(),
                   builder: (context, snapshot) {
@@ -1415,15 +1700,21 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                     } else {
                       meja = '010101';
                     }
-                    return Text(
-                      'Meja: $meja',
-                      style: TextStyle(
-                        fontSize: isTablet ? 16 : 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6B7280),
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Meja: $meja',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          maxLines: 1,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     );
                   },
                 ),
@@ -1458,15 +1749,16 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           
           // Refresh button
           GestureDetector(
-            onTap: () {
-              // Refresh data when clicked
-              setState(() {
-                _returnHeaderResponse = null;
-                _idToolController.clear();
-                _jamMulaiController.clear();
-                _errorMessage = '';
-              });
-            },
+          onTap: () {
+            // Refresh data when clicked
+            setState(() {
+              _returnHeaderResponse = null;
+              _idToolController.clear();
+              _jamMulaiController.clear();
+              _errorMessage = '';
+              _formsLocked = true;
+            });
+          },
             child: Container(
               width: isTablet ? 44 : 40,
               height: isTablet ? 44 : 40,
@@ -1608,6 +1900,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                     _idToolController.clear();
                     _jamMulaiController.clear();
                     _errorMessage = '';
+                    _formsLocked = true;
                   });
                 },
                 child: LayoutBuilder(
@@ -1976,6 +2269,18 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
     
+    final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+    final bool isLocked = parentState?.formsLocked ?? true;
+    // Sanitize items: trim and deduplicate
+    final sanitizedItems = items
+        .where((e) => e.trim().isNotEmpty)
+        .map((e) => e.trim())
+        .toSet()
+        .toList();
+    // Ensure selected value is present; otherwise null to avoid Dropdown assertion
+    final safeSelectedValue = (selectedValue != null && sanitizedItems.contains(selectedValue.trim()))
+        ? selectedValue.trim()
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2016,7 +2321,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       Expanded(
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: selectedValue,
+                            value: safeSelectedValue,
                             hint: Text(
                               'Pilih $label',
                               style: TextStyle(
@@ -2029,13 +2334,15 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                               fontSize: isSmallScreen ? 12 : 14,
                               color: isValid ? Colors.black : Colors.red,
                             ),
-                            items: items.map((String value) {
+                            items: sanitizedItems.map((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
                                 child: Text(value),
                               );
                             }).toList(),
-                            onChanged: onChanged,
+                            onChanged: isLocked ? null : (val) {
+                              onChanged(val);
+                            },
                             icon: Container(
                               width: isSmallScreen ? 30 : 40,
                               height: isSmallScreen ? 30 : 40,
@@ -2087,6 +2394,18 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
     
+    final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+    final bool isLocked = parentState?.formsLocked ?? true;
+    // Sanitize items: trim and deduplicate
+    final sanitizedItems = items
+        .where((e) => e.trim().isNotEmpty)
+        .map((e) => e.trim())
+        .toSet()
+        .toList();
+    // Ensure selected value is present; otherwise null to avoid Dropdown assertion
+    final safeSelectedValue = (selectedValue != null && sanitizedItems.contains(selectedValue.trim()))
+        ? selectedValue.trim()
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2127,7 +2446,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       Expanded(
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
-                            value: selectedValue,
+                            value: safeSelectedValue,
                             hint: Text(
                               'Pilih $label',
                               style: TextStyle(
@@ -2140,13 +2459,15 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                               fontSize: isSmallScreen ? 12 : 14,
                               color: isValid ? Colors.black : Colors.red,
                             ),
-                            items: items.map((String value) {
+                            items: sanitizedItems.map((String value) {
                               return DropdownMenuItem<String>(
                                 value: value,
                                 child: Text(value),
                               );
                             }).toList(),
-                            onChanged: onChanged,
+                            onChanged: isLocked ? null : (val) {
+                              onChanged(val);
+                            },
                             icon: Container(
                               width: isSmallScreen ? 30 : 40,
                               height: isSmallScreen ? 30 : 40,
@@ -2234,6 +2555,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         } else if (fieldKey == 'catridgeFisik') {
           isCatridgeFisikValid = true;
           catridgeFisikError = '';
+          _catridgeFisikManualMode = false;
+          _catridgeFisikAlasanController.clear();
+          _catridgeFisikRemarkController.clear();
+          _catridgeFisikRemarkFilled = false;
         } else if (fieldKey == 'bagCode') {
           isBagCodeValid = true;
           bagCodeError = '';
@@ -2320,6 +2645,88 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     '2K': TextEditingController(),
     '1K': TextEditingController(),
   };
+  String? _resolvedDenomCode;
+  bool _isDenomEnabled(String label) {
+    final type = widget.returnData?.typeCatridgeTrx?.toUpperCase() ?? 'C';
+    if (type != 'C') return true;
+    String code = _resolvedDenomCode?.toUpperCase() ?? widget.returnData?.denomCode?.toUpperCase() ?? '';
+    if (code.isEmpty) {
+      code = catridgeFisikController.text.trim().toUpperCase();
+    }
+    switch (code) {
+      case 'A1':
+        return label == '1K';
+      case 'A2':
+        return label == '2K';
+      case 'A5':
+        return label == '5K';
+      case 'A10':
+        return label == '10K';
+      case 'A20':
+        return label == '20K';
+      case 'A50':
+        return label == '50K';
+      case 'A75':
+        return label == '75K';
+      case 'A100':
+        return label == '100K';
+      default:
+        return true;
+    }
+  }
+
+  Future<void> _resolveDenomCode() async {
+    try {
+      final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+      final String branch = branchCodeController.text.isNotEmpty ? branchCodeController.text : (parentState?._branchCode ?? '1');
+      final String catridge = noCatridgeController.text.trim();
+      if (catridge.isEmpty) return;
+      final resp = await _apiService.getCatridgeDetails(branch, catridge, idTool: widget.parentIdToolController.text);
+      if (resp.success && resp.data is List && (resp.data as List).isNotEmpty) {
+        final first = (resp.data as List).first;
+        int standValue = 0;
+        if (first is Map) {
+          final map = first as Map;
+          final sv = map['StandValue'] ?? map['standValue'] ?? map['STANDVALUE'];
+          if (sv is int) standValue = sv; else if (sv is String) standValue = int.tryParse(sv) ?? 0;
+        }
+        String code;
+        switch (standValue) {
+          case 1000:
+            code = 'A1';
+            break;
+          case 2000:
+            code = 'A2';
+            break;
+          case 5000:
+            code = 'A5';
+            break;
+          case 10000:
+            code = 'A10';
+            break;
+          case 20000:
+            code = 'A20';
+            break;
+          case 50000:
+            code = 'A50';
+            break;
+          case 75000:
+            code = 'A75';
+            break;
+          case 100000:
+            code = 'A100';
+            break;
+          default:
+            code = '';
+        }
+        if (mounted) {
+          setState(() {
+            _resolvedDenomCode = code;
+          });
+        }
+      }
+    } catch (_) {}
+  }
   
   // NEW: Controllers for total calculations
   final TextEditingController totalLembarController = TextEditingController();
@@ -2577,7 +2984,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       print('Fetching data with idTool: $idTool, branchCode: $numericBranchCode (original: ${branchCodeController.text})');
       
       // Create test URL for manual verification
-      final String testUrl = 'http://10.10.0.223/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=$idTool&branchCode=$numericBranchCode';
+      final String testUrl = 'https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=$idTool&branchCode=$numericBranchCode';
       print('Test URL: $testUrl');
       
       final result = await safeApiCall(() => _apiService.validateAndGetReplenishRaw(
@@ -2639,7 +3046,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         
         // Add debugging info for 404 errors
         if (errorMessage.contains('404')) {
-          errorMessage += '\n\nDetail permintaan:\nURL: 10.10.0.223/LocalCRF/api/CRF/rtn/validate-and-get-replenish'
+          errorMessage += '\n\nDetail permintaan:\nURL: https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish'
               '\nParameter: idtool=$idTool, branchCode=$numericBranchCode';
               
           print('404 Error: $errorMessage');
@@ -2669,7 +3076,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         title: 'Kesalahan Jaringan',
         message: 'Terjadi kesalahan saat menghubungi server. Mohon periksa koneksi internet dan coba lagi.',
         technicalDetails: e.toString(),
-        testUrl: 'http://10.10.0.223/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=${widget.parentIdToolController.text}&branchCode=$numericBranchCode'
+        testUrl: 'https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=${widget.parentIdToolController.text}&branchCode=$numericBranchCode'
       );
     } finally {
       setState(() {
@@ -2981,17 +3388,18 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       
       // If bagCode is available, use it and set dropdown selection
       if (widget.returnData!.bagCode != null) {
-        bagCodeController.text = widget.returnData!.bagCode!;
-        selectedBagCode = widget.returnData!.bagCode!;
+        bagCodeController.text = widget.returnData!.bagCode!.trim();
+        selectedBagCode = widget.returnData!.bagCode!.trim();
       }
       
       // Set sealCodeReturn from API response and set dropdown selection
       if (widget.returnData!.sealCodeReturn != null) {
-        sealCodeReturnController.text = widget.returnData!.sealCodeReturn!;
-        selectedSealCode = widget.returnData!.sealCodeReturn!;
+        sealCodeReturnController.text = widget.returnData!.sealCodeReturn!.trim();
+        selectedSealCode = widget.returnData!.sealCodeReturn!.trim();
       }
       
       print('📊 Controller values set: noCatridge="${noCatridgeController.text}", noSeal="${noSealController.text}", bagCode="${bagCodeController.text}", sealCode="${sealCodeReturnController.text}"');
+      _resolveDenomCode();
       
       // Reset validation state for pre-filled fields
       isNoCatridgeValid = noCatridgeController.text.isNotEmpty;
@@ -3047,11 +3455,15 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
            bagCodeController.text.isNotEmpty &&
            sealCodeReturnController.text.isNotEmpty;
     
-    // Periksa juga status scan
+    // Periksa juga status scan (tanpa No. Catridge dan No. Seal)
+    final bool catridgeFisikSatisfied = (scannedFields['catridgeFisik'] == true) || (
+      _catridgeFisikManualMode == true &&
+      _catridgeFisikAlasanController.text.isNotEmpty &&
+      _catridgeFisikRemarkFilled == true &&
+      catridgeFisikController.text.isNotEmpty
+    );
     formIsValid = formIsValid && 
-                  scannedFields['noCatridge'] == true &&
-                  scannedFields['noSeal'] == true &&
-                  scannedFields['catridgeFisik'] == true &&
+                  catridgeFisikSatisfied &&
                   scannedFields['bagCode'] == true &&
                   scannedFields['sealCode'] == true;
            
@@ -3206,9 +3618,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       onEditingComplete: _validateNoCatridge,
                       isValid: isNoCatridgeValid,
                       errorText: noCatridgeError,
-                      hasScanner: true,
+                      hasScanner: false,
                       isLoading: _isValidating,
-                      readOnly: false, // Always editable
+                      readOnly: true,
                     ),
                     
                     const SizedBox(height: 12),
@@ -3220,9 +3632,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       onEditingComplete: _validateNoSeal,
                       isValid: isNoSealValid,
                       errorText: noSealError,
-                      hasScanner: true,
+                      hasScanner: false,
                       isLoading: _isValidating,
-                      readOnly: false, // Always editable
+                      readOnly: true,
                     ),
                     
                     const SizedBox(height: 12),
@@ -3355,11 +3767,15 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   spacing: 12,
                   runSpacing: 8,
                   children: denomControllers.entries.map((entry) {
+                    final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+                    final bool isLocked = parentState?.formsLocked ?? true;
+                    final bool enabled = _isDenomEnabled(entry.key) && !isLocked;
                     return SizedBox(
                       width: 60,
                       child: TextField(
                         controller: entry.value,
                         keyboardType: TextInputType.number,
+                        enabled: enabled,
                         decoration: InputDecoration(
                           labelText: entry.key,
                           labelStyle: const TextStyle(
@@ -3372,9 +3788,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                         ),
                         onEditingComplete: () => _validateDenom(entry.key, entry.value),
                         onChanged: (value) {
-                          // Calculate section totals
                           _calculateSectionTotals();
-                          // Trigger calculation update when denomination value changes
                           if (widget.onDenomChanged != null) {
                             widget.onDenomChanged!();
                           }
@@ -3445,6 +3859,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     
     // Check if field is pre-filled from prepare_page (has data but not scanned)
     bool isPreFilled = _isFieldPreFilled(fieldKey);
+
+    // Lock form fields until ID CRF is input and API loaded
+    final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+    final bool isLocked = parentState?.formsLocked ?? true;
+    final bool effectiveReadOnly = readOnly || isLocked;
     
     return _buildFormFieldWithManualMode(
       label, 
@@ -3452,21 +3871,24 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       fieldKey: fieldKey,
       isValid: isValid,
       errorText: errorText,
-      readOnly: readOnly,
+      readOnly: effectiveReadOnly,
       isScanned: isScanned,
       isManualMode: isManualMode,
       hasAlasanRemark: hasAlasanRemark,
       isPreFilled: isPreFilled,
       focusNode: focusNode,
-      onScan: hasScanner ? () {
+      onScan: isLocked ? null : (hasScanner ? () {
         // Open scanner for this field
         _openBarcodeScanner(label, controller, fieldKey);
-      } : null,
+      } : null),
       // Remove manual mode for No. Catridge and Seal Catridge (No. Seal) fields
-      onManualModeToggle: (fieldKey == 'noCatridge' || fieldKey == 'noSeal') ? null : 
-        (isScanned ? null : () {
-          _toggleFieldManualMode(fieldKey);
-        }),
+      onManualModeToggle: (fieldKey == 'noCatridge' || fieldKey == 'noSeal' || isLocked) 
+        ? null 
+        : (
+            fieldKey == 'catridgeFisik' 
+              ? (isScanned ? null : () { _toggleCatridgeFisikManualMode(); })
+              : (isScanned ? null : () { _toggleFieldManualMode(fieldKey); })
+          ),
     );
   }
   
@@ -3612,7 +4034,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       case 'sealCode':
         return _sealCodeRemarkFilled;
       case 'catridgeFisik':
-        return _catridgeFisikRemarkFilled;
+        return _catridgeFisikAlasanController.text.isNotEmpty && _catridgeFisikRemarkFilled;
       default:
         return false;
     }
@@ -3676,8 +4098,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
     
-    // Hide underline for No. Catridge and No. Seal when pre-filled
-    bool shouldHideUnderline = isPreFilled && (fieldKey == 'noCatridge' || fieldKey == 'noSeal');
+    // Hide underline for No. Catridge and No. Seal in all cases
+    bool shouldHideUnderline = (fieldKey == 'noCatridge' || fieldKey == 'noSeal') ? true : isPreFilled;
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3723,15 +4145,20 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           readOnly: readOnly,
                           obscureText: isPassword,
                           onChanged: (value) {
-                            // Trigger specific validation for this field
                             if (fieldKey == 'catridgeFisik') {
-                              _validateCatridgeFisik();
+                              if (value.isNotEmpty) {
+                                setState(() {
+                                  scannedFields['catridgeFisik'] = false;
+                                });
+                                _activateCatridgeFisikManualMode();
+                              }
                             } else if (fieldKey == 'bagCode') {
                               _validateBagCode();
                             } else if (fieldKey == 'sealCode') {
                               _validateSealCodeReturn();
                             }
-                            // Note: noCatridge and noSeal are pre-filled and don't need validation
+                            // Note: catridgeFisik validation triggered on focus loss
+                            // Note: noCatridge dan noSeal adalah pre-filled
                           },
                           style: TextStyle(
                             fontSize: isSmallScreen ? 12 : 14,
@@ -3751,8 +4178,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       
                       // Manual mode icon - hanya tampil jika onManualModeToggle tidak null dan field belum di-scan
                       // Untuk Catridge Fisik, hanya tampil jika field sudah ada isinya
-                      if (onManualModeToggle != null && !isScanned && 
-                          (fieldKey != 'catridgeFisik' || controller.text.isNotEmpty))
+                      if (onManualModeToggle != null && 
+                          (
+                            (fieldKey == 'catridgeFisik' && (isManualMode || !isScanned) && controller.text.isNotEmpty) ||
+                            (fieldKey != 'catridgeFisik' && !isScanned)
+                          ))
                         Container(
                           width: isSmallScreen ? 28 : 32,
                           height: isSmallScreen ? 28 : 32,
@@ -4008,16 +4438,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   }
   
   void _toggleCatridgeFisikManualMode() {
+    _showManualModeDialog('Catridge Fisik', 'catridgeFisik');
+  }
+  void _activateCatridgeFisikManualMode() {
     if (!_catridgeFisikManualMode) {
-      _showManualModeDialog('Catridge Fisik', 'catridgeFisik');
-    } else {
       setState(() {
-        _catridgeFisikManualMode = false;
-        _catridgeFisikAlasanController.clear();
-        _catridgeFisikRemarkController.clear();
-        _catridgeFisikRemarkFilled = false;
-        // Reset validation (catridge fisik doesn't need scan validation)
-        isCatridgeFisikValid = catridgeFisikController.text.isNotEmpty;
+        _catridgeFisikManualMode = true;
       });
     }
   }
@@ -4055,233 +4481,21 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         break;
     }
     
-    // Create temporary controllers for dialog
-    final tempAlasanController = TextEditingController(text: initialAlasan);
-    final tempRemarkController = TextEditingController(text: initialRemark);
-    
     final result = await showDialog<Map<String, String>>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        final screenSize = MediaQuery.of(context).size;
-        final isSmallScreen = screenSize.width < 600;
-        
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setDialogState) {
-            return Dialog(
-              child: Container(
-                width: isSmallScreen ? screenSize.width * 0.9 : 320,
-                constraints: BoxConstraints(
-                  maxHeight: screenSize.height * 0.7,
-                ),
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                  // Header
-                  Row(
-                    children: [
-                      Image.asset(
-                        'assets/images/ManualModeIcon_notdone.png',
-                        width: 20,
-                        height: 20,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.edit, size: 20, color: Colors.orange);
-                        },
-                      ),
-                      SizedBox(width: 6),
-                      Text(
-                        'Detail Manual RETURN',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  
-                  // Inline field display
-                   if (fieldController != null) ...[
-                     Row(
-                       crossAxisAlignment: CrossAxisAlignment.center,
-                       children: [
-                         SizedBox(
-                           width: 90,
-                           child: Text(
-                             fieldName,
-                             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                           ),
-                         ),
-                         Text(' : ', style: TextStyle(fontSize: 12)),
-                         Expanded(
-                           child: Text(
-                             fieldController!.text.isNotEmpty ? fieldController!.text : 'ATM XXXXXX',
-                             style: TextStyle(fontSize: 12, color: fieldController!.text.isNotEmpty ? Colors.black : Colors.grey),
-                           ),
-                         ),
-                       ],
-                     ),
-                     SizedBox(height: 12),
-                   ],
-                  
-                  // Inline Alasan field with dropdown
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 90,
-                        child: Text(
-                          'Alasan',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      Text(' : ', style: TextStyle(fontSize: 12)),
-                      Expanded(
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: tempAlasanController.text.isNotEmpty ? tempAlasanController.text : null,
-                            hint: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    'Pilih alasan',
-                                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                                  ),
-                                ),
-                                Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
-                              ],
-                            ),
-                            isExpanded: true,
-                            style: TextStyle(fontSize: 12, color: Colors.black),
-                            items: [
-                              DropdownMenuItem(value: 'Segel Tidak Terbaca', child: Text('Segel Tidak Terbaca', style: TextStyle(fontSize: 12))),
-                              DropdownMenuItem(value: 'Scanner Rusak', child: Text('Scanner Rusak', style: TextStyle(fontSize: 12))),
-                              DropdownMenuItem(value: 'Kaset Berbeda', child: Text('Kaset Berbeda', style: TextStyle(fontSize: 12))),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                // Update dialog state immediately for UI refresh
-                                setDialogState(() {
-                                  tempAlasanController.text = value;
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  
-                  // Inline Remark field
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: 90,
-                        child: Padding(
-                          padding: EdgeInsets.only(top: 8),
-                          child: Text(
-                            'Remark',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ),
-                      Text(' : ', style: TextStyle(fontSize: 12)),
-                      Expanded(
-                        child: TextField(
-                          controller: tempRemarkController,
-                          decoration: InputDecoration(
-                            hintText: 'Wajib diisi',
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-                            hintStyle: TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                          style: TextStyle(fontSize: 12),
-                          maxLines: 2,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  
-                  // Buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey,
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: Text(
-                            'Batal',
-                            style: TextStyle(fontSize: 12, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (tempAlasanController.text.isNotEmpty && tempRemarkController.text.isNotEmpty) {
-                              Navigator.of(context).pop({
-                                'alasan': tempAlasanController.text,
-                                'remark': tempRemarkController.text,
-                              });
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Alasan dan Remark wajib diisi'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                          ),
-                          child: Text(
-                            'Simpan',
-                            style: TextStyle(fontSize: 12, color: Colors.white),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-         );
-       },
-     );
-    
-    // Dispose temporary controllers
-    tempAlasanController.dispose();
-    tempRemarkController.dispose();
+      builder: (BuildContext dialogContext) {
+        return _ReturnManualModeDialog(
+          fieldName: fieldName,
+          fieldValue: fieldController?.text,
+          initialAlasan: initialAlasan,
+          initialRemark: initialRemark,
+        );
+      },
+    );
     
     if (result != null) {
+      if (!mounted) return;
       setState(() {
         // Set manual mode and fill controllers based on field type
         switch (fieldType) {
@@ -4323,7 +4537,6 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _catridgeFisikRemarkController.text = result['remark']!;
             _catridgeFisikRemarkFilled = true;
             isCatridgeFisikValid = catridgeFisikController.text.isNotEmpty;
-            scannedFields['catridgeFisik'] = true; // Mark as scanned in manual mode
             break;
         }
       });
@@ -4353,8 +4566,300 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           context: context,
           message: 'Catridge Fisik tidak sesuai dengan No. Catridge',
         );
+        if (mounted) {
+          setState(() {
+            catridgeFisikController.clear();
+            isCatridgeFisikValid = false;
+            catridgeFisikError = 'Catridge Fisik tidak boleh kosong';
+            scannedFields['catridgeFisik'] = false;
+            _catridgeFisikManualMode = false;
+            _catridgeFisikAlasanController.clear();
+            _catridgeFisikRemarkController.clear();
+            _catridgeFisikRemarkFilled = false;
+          });
+        }
       }
     }
+  }
+}
+
+class _ReturnManualModeDialog extends StatefulWidget {
+  final String fieldName;
+  final String? fieldValue;
+  final String? initialAlasan;
+  final String? initialRemark;
+
+  const _ReturnManualModeDialog({
+    required this.fieldName,
+    this.fieldValue,
+    this.initialAlasan,
+    this.initialRemark,
+  });
+
+  @override
+  State<_ReturnManualModeDialog> createState() => _ReturnManualModeDialogState();
+}
+
+class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
+  late final TextEditingController _remarkController;
+  late final FocusNode _remarkFocusNode;
+  String? _selectedAlasan;
+  String _errorText = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _remarkController = TextEditingController(text: widget.initialRemark);
+    _remarkFocusNode = FocusNode();
+    final initialAlasan = widget.initialAlasan?.trim();
+    _selectedAlasan = (initialAlasan != null && initialAlasan.isNotEmpty) ? initialAlasan : null;
+  }
+
+  @override
+  void dispose() {
+    _remarkFocusNode.dispose();
+    _remarkController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _hideKeyboard() async {
+    FocusScope.of(context).unfocus();
+    await SystemChannels.textInput.invokeMethod('TextInput.hide');
+  }
+
+  Future<void> _onCancel() async {
+    await _hideKeyboard();
+    if (!mounted) return;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _onSave() async {
+    final alasan = _selectedAlasan?.trim() ?? '';
+    final remark = _remarkController.text.trim();
+    if (alasan.isEmpty || remark.isEmpty) {
+      setState(() {
+        _errorText = 'Alasan dan Remark wajib diisi';
+      });
+      return;
+    }
+
+    await _hideKeyboard();
+    if (!mounted) return;
+    if (!Navigator.of(context).canPop()) return;
+    Navigator.of(context).pop({'alasan': alasan, 'remark': remark});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final isSmallScreen = screenSize.width < 600;
+
+    return Dialog(
+      child: Container(
+        width: isSmallScreen ? screenSize.width * 0.9 : 320,
+        constraints: BoxConstraints(
+          maxHeight: screenSize.height * 0.7,
+        ),
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 10,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/images/ManualModeIcon_notdone.png',
+                    width: 20,
+                    height: 20,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(Icons.edit, size: 20, color: Colors.orange);
+                    },
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Detail Manual RETURN',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              if (widget.fieldValue != null) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 90,
+                      child: Text(
+                        widget.fieldName,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                    Text(' : ', style: TextStyle(fontSize: 12)),
+                    Expanded(
+                      child: Text(
+                        widget.fieldValue!.isNotEmpty ? widget.fieldValue! : 'ATM XXXXXX',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: widget.fieldValue!.isNotEmpty ? Colors.black : Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+              ],
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 90,
+                    child: Text(
+                      'Alasan',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  Text(' : ', style: TextStyle(fontSize: 12)),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedAlasan,
+                        hint: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Pilih alasan',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ),
+                            Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
+                          ],
+                        ),
+                        isExpanded: true,
+                        style: TextStyle(fontSize: 12, color: Colors.black),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'Segel Tidak Terbaca',
+                            child: Text('Segel Tidak Terbaca', style: TextStyle(fontSize: 12)),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Scanner Rusak',
+                            child: Text('Scanner Rusak', style: TextStyle(fontSize: 12)),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Kaset Berbeda',
+                            child: Text('Kaset Berbeda', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedAlasan = value;
+                            _errorText = '';
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 90,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Remark',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+                  Text(' : ', style: TextStyle(fontSize: 12)),
+                  Expanded(
+                    child: TextField(
+                      controller: _remarkController,
+                      focusNode: _remarkFocusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Wajib diisi',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        hintStyle: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      style: TextStyle(fontSize: 12),
+                      maxLines: 2,
+                      textInputAction: TextInputAction.done,
+                      onEditingComplete: () {
+                        FocusScope.of(context).unfocus();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              if (_errorText.isNotEmpty) ...[
+                SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    _errorText,
+                    style: TextStyle(fontSize: 12, color: Colors.red),
+                  ),
+                ),
+              ],
+              SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _onCancel,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey,
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      child: Text(
+                        'Batal',
+                        style: TextStyle(fontSize: 12, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _onSave,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      child: Text(
+                        'Simpan',
+                        style: TextStyle(fontSize: 12, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

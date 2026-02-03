@@ -14,6 +14,10 @@ class QRCodeGeneratorWidget extends StatefulWidget {
   final List<ReturnCatridgeQRData>? returnCatridgeData; // Data catridge untuk RETURN
   final PrepareDetailsQRData? prepareDetails; // Details untuk PREPARE
   final ReturnDetailsQRData? returnDetails; // Details untuk RETURN
+  final bool? isManual;
+  final int? totalNominal;
+  final int? totalLembar;
+  final int? jumlahKasetCatridge;
 
   const QRCodeGeneratorWidget({
     Key? key,
@@ -24,6 +28,10 @@ class QRCodeGeneratorWidget extends StatefulWidget {
     this.returnCatridgeData,
     this.prepareDetails,
     this.returnDetails,
+    this.isManual,
+    this.totalNominal,
+    this.totalLembar,
+    this.jumlahKasetCatridge,
   }) : super(key: key);
 
   @override
@@ -100,149 +108,44 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     _expiryTime = DateTime.now().add(const Duration(minutes: 5));
     
-    // Cek apakah ada kredensial TLSPV yang tersimpan
-    final tlspvCredentials = await _authService.getTLSPVCredentials();
-    
-    // PERBAIKAN: Log hasil getTLSPVCredentials untuk debugging
-    print('getTLSPVCredentials result: ${tlspvCredentials != null ? "NOT_NULL" : "NULL"}');
-    if (tlspvCredentials != null) {
-      print('Credentials keys: ${tlspvCredentials.keys.toList()}');
-      print('Has username: ${tlspvCredentials.containsKey('username')}');
-      print('Has password: ${tlspvCredentials.containsKey('password')}');
+    final userData = await _authService.getUserData();
+    final cashierCode = userData != null
+        ? (userData['nik']?.toString() ?? userData['userId']?.toString() ?? userData['userID']?.toString() ?? '')
+        : '';
+    final tableCode = userData != null
+        ? (userData['noMeja']?.toString() ?? userData['idMeja']?.toString() ?? userData['tableCode']?.toString() ?? '')
+        : '';
+    final isManualStr = (widget.isManual == true) ? 'Y' : 'N';
+    final source = widget.action == 'RETURN' ? 'Return' : 'Prepare';
+    Map<String, dynamic> qrDataMap = {
+      'simplified': true,
+      'source': source,
+      'action': widget.action,
+      'idTool': widget.idTool,
+      'cashierCode': cashierCode,
+      'tableCode': tableCode,
+      'isManual': isManualStr,
+      'timestamp': timestamp,
+    };
+    if (widget.totalNominal != null) {
+      qrDataMap['totalNominal'] = widget.totalNominal;
     }
-    
-    // PERBAIKAN: Coba simpan kredensial hardcoded jika tidak ada yang tersimpan
-    if (tlspvCredentials == null || 
-        !tlspvCredentials.containsKey('username') || 
-        !tlspvCredentials.containsKey('password') ||
-        tlspvCredentials['username'] == null || 
-        tlspvCredentials['username'].toString().isEmpty ||
-        tlspvCredentials['password'] == null || 
-        tlspvCredentials['password'].toString().isEmpty) {
-      
-      print('No valid TLSPV credentials found, trying to save hardcoded test credentials');
-      
-      // Coba simpan kredensial test
-      final testCredentialsSaved = await _authService.saveTLSPVCredentials('TEST_TL', 'password123');
-      print('Test credentials saved: $testCredentialsSaved');
-      
-      // Coba ambil lagi
-      final testCredentials = await _authService.getTLSPVCredentials();
-      if (testCredentials != null && 
-          testCredentials.containsKey('username') && 
-          testCredentials['username'] != null &&
-          testCredentials['username'].toString().isNotEmpty) {
-        print('Successfully saved and retrieved test credentials');
-      } else {
-        print('Failed to save and retrieve test credentials');
-      }
+    if (widget.totalLembar != null) {
+      qrDataMap['totalLembar'] = widget.totalLembar;
     }
-    
-    // Coba lagi mendapatkan kredensial (mungkin dari test yang baru disimpan)
-    final finalCredentials = tlspvCredentials ?? await _authService.getTLSPVCredentials();
-    
-    if (finalCredentials != null && 
-        finalCredentials.containsKey('username') && 
-        finalCredentials['username'] != null && 
-        finalCredentials['username'].toString().isNotEmpty &&
-        finalCredentials.containsKey('password') && 
-        finalCredentials['password'] != null && 
-        finalCredentials['password'].toString().isNotEmpty) {
-      
-      // Pastikan username dan password tidak kosong
-      final username = finalCredentials['username'].toString();
-      final password = finalCredentials['password'].toString();
-      
-      print('Using TLSPV credentials for QR: username=$username');
-      
-      // Buat data terenkripsi yang berisi kredensial TLSPV dan data catridge
-      Map<String, dynamic> qrDataMap;
-      
-      if (widget.action == 'PREPARE' && 
-          widget.prepareCatridgeData != null && 
-          widget.prepareCatridgeData!.isNotEmpty &&
-          widget.prepareDetails != null) {
-        // Format PREPARE dengan data catridge dan details
-        final prepareQRData = PrepareQRData(
-          action: widget.action,
-          timestamp: timestamp,
-          catridges: widget.prepareCatridgeData!,
-          details: widget.prepareDetails!,
-        );
-        
-        qrDataMap = {
-          ...prepareQRData.toJson(),
-          'username': username,
-          'password': password,
-        };
-        
-        print('🔧 [QR_PREPARE] Generated QR with ${widget.prepareCatridgeData!.length} catridge items and details');
-        print('🔧 [QR_PREPARE] Details: WSID=${widget.prepareDetails!.wsid}, Bank=${widget.prepareDetails!.bank}');
-        
-      } else if (widget.action == 'RETURN' && 
-                 widget.returnCatridgeData != null && 
-                 widget.returnCatridgeData!.isNotEmpty &&
-                 widget.returnDetails != null) {
-        // Format RETURN dengan data catridge dan details
-        final returnQRData = ReturnQRData(
-          action: widget.action,
-          timestamp: timestamp,
-          catridges: widget.returnCatridgeData!,
-          details: widget.returnDetails!,
-        );
-        
-        qrDataMap = {
-          ...returnQRData.toJson(),
-          'username': username,
-          'password': password,
-        };
-        
-        print('🔧 [QR_RETURN] Generated QR with ${widget.returnCatridgeData!.length} catridge items and details');
-        print('🔧 [QR_RETURN] Details: WSID=${widget.returnDetails!.wsid}, Bank=${widget.returnDetails!.bank}');
-        
-      } else {
-        // Format lama tanpa data catridge (fallback)
-        qrDataMap = {
-          'action': widget.action,
-          'idTool': widget.idTool,
-          'timestamp': timestamp,
-          'username': username,
-          'password': password
-        };
-        
-        print('⚠️ [QR_FALLBACK] Using fallback format - no catridge data or details provided');
-      }
-      
-      // PERBAIKAN: Verifikasi bahwa username dan password ada di qrDataMap
-      print('Final QR data map keys: ${qrDataMap.keys.toList()}');
-      print('Final QR username present: ${qrDataMap.containsKey('username')}');
-      print('Final QR password present: ${qrDataMap.containsKey('password')}');
-      
-      // IMPLEMENTASI KOMPRESI: Compress data sebelum enkripsi untuk mengurangi ukuran
-      final compressedJsonData = _compressJsonData(qrDataMap);
-      
-      // Buat wrapper dengan flag kompresi
-      final compressedDataMap = {
-        'compressed': true,
-        'data': compressedJsonData,
-      };
-      
-      // Enkripsi data yang sudah dikompresi
-      final encryptedData = _authService.encryptDataForQR(compressedDataMap);
-      
-      _qrData = encryptedData;
-      print('Generated compressed & encrypted QR Code (${_qrData?.length} chars)');
-      
-      // Log data size untuk monitoring
-      if (_qrData != null && _qrData!.length > 1000) {
-        print('⚠️ [QR_SIZE] Large QR data detected (${_qrData!.length} chars) - scanner may need more time');
-      }
-    } else {
-      // Fallback ke format lama jika tidak ada kredensial
-      print('No valid credentials available, using fallback format');
-      _qrData = '${widget.action}|${widget.idTool}|$timestamp|1';
-      print('Generated QR Code with bypass flag (no credentials available)');
+    if (widget.jumlahKasetCatridge != null) {
+      qrDataMap['jumlahKasetCatridge'] = widget.jumlahKasetCatridge;
     }
+    if (widget.action == 'PREPARE' && widget.prepareDetails != null) {
+      qrDataMap['wsid'] = widget.prepareDetails!.wsid;
+      qrDataMap['bank'] = widget.prepareDetails!.bank;
+      qrDataMap['lokasi'] = widget.prepareDetails!.lokasi;
+      qrDataMap['atmType'] = widget.prepareDetails!.atmType;
+      qrDataMap['jumlahKaset'] = widget.prepareDetails!.jumlahKaset;
+    }
+
+    final encryptedData = _authService.encryptDataForQR(qrDataMap);
+    _qrData = encryptedData;
   }
 
   void _startTimer() {

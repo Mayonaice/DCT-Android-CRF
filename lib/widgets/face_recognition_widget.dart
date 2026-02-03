@@ -141,8 +141,9 @@ class _FaceRecognitionWidgetState extends State<FaceRecognitionWidget> {
     if (_referenceImage == null) {
       await CustomModals.showFailedModal(
         context: context,
-        message: 'Foto referensi belum tersedia',
+        message: 'Validasi wajah TL gagal, wajah tidak dikenali',
       );
+      widget.onRecognitionComplete(false, 'Validasi wajah TL gagal, wajah tidak dikenali');
       return;
     }
 
@@ -169,20 +170,11 @@ class _FaceRecognitionWidgetState extends State<FaceRecognitionWidget> {
       );
 
       if (result.error != null) {
-        // Handle API errors (non-confidence related)
         await CustomModals.showFailedModal(
           context: context,
-          message: 'Oops.. sepertinya ada masalah pada server, silahkan hubungi Tim IT!',
+          message: 'Validasi wajah TL gagal, wajah tidak dikenali',
         );
-        
-        // Wait 2 seconds then retry
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-          _startCountdown();
-        }
+        widget.onRecognitionComplete(false, 'Validasi wajah TL gagal, wajah tidak dikenali');
         return;
       }
 
@@ -190,17 +182,9 @@ class _FaceRecognitionWidgetState extends State<FaceRecognitionWidget> {
       if (result.confidence < 75.0) {
         await CustomModals.showFailedModal(
           context: context,
-          message: 'Wajah Tidak Dikenali',
+          message: 'Validasi wajah TL gagal, wajah tidak dikenali',
         );
-        
-        // Wait 2 seconds then retry
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) {
-          setState(() {
-            _isProcessing = false;
-          });
-          _startCountdown();
-        }
+        widget.onRecognitionComplete(false, 'Validasi wajah TL gagal, wajah tidak dikenali');
         return;
       }
 
@@ -215,20 +199,11 @@ class _FaceRecognitionWidgetState extends State<FaceRecognitionWidget> {
       );
 
     } catch (e) {
-      debugPrint('❌ Error during face verification: $e');
       await CustomModals.showFailedModal(
         context: context,
-        message: 'Oops.. sepertinya ada masalah pada server, silahkan hubungi Tim IT!',
+        message: 'Validasi wajah TL gagal, wajah tidak dikenali',
       );
-      
-      // Wait 2 seconds then retry
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-        _startCountdown();
-      }
+      widget.onRecognitionComplete(false, 'Validasi wajah TL gagal, wajah tidak dikenali');
     }
   }
 

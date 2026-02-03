@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 
 class HistoryApiService {
   // Base URL
-  static const String _baseUrl = 'http://10.10.0.223/LocalCRF/api/CRF';
+  static const String _baseUrl = 'https://dev.advantagescm.com/LocalCRF/api/CRF';
   
   // API timeout duration
   static const Duration _timeout = Duration(seconds: 15);

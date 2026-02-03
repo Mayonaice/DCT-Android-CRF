@@ -35,21 +35,46 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
   @override
   void initState() {
     super.initState();
-    _loadCachedData();
+    _updateCachedUserFields(widget.userData);
+    _loadProfilePhotoIfNeeded();
   }
 
-  void _loadCachedData() async {
-    // Load data sekali saja dan cache hasilnya
-    if (widget.userData != null) {
-      _cachedMeja = widget.userData!['noMeja'] ?? 
-                   widget.userData!['NoMeja'] ?? 
-                   '010101';
-      _cachedNik = widget.userData!['userId'] ?? 
-                  widget.userData!['userID'] ?? 
-                  '';
+  @override
+  void didUpdateWidget(covariant PrepareModeHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userData != widget.userData) {
+      _updateCachedUserFields(widget.userData);
     }
+    _loadProfilePhotoIfNeeded();
+  }
 
-    // Load profile photo sekali saja
+  void _updateCachedUserFields(Map<String, dynamic>? userData) {
+    if (userData == null) return;
+
+    final meja = (userData['noMeja'] ??
+            userData['NoMeja'] ??
+            userData['no_meja'] ??
+            userData['meja'] ??
+            '010101')
+        .toString();
+
+    final nik = (userData['userId'] ??
+            userData['userID'] ??
+            userData['nik'] ??
+            userData['NIK'] ??
+            userData['Nik'] ??
+            userData['user_id'] ??
+            '')
+        .toString();
+
+    if (_cachedMeja == meja && _cachedNik == nik) return;
+    setState(() {
+      _cachedMeja = meja;
+      _cachedNik = nik;
+    });
+  }
+
+  void _loadProfilePhotoIfNeeded() async {
     if (!_isLoadingPhoto) {
       _isLoadingPhoto = true;
       try {
@@ -86,9 +111,10 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
   Widget build(BuildContext context) {
     final isTabletOrLandscapeMobile = MediaQuery.of(context).size.width >= 768;
     final isTablet = MediaQuery.of(context).size.width >= 768;
+    final minHeight = isTabletOrLandscapeMobile ? 80.0 : 70.0;
     
     return Container(
-      height: isTabletOrLandscapeMobile ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTabletOrLandscapeMobile ? 32.0 : 24.0,
         vertical: isTabletOrLandscapeMobile ? 16.0 : 12.0,
@@ -156,17 +182,23 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
-                child: Text(
-                  'Meja: ${_cachedMeja ?? '010101'}',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6B7280),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'Meja: ${_cachedMeja ?? '010101'}',
+                      style: TextStyle(
+                        fontSize: isTablet ? 16 : 14,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF6B7280),
+                      ),
+                      maxLines: 1,
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
                 ),
               ),
             ],

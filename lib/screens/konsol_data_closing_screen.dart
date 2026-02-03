@@ -68,23 +68,28 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
     
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(isTablet),
             _buildNavigationTabs(isTablet),
             Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(isTablet ? 16.0 : 12.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFilterSection(isTablet),
-                    SizedBox(height: isTablet ? 16 : 12),
-                    _buildDataTable(isTablet, screenHeight),
-                    SizedBox(height: isTablet ? 16 : 12),
-                    _buildBottomSection(isTablet),
-                  ],
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.translucent,
+                child: Padding(
+                  padding: EdgeInsets.all(isTablet ? 16.0 : 12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFilterSection(isTablet),
+                      SizedBox(height: isTablet ? 16 : 12),
+                      _buildDataTable(isTablet, screenHeight),
+                      SizedBox(height: isTablet ? 16 : 12),
+                      _buildBottomSection(isTablet),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -96,8 +101,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
   }
 
   Widget _buildHeader(bool isTablet) {
+    final minHeight = isTablet ? 80.0 : 70.0;
     return Container(
-      height: isTablet ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 32.0 : 24.0,
         vertical: isTablet ? 16.0 : 12.0,
@@ -162,8 +168,8 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
                 child: FutureBuilder<Map<String, dynamic>?>(
                   future: _authService.getUserData(),
                   builder: (context, snapshot) {
@@ -175,15 +181,21 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
                     } else {
                       meja = '010101';
                     }
-                    return Text(
-                      'Meja: $meja',
-                      style: TextStyle(
-                        fontSize: isTablet ? 16 : 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6B7280),
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Meja: $meja',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          maxLines: 1,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     );
                   },
                 ),

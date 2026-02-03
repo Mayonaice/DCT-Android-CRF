@@ -9,13 +9,13 @@ Dokumentasi ini mencatat semua perubahan dan implementasi lengkap untuk fitur **
 ## 🎯 REQUEST PERUBAHAN DARI USER
 
 ### **Spesifikasi Asli:**
-1. **Face Recognition**: Setelah menekan tombol "Approve TLSPV" langsung terbuka widget face recognition dengan camera, cocokkan gambar muka yang diambil dengan data foto muka yang diambil dari API `10.10.0.223/LocalCRF/api/CRF/photo/local/{userId}`
+1. **Face Recognition**: Setelah menekan tombol "Approve TLSPV" langsung terbuka widget face recognition dengan camera, cocokkan gambar muka yang diambil dengan data foto muka yang diambil dari API `https://dev.advantagescm.com/LocalCRF/api/CRF/photo/local/{userId}`
 
 2. **QR Scanner**: Setelah berhasil di recognition langsung muncul scanner QR yang design widget nya disamakan dengan scanner barcode yang ada di prepare_mode tapi dengan plugin yang khusus scan QR
 
 3. **API Integration**: Fungsi scanner QR TL tersebut adalah menghilangkan flow input NIK TLSPV pada menu prepare_mode, jadi hit API flow insert catridge nya dari halaman CRF_TL:
-   - `10.10.0.223/LocalCRF/api/CRF/planning/update`
-   - `10.10.0.223/LocalCRF/api/CRF/atm/catridge`
+   - `https://dev.advantagescm.com/LocalCRF/api/CRF/planning/update`
+   - `https://dev.advantagescm.com/LocalCRF/api/CRF/atm/catridge`
 
 ### **Requirement Teknis:**
 - Gunakan plugin dan dependensi yang support dengan Flutter 3.13.8, JDK 17
@@ -49,7 +49,7 @@ image: ^4.1.3
 #### **Features Implementasi:**
 - ✅ **Real Camera Integration**: Menggunakan front camera untuk face recognition
 - ✅ **Google ML Kit Face Detection**: Deteksi wajah real-time di captured image dan profile image
-- ✅ **API Photo Comparison**: Download foto profil dari `10.10.0.223/LocalCRF/api/CRF/photo/local/{userId}`
+- ✅ **API Photo Comparison**: Download foto profil dari `https://dev.advantagescm.com/LocalCRF/api/CRF/photo/local/{userId}`
 - ✅ **REAL Face Comparison**: Implementasi algoritma perbandingan wajah dengan threshold 70%
 - ✅ **Histogram & Structural Similarity**: Kombinasi algoritma untuk akurasi tinggi
 - ✅ **5-Second Auto Countdown**: Auto-capture foto setelah 5 detik
@@ -137,7 +137,7 @@ Future<ApiResponse> downloadImage(String imageUrl) async
 
 **Fungsi**: Download foto profil user dari API untuk face comparison.
 
-**Endpoint**: `http://10.10.0.223/LocalCRF/api/CRF/photo/local/{userId}`
+**Endpoint**: `https://dev.advantagescm.com/LocalCRF/api/CRF/photo/local/{userId}`
 
 ---
 
@@ -334,9 +334,9 @@ Show success/error result (using CustomModals)
 - `qr_code_scanner: ^1.0.1` - QR scanning
 
 ### **API Endpoints:**
-- `GET http://10.10.0.223/LocalCRF/api/CRF/photo/local/{userId}` - Profile image
-- `POST http://10.10.0.223/LocalCRF/api/CRF/planning/update` - Planning update
-- `POST http://10.10.0.223/LocalCRF/api/CRF/atm/catridge` - Catridge insert
+- `GET https://dev.advantagescm.com/LocalCRF/api/CRF/photo/local/{userId}` - Profile image
+- `POST https://dev.advantagescm.com/LocalCRF/api/CRF/planning/update` - Planning update
+- `POST https://dev.advantagescm.com/LocalCRF/api/CRF/atm/catridge` - Catridge insert
 
 ### **File Structure:**
 ```
@@ -460,7 +460,7 @@ Implementasi ini **SIAP UNTUK TESTING** dengan features:
 #### **Enhanced Face Recognition Flow:**
 
 1. **✅ Profile Photo API Integration**
-   - Fetch dari `10.10.0.223/LocalCRF/api/CRF/photo/local/{userId}`
+   - Fetch dari `https://dev.advantagescm.com/LocalCRF/api/CRF/photo/local/{userId}`
    - Binary image handling dengan proper error fallback
    - Automatic user ID detection dari auth service
 

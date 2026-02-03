@@ -90,7 +90,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
       // Selalu gunakan branch code untuk filter data
       debugPrint('🔍 Fetching return data with BranchCode: $_branchCode');
       final returnData = await safeApiCall(() => _returnApiService.getReturnList(
-        branchCode: _branchCode
+        branchCode: _branchCode,
+        typeReturn: typeReturn
       ));
       
       if (returnData != null) {
@@ -184,9 +185,16 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
             _buildHeader(isTablet),
             _buildNavigationTabs(isTablet),
             Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(isTablet ? 16.0 : 12.0),
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.translucent,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    isTablet ? 16.0 : 12.0,
+                    isTablet ? 16.0 : 12.0,
+                    isTablet ? 16.0 : 12.0,
+                    (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -208,8 +216,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
   }
 
   Widget _buildHeader(bool isTablet) {
+    final minHeight = isTablet ? 80.0 : 70.0;
     return Container(
-      height: isTablet ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 32.0 : 24.0,
         vertical: isTablet ? 16.0 : 12.0,
@@ -274,8 +283,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
                 child: FutureBuilder<Map<String, dynamic>?>(
                   future: _authService.getUserData(),
                   builder: (context, snapshot) {
@@ -287,15 +296,21 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                     } else {
                       meja = '010101';
                     }
-                    return Text(
-                      'Meja: $meja',
-                      style: TextStyle(
-                        fontSize: isTablet ? 16 : 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6B7280),
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Meja: $meja',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          maxLines: 1,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     );
                   },
                 ),
@@ -687,6 +702,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                       setState(() {
                         typeReturn = newValue;
                       });
+                      _loadReturnData();
                     },
                     items: <String>['Manual', 'Scan']
                         .map<DropdownMenuItem<String>>((String value) {

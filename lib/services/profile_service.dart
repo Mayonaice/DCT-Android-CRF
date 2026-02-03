@@ -78,7 +78,7 @@ class ProfileService {
       debugPrint('Getting profile photo for employeeCode: $employeeCode');
 
       // URL endpoint yang benar sesuai format yang diberikan
-      String baseUrl = 'http://10.10.0.223/LocalCRF/api';
+      String baseUrl = 'https://dev.advantagescm.com/LocalCRF/api';
       try {
         final prefs = await _authService.getUserData();
         if (prefs != null && prefs.containsKey('baseUrl')) {
@@ -94,7 +94,7 @@ class ProfileService {
 
       // Coba dengan URL yang diberikan oleh user terlebih dahulu
       try {
-        final directUrl = 'http://10.10.0.223/LocalCRF/api/CRF/photo/direct/$formattedEmployeeCode';
+        final directUrl = 'https://dev.advantagescm.com/LocalCRF/api/CRF/photo/direct/$formattedEmployeeCode';
         debugPrint('Trying direct URL: $directUrl');
         
         final directResponse = await http.get(

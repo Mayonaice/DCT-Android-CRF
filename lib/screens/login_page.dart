@@ -753,7 +753,7 @@ class _LoginPageState extends State<LoginPage> {
                                   hintText: _isLoadingBranches
                                       ? 'Loading branches...'
                                       : _availableBranches.isEmpty
-                                          ? 'Fill all fields above to load branches'
+                                          ? 'Isi semua Form diatas dahulu'
                                           : 'Select branch & role',
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(30),

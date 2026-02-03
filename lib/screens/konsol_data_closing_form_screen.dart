@@ -25,7 +25,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
   String? selectedBank;
   String? selectedMesinType;
   List<Bank> bankList = [];
-  List<String> mesinTypes = ['ATM', 'CRM', 'CDM'];
+  List<String> mesinTypes = ['ATM', 'CRM/CDM'];
   
   // Data for the form
   List<ClosingPreviewItem> closingPreviewItems = [];
@@ -161,7 +161,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         if (items.isEmpty) {
           await CustomModals.showFailedModal(
             context: context,
-            message: 'Belum ada Data Yang Dipilih',
+            message: 'Data Tidak Ditemukan',
           );
         }
       } else {
@@ -270,21 +270,28 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(isTablet),
             Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(isTablet ? 16.0 : 12.0),
+              child: GestureDetector(
+                onTap: () => FocusScope.of(context).unfocus(),
+                behavior: HitTestBehavior.translucent,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    isTablet ? 16.0 : 12.0,
+                    isTablet ? 16.0 : 12.0,
+                    isTablet ? 16.0 : 12.0,
+                    (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildFilterSection(isTablet),
                       SizedBox(height: isTablet ? 16 : 12),
-                      if (isLoading)
-                        const Center(child: CircularProgressIndicator()),
+                      if (isLoading) const Center(child: CircularProgressIndicator()),
                       if (errorMessage.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.all(8),
@@ -295,8 +302,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                             style: TextStyle(color: Colors.red.shade800),
                           ),
                         ),
-                      if (hasAppliedFilter && closingPreviewItems.isNotEmpty)
-                        _buildClosingForm(isTablet),
+                      if (hasAppliedFilter && closingPreviewItems.isNotEmpty) _buildClosingForm(isTablet),
                       if (hasAppliedFilter && closingPreviewItems.isEmpty)
                         Center(
                           child: Padding(
@@ -324,8 +330,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
   }
 
   Widget _buildHeader(bool isTablet) {
+    final minHeight = isTablet ? 80.0 : 70.0;
     return Container(
-      height: isTablet ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTablet ? 32.0 : 24.0,
         vertical: isTablet ? 16.0 : 12.0,
@@ -401,8 +408,8 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                   );
                 },
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
                 child: FutureBuilder<Map<String, dynamic>?>(
                   future: _authService.getUserData(),
                   builder: (context, snapshot) {
@@ -414,15 +421,21 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                     } else {
                       meja = '010101';
                     }
-                    return Text(
-                      'Meja: $meja',
-                      style: TextStyle(
-                        fontSize: isTablet ? 16 : 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6B7280),
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Meja: $meja',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          maxLines: 1,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     );
                   },
                 ),
@@ -583,6 +596,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
   }
 
   Widget _buildFilterSection(bool isTablet) {
+    final canApplyFilter = selectedBank != null && selectedMesinType != null && !isLoading;
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.white,
@@ -619,7 +633,17 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                   if (picked != null) {
                     setState(() {
                       selectedDate = picked;
-                      _applyFilter(); // Auto-apply filter when date changes
+                      hasAppliedFilter = false;
+                      closingPreviewItems = [];
+                      totalA1 = 0;
+                      totalA2 = 0;
+                      totalA5 = 0;
+                      totalA10 = 0;
+                      totalA20 = 0;
+                      totalA50 = 0;
+                      totalA75 = 0;
+                      totalA100 = 0;
+                      errorMessage = '';
                     });
                   }
                 },
@@ -694,7 +718,17 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                   onChanged: (value) {
                     setState(() {
                       selectedBank = value;
-                      _applyFilter(); // Auto-apply filter when bank changes
+                      hasAppliedFilter = false;
+                      closingPreviewItems = [];
+                      totalA1 = 0;
+                      totalA2 = 0;
+                      totalA5 = 0;
+                      totalA10 = 0;
+                      totalA20 = 0;
+                      totalA50 = 0;
+                      totalA75 = 0;
+                      totalA100 = 0;
+                      errorMessage = '';
                     });
                   },
                 ),
@@ -744,12 +778,45 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                   onChanged: (value) {
                     setState(() {
                       selectedMesinType = value;
-                      _applyFilter(); // Auto-apply filter when mesin type changes
+                      hasAppliedFilter = false;
+                      closingPreviewItems = [];
+                      totalA1 = 0;
+                      totalA2 = 0;
+                      totalA5 = 0;
+                      totalA10 = 0;
+                      totalA20 = 0;
+                      totalA50 = 0;
+                      totalA75 = 0;
+                      totalA100 = 0;
+                      errorMessage = '';
                     });
                   },
                 ),
               ),
             ],
+          ),
+
+          ElevatedButton(
+            onPressed: canApplyFilter ? _applyFilter : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              disabledBackgroundColor: Colors.grey.shade400,
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 24 : 16,
+                vertical: isTablet ? 14 : 12,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+            ),
+            child: Text(
+              'Search',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isTablet ? 14 : 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),

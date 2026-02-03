@@ -11,6 +11,7 @@ import '../widgets/qr_code_generator_widget.dart';
 
 class PrepareSummaryPage extends StatefulWidget {
   final ATMPrepareReplenishData? prepareData;
+  final int totalNominal;
   final List<DetailCatridgeItem> catridgeData;
   final List<Map<String, dynamic>> divertData;
   final Map<String, dynamic>? pocketData;
@@ -18,6 +19,7 @@ class PrepareSummaryPage extends StatefulWidget {
   const PrepareSummaryPage({
     Key? key,
     required this.prepareData,
+    required this.totalNominal,
     required this.catridgeData,
     required this.divertData,
     this.pocketData,
@@ -127,10 +129,10 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
         qty: catridge.value?.toString() ?? '0',
         userInput: '925712095', // Sesuai contoh yang diberikan
         sealReturn: catridge.sealReturn ?? '',
-        scanCatStatus: '',
-        scanCatStatusRemark: '',
-        scanSealStatus: '',
-        scanSealStatusRemark: '',
+        scanCatStatus: catridge.scanCatStatus,
+        scanCatStatusRemark: catridge.scanCatStatusRemark,
+        scanSealStatus: catridge.scanSealStatus,
+        scanSealStatusRemark: catridge.scanSealStatusRemark,
         difCatAlasan: 'TEST',
         difCatRemark: '',
         tableCode: widget.prepareData?.tableCode ?? '',
@@ -341,37 +343,19 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       }
       
       debugPrint('✅ [UPDATE_PLANNING] Success!');
-      
-      // Insert catridge data (main catridge items) - STEP 3
-      debugPrint('💾 [PREPARE_SUMMARY] Starting catridge data insertion...');
-      await _insertCatridgeData(widget.catridgeData, 'C', planningId, atmCode, userId);
-      
-      // Insert divert data if exists
-      if (widget.divertData.isNotEmpty) {
-        debugPrint('💾 [PREPARE_SUMMARY] Starting divert data insertion...');
-        await _insertCatridgeData(widget.divertData, 'D', planningId, atmCode, userId);
-      } else {
-        debugPrint('ℹ️ [PREPARE_SUMMARY] No divert data to insert');
+      final execResponse = await _apiService.insertAtmCatridgeByIdTool(idTool: planningId);
+      if (!execResponse.success) {
+        throw Exception(execResponse.message);
       }
+      debugPrint('✅ [EXECUTE_CATRIDGE] ${execResponse.message}');
       
-      // Insert pocket data if exists
-      if (widget.pocketData != null) {
-        debugPrint('💾 [PREPARE_SUMMARY] Starting pocket data insertion...');
-        await _insertCatridgeData([widget.pocketData!], 'P', planningId, atmCode, userId);
-      } else {
-        debugPrint('ℹ️ [PREPARE_SUMMARY] No pocket data to insert');
-      }
-      
-      debugPrint('🎉 [PREPARE_SUMMARY] All data inserted successfully!');
+      debugPrint('🎉 [PREPARE_SUMMARY] Planning updated successfully');
       
       final processEndTime = DateTime.now();
       final totalDuration = processEndTime.difference(processStartTime);
       
       debugPrint('📊 [PREPARE_SUMMARY] Process Summary:');
-      debugPrint('   - Total catridge items processed: ${widget.catridgeData.length}');
-      debugPrint('   - Total divert items processed: ${widget.divertData.length}');
-      debugPrint('   - Pocket data processed: ${widget.pocketData != null ? 1 : 0}');
-      debugPrint('   - Total API calls made: ${1 + widget.catridgeData.length + widget.divertData.length + (widget.pocketData != null ? 1 : 0)}');
+      debugPrint('   - Total API calls made: 1');
       debugPrint('⏰ [PREPARE_SUMMARY] Process end time: ${processEndTime.toIso8601String()}');
       debugPrint('⏱️ [PREPARE_SUMMARY] Total process duration: ${totalDuration.inMilliseconds}ms (${totalDuration.inSeconds}s)');
       
@@ -565,6 +549,46 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
     );
   }
 
+  Future<void> _showPrepareManualDetailDialog({
+    required String title,
+    required String alasan,
+    required String remark,
+  }) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Alasan:',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(alasan.isEmpty ? '-' : alasan),
+              const SizedBox(height: 12),
+              Text(
+                'Remark:',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(remark.isEmpty ? '-' : remark),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Helper method to get appropriate title for catridge section based on item index
   String _getCatridgeSectionTitle(DetailCatridgeItem catridge, int index) {
     if (catridge.index >= 200) {
@@ -579,7 +603,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       return 'Catridge ${index + 1}';
     }
   }
-
+  
   Widget _buildCatridgeSection(DetailCatridgeItem catridge, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -607,8 +631,18 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
               Expanded(
                 child: Column(
                   children: [
-                    _buildCatridgeField('No. Catridge', catridge.noCatridge),
-                    _buildCatridgeField('Seal Catridge', catridge.sealCatridge),
+                    _buildCatridgeField(
+                      'No. Catridge',
+                      catridge.noCatridge,
+                      manualStatus: catridge.scanCatStatus,
+                      manualRemark: catridge.scanCatStatusRemark,
+                    ),
+                    _buildCatridgeField(
+                      'Seal Catridge',
+                      catridge.sealCatridge,
+                      manualStatus: catridge.scanSealStatus,
+                      manualRemark: catridge.scanSealStatusRemark,
+                    ),
                     _buildCatridgeField('Denom', catridge.denom),
                     _buildCatridgeField('Bag Code', catridge.bagCode),
                   ],
@@ -637,8 +671,16 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       ),
     );
   }
+  
+  Widget _buildCatridgeField(
+    String label,
+    String value, {
+    String manualStatus = '',
+    String manualRemark = '',
+  }) {
+    bool hasManual = manualStatus.isNotEmpty || manualRemark.isNotEmpty;
+    bool isDone = manualStatus.isNotEmpty && manualRemark.isNotEmpty;
 
-  Widget _buildCatridgeField(String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -652,11 +694,45 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
             ),
           ),
           Expanded(
-            child: Text(
-              value.isEmpty ? '-' : value,
-              style: TextStyle(
-                color: value.isEmpty ? Colors.grey : Colors.black,
-              ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    value.isEmpty ? '-' : value,
+                    style: TextStyle(
+                      color: value.isEmpty ? Colors.grey : Colors.black,
+                    ),
+                  ),
+                ),
+                if (hasManual)
+                  GestureDetector(
+                    onTap: () {
+                      _showPrepareManualDetailDialog(
+                        title: label,
+                        alasan: manualStatus,
+                        remark: manualRemark,
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Image.asset(
+                        isDone
+                            ? 'assets/images/ManualModeIcon_done.png'
+                            : 'assets/images/ManualModeIcon_notdone.png',
+                        width: 20,
+                        height: 20,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.edit,
+                            size: 18,
+                            color: isDone ? Colors.green : Colors.grey,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -691,8 +767,18 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
               Expanded(
                 child: Column(
                   children: [
-                    _buildCatridgeField('No. Catridge', divert['noCatridge'] ?? ''),
-                    _buildCatridgeField('Seal Catridge', divert['sealCatridge'] ?? ''),
+                    _buildCatridgeField(
+                      'No. Catridge',
+                      divert['noCatridge'] ?? '',
+                      manualStatus: divert['scanCatStatus']?.toString() ?? '',
+                      manualRemark: divert['scanCatStatusRemark']?.toString() ?? '',
+                    ),
+                    _buildCatridgeField(
+                      'Seal Catridge',
+                      divert['sealCatridge'] ?? '',
+                      manualStatus: divert['scanSealStatus']?.toString() ?? '',
+                      manualRemark: divert['scanSealStatusRemark']?.toString() ?? '',
+                    ),
                     _buildCatridgeField('Denom', divert['denom'] ?? ''),
                     _buildCatridgeField('Bag Code', divert['bagCode'] ?? ''),
                   ],
@@ -751,8 +837,18 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
               Expanded(
                 child: Column(
                   children: [
-                    _buildCatridgeField('No. Catridge', widget.pocketData!['noCatridge'] ?? ''),
-                    _buildCatridgeField('Seal Catridge', widget.pocketData!['sealCatridge'] ?? ''),
+                    _buildCatridgeField(
+                      'No. Catridge',
+                      widget.pocketData!['noCatridge'] ?? '',
+                      manualStatus: widget.pocketData!['scanCatStatus']?.toString() ?? '',
+                      manualRemark: widget.pocketData!['scanCatStatusRemark']?.toString() ?? '',
+                    ),
+                    _buildCatridgeField(
+                      'Seal Catridge',
+                      widget.pocketData!['sealCatridge'] ?? '',
+                      manualStatus: widget.pocketData!['scanSealStatus']?.toString() ?? '',
+                      manualRemark: widget.pocketData!['scanSealStatusRemark']?.toString() ?? '',
+                    ),
                     _buildCatridgeField('Denom', widget.pocketData!['denom'] ?? ''),
                     _buildCatridgeField('Bag Code', widget.pocketData!['bagCode'] ?? ''),
                   ],
@@ -783,23 +879,8 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
   }
 
   Widget _buildGrandTotalSection() {
-    int totalAmount = 0;
-    String tipeDenom = widget.prepareData?.tipeDenom ?? 'A50';
-    int denomAmount = tipeDenom == 'A100' ? 100000 : 50000;
-    
-    // Calculate total from detail catridge items
-    for (var item in widget.catridgeData) {
-      String cleanTotal = item.total.replaceAll('Rp ', '').replaceAll('.', '').trim();
-      if (cleanTotal.isNotEmpty && cleanTotal != '0') {
-        try {
-          totalAmount += int.parse(cleanTotal);
-        } catch (e) {
-          totalAmount += denomAmount * item.value;
-        }
-      }
-    }
-    
-    String formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : 'Rp 0';
+    final int totalAmount = widget.totalNominal;
+    final String formattedTotal = _formatCurrency(totalAmount);
     
     return Container(
       padding: const EdgeInsets.all(16),
@@ -881,9 +962,10 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
   Widget _buildHeader(BuildContext context, bool isSmallScreen) {
     final isTabletOrLandscapeMobile = MediaQuery.of(context).size.width >= 768;
     final isTablet = MediaQuery.of(context).size.width >= 768;
+    final minHeight = isTabletOrLandscapeMobile ? 80.0 : 70.0;
     
     return Container(
-      height: isTabletOrLandscapeMobile ? 80 : 70,
+      constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
         horizontal: isTabletOrLandscapeMobile ? 32.0 : 24.0,
         vertical: isTabletOrLandscapeMobile ? 16.0 : 12.0,
@@ -951,8 +1033,8 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
-              SizedBox(
-                width: isTablet ? 100 : 80,
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
                 child: FutureBuilder<Map<String, dynamic>?>(
                   future: _authService.getUserData(),
                   builder: (context, snapshot) {
@@ -964,15 +1046,21 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
                     } else {
                       meja = '010101';
                     }
-                    return Text(
-                      'Meja: $meja',
-                      style: TextStyle(
-                        fontSize: isTablet ? 16 : 14,
-                        fontWeight: FontWeight.w500,
-                        color: const Color(0xFF6B7280),
+                    return Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'Meja: $meja',
+                          style: TextStyle(
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          maxLines: 1,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
                     );
                   },
                 ),
@@ -1602,6 +1690,66 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
           ),
         ),
         const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Menunggu Approval TL',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.orange,
+              ),
+            ),
+            IconButton(
+              onPressed: () async {
+                if (_isSubmitting) return;
+                final idToolInt = widget.prepareData?.id ?? 0;
+                if (idToolInt <= 0) {
+                  await CustomModals.showFailedModal(
+                    context: context,
+                    message: 'ID Tool tidak valid',
+                  );
+                  return;
+                }
+                setState(() {
+                  _isSubmitting = true;
+                });
+                try {
+                  final res = await _apiService.checkIsDone(idTool: idToolInt);
+                  final status = (res.status ?? '').trim().toUpperCase();
+                  final isDone = status == 'DONE' || status.contains('DONE');
+                  if (isDone) {
+                    await CustomModals.showSuccessModal(
+                      context: context,
+                      message: 'Approval TL berhasil',
+                    );
+                    if (mounted) {
+                      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+                    }
+                  } else {
+                    final confirmed = await CustomModals.showConfirmationModal(
+                      context: context,
+                      message: 'Masih belum dilakukan approve oleh TL, atau apakah kamu ingin mengulangi langkah submit ini?',
+                      confirmText: 'Ya',
+                      cancelText: 'Tidak',
+                    );
+                    if (confirmed && mounted) {
+                      setState(() {});
+                    }
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() {
+                      _isSubmitting = false;
+                    });
+                  }
+                }
+              },
+              icon: const Icon(Icons.refresh, color: Colors.orange),
+            ),
+          ],
+        ),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1621,7 +1769,8 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
               const SizedBox(height: 16),
               QRCodeGeneratorWidget(
                  action: 'PREPARE',
-                 idTool: widget.prepareData?.atmCode ?? '0',
+                 idTool: (widget.prepareData?.id ?? 0).toString(),
+                 totalNominal: widget.totalNominal,
                  prepareCatridgeData: _prepareCatridgeQRData(),
                  prepareDetails: _prepareDetailsQRData(),
                ),

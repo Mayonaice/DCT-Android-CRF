@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 
 class ReturnApiService {
   // Base URL
-  static const String _baseUrl = 'http://10.10.0.223/LocalCRF/api';
+  static const String _baseUrl = 'https://dev.advantagescm.com/LocalCRF/api';
   
   // API timeout duration
   static const Duration _timeout = Duration(seconds: 15);
@@ -69,14 +69,19 @@ class ReturnApiService {
   }
 
   // Get data return list from API
-  Future<List<ReturnData>> getReturnList({String? branchCode}) async {
+  Future<List<ReturnData>> getReturnList({String? branchCode, String? typeReturn}) async {
     try {
       final apiHeaders = await headers;
       
       // Build the URL with optional branchCode parameter
       String url = '$_baseUrl/CRF/kon/return/list';
+      bool hasQuery = false;
       if (branchCode != null && branchCode.isNotEmpty) {
         url += '?BranchCode=$branchCode';
+        hasQuery = true;
+      }
+      if (typeReturn != null && typeReturn.isNotEmpty) {
+        url += '${hasQuery ? '&' : '?'}typeReturn=${Uri.encodeQueryComponent(typeReturn)}';
       }
       debugPrint('🔍 Return API URL: $url');
       

@@ -31,6 +31,7 @@ class HistoryResponse {
 class HistoryItem {
   final String id;
   final String atmCode;
+  final String jnsMesin;
   final String timeStart;
   final String timeFinish;
   final String codeBank;
@@ -41,6 +42,7 @@ class HistoryItem {
   HistoryItem({
     required this.id,
     required this.atmCode,
+    required this.jnsMesin,
     required this.timeStart,
     required this.timeFinish,
     required this.codeBank,
@@ -53,6 +55,7 @@ class HistoryItem {
     return HistoryItem(
       id: json['id']?.toString() ?? '',
       atmCode: json['atmCode']?.toString() ?? '',
+      jnsMesin: (json['jnsMesin'] ?? json['JnsMesin'])?.toString() ?? '',
       timeStart: json['timeStart']?.toString() ?? '',
       timeFinish: json['timeFinish']?.toString() ?? '',
       codeBank: json['codeBank']?.toString() ?? '',

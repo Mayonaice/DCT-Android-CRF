@@ -1,3 +1,4 @@
+import 'dart:convert';
 class PrepareReplenishResponse {
   final bool success;
   final String message;
@@ -172,6 +173,21 @@ class ATMPrepareReplenishData {
   });
 
   factory ATMPrepareReplenishData.fromJson(Map<String, dynamic> json) {
+    bool parseBool(dynamic value) {
+      if (value == null) return false;
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      final s = value.toString().trim().toLowerCase();
+      if (s == '1' || s == 'true' || s == 'y' || s == 'yes') return true;
+      if (s == '0' || s == 'false' || s == 'n' || s == 'no' || s.isEmpty) return false;
+      return false;
+    }
+
+    final normalizedFlags = <String, dynamic>{};
+    json.forEach((key, value) {
+      normalizedFlags[key.toString().toLowerCase()] = value;
+    });
+
     List<CatridgeDetail> catridgeList = [];
     
     // Check for catridge data in different formats
@@ -285,9 +301,9 @@ class ATMPrepareReplenishData {
       jmlCass5: json['jmlCass5'] ?? 0,
       jmlCass6: json['jmlCass6'] ?? 0,
       jmlCass7: json['jmlCass7'] ?? 0,
-      isEmpty: json['isEmpty'] ?? false,
-      isNoBag: json['isNoBag'] ?? false,
-      isMDM: json['isMDM'] ?? false,
+      isEmpty: parseBool(normalizedFlags['isempty'] ?? normalizedFlags['is_empty'] ?? normalizedFlags['is-empty']),
+      isNoBag: parseBool(normalizedFlags['isnobag'] ?? normalizedFlags['is_no_bag'] ?? normalizedFlags['no_bag']),
+      isMDM: parseBool(normalizedFlags['ismdm'] ?? normalizedFlags['is_mdm']),
       listCatridge: catridgeList,
       divertCatridge: divertCatridge,
       pocketCatridge: pocketCatridge,
@@ -947,6 +963,7 @@ class ReturnDetailsQRData {
   final String jenisMesin;
   final String atmType;
   final String tglUnload;
+  final String jumlahKaset;
 
   ReturnDetailsQRData({
     required this.wsid,
@@ -955,6 +972,7 @@ class ReturnDetailsQRData {
     required this.jenisMesin,
     required this.atmType,
     required this.tglUnload,
+    required this.jumlahKaset,
   });
 
   Map<String, dynamic> toJson() {
@@ -965,6 +983,7 @@ class ReturnDetailsQRData {
       'jenisMesin': jenisMesin,
       'atmType': atmType,
       'tglUnload': tglUnload,
+      'jumlahKaset': jumlahKaset,
     };
   }
 
@@ -976,6 +995,7 @@ class ReturnDetailsQRData {
       jenisMesin: json['jenisMesin'] as String,
       atmType: json['atmType'] as String,
       tglUnload: json['tglUnload'] as String,
+      jumlahKaset: (json['jumlahKaset'] ?? '').toString(),
     );
   }
 }
@@ -1046,6 +1066,80 @@ class ReturnQRData {
           .map((c) => ReturnCatridgeQRData.fromJson(c as Map<String, dynamic>))
           .toList(),
       details: ReturnDetailsQRData.fromJson(json['details'] as Map<String, dynamic>),
+    );
+  }
+}
+
+class PrepareConfirmationData {
+  final int idTool;
+  final String wsid;
+  final String bank;
+  final String lokasi;
+  final String atmType;
+  final num total;
+
+  PrepareConfirmationData({
+    required this.idTool,
+    required this.wsid,
+    required this.bank,
+    required this.lokasi,
+    required this.atmType,
+    required this.total,
+  });
+
+  factory PrepareConfirmationData.fromJson(Map<String, dynamic> json) {
+    num parseTotal(dynamic v) {
+      if (v is num) return v;
+      final s = v?.toString() ?? '0';
+      final cleaned = s.replaceAll(RegExp(r'[^0-9,.-]'), '').replaceAll('.', '').replaceAll(',', '.');
+      final d = double.tryParse(cleaned);
+      return d ?? 0;
+    }
+    return PrepareConfirmationData(
+      idTool: int.tryParse(json['IdTool']?.toString() ?? json['idTool']?.toString() ?? '0') ?? 0,
+      wsid: json['WSID']?.toString() ?? json['wsid']?.toString() ?? '',
+      bank: json['Bank']?.toString() ?? json['bank']?.toString() ?? '',
+      lokasi: json['Lokasi']?.toString() ?? json['lokasi']?.toString() ?? '',
+      atmType: json['ATMType']?.toString() ?? json['atmType']?.toString() ?? '',
+      total: parseTotal(json['Total'] ?? json['total']),
+    );
+  }
+}
+
+class PrepareConfirmationResponse {
+  final bool success;
+  final String message;
+  final PrepareConfirmationData? data;
+
+  PrepareConfirmationResponse({
+    required this.success,
+    required this.message,
+    required this.data,
+  });
+
+  factory PrepareConfirmationResponse.fromJson(Map<String, dynamic> json) {
+    PrepareConfirmationData? parsed;
+    if (json['data'] is List && (json['data'] as List).isNotEmpty) {
+      final first = (json['data'] as List).first;
+      if (first is Map<String, dynamic>) {
+        parsed = PrepareConfirmationData.fromJson(first);
+      }
+    } else if (json['data'] is Map<String, dynamic>) {
+      parsed = PrepareConfirmationData.fromJson(json['data']);
+    } else if (json['data'] is String) {
+      try {
+        final map = jsonDecode(json['data']);
+        if (map is List && map.isNotEmpty && map.first is Map<String, dynamic>) {
+          parsed = PrepareConfirmationData.fromJson(map.first);
+        } else if (map is Map<String, dynamic>) {
+          parsed = PrepareConfirmationData.fromJson(map);
+        }
+      } catch (_) {}
+    }
+    return PrepareConfirmationResponse(
+      success: json['success'] == true,
+      message: json['message']?.toString() ?? '',
+      data: parsed,
     );
   }
 }

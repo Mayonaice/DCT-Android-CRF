@@ -4,8 +4,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import '../widgets/custom_modals.dart';
 import '../services/device_service.dart';
-import '../widgets/tl_header_widget.dart';
-import '../services/profile_service.dart';
+ 
 
 class TLDeviceInfoScreen extends StatefulWidget {
   const TLDeviceInfoScreen({Key? key}) : super(key: key);
@@ -21,10 +20,7 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
   String _androidId = 'Loading...';
   bool _isLoading = true;
   
-  // Add user data for header
-  String _userName = 'Device User';
-  String _branchName = 'Device Info';
-  final ProfileService _profileService = ProfileService();
+  
 
   @override
   void initState() {
@@ -142,29 +138,39 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Use TLHeaderWidget instead of custom header
-            TLHeaderWidget(
-              userName: _userName,
-              branchName: _branchName,
-              greetingText: 'Device Information',
-              profileService: _profileService,
-            ),
-
-            // Konten scrollable mengikuti layout tl_profile_screen.dart
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                child: _isLoading 
-                  ? const Center(
-                      child: CircularProgressIndicator(),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.red),
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+        title: const Text(
+          'Device Information',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        centerTitle: false,
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1, color: Color(0xFFE0E0E0)),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: _isLoading 
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                         // PhoneIcon.png dengan ukuran besar di tengah-tengah dibawah header
                         Center(
                           child: Container(
@@ -310,12 +316,8 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
                         ),
 
                         const SizedBox(height: 24),
-                      ],
-                    ),
-              ),
+              ],
             ),
-          ],
-        ),
       ),
     );
   }
