@@ -716,28 +716,12 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
                     final res = await _apiService.checkIsDone(idTool: idToolInt);
                     final status = res.status?.toUpperCase() ?? '';
                     if (status == 'DONE') {
-                      final approveUser = _userData?['nik']?.toString()
-                          ?? _userData?['userId']?.toString()
-                          ?? _userData?['userID']?.toString()
-                          ?? _userData?['username']?.toString()
-                          ?? '';
-                      final exec = await _apiService.executeReturnAtmCatridgeByIdTool(
-                        idTool: idToolInt,
-                        userApproveReturn: approveUser,
+                      await CustomModals.showSuccessModal(
+                        context: context,
+                        message: 'Approval TL sudah berhasil',
                       );
-                      if (exec.success) {
-                        await CustomModals.showSuccessModal(
-                          context: context,
-                          message: 'Approval TL sudah berhasil',
-                        );
-                        if (mounted) {
-                          Navigator.of(context).popUntil((route) => route.isFirst);
-                        }
-                      } else {
-                        await CustomModals.showFailedModal(
-                          context: context,
-                          message: exec.message ?? 'Gagal eksekusi data',
-                        );
+                      if (mounted) {
+                        Navigator.of(context).popUntil((route) => route.isFirst);
                       }
                     } else {
                       final confirmed = await CustomModals.showConfirmationModal(

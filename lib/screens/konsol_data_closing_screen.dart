@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
+import '../services/konsol_api_service.dart';
 import '../services/profile_service.dart';
 import '../widgets/custom_modals.dart';
 import 'profile_menu_screen.dart';
@@ -18,10 +19,15 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
   DateTime toDate = DateTime.now();
   String searchQuery = '';
   final AuthService _authService = AuthService();
+  final KonsolApiService _konsolApiService = KonsolApiService();
   final ProfileService _profileService = ProfileService();
   String _userName = ''; 
   String _branchName = '';
   String _userId = '';
+  String _branchCode = '';
+  bool _isLoadingClosing = false;
+  String? _closingLoadError;
+  List<ClosingAndroidListItem> _closingItems = [];
 
   @override
   void initState() {
@@ -42,10 +48,75 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
           _userName = userData['userName'] ?? userData['name'] ?? '';
           _userId = userData['userId'] ?? userData['userID'] ?? '';
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
+          _branchCode = (userData['groupId'] ??
+                  userData['GroupId'] ??
+                  userData['GroupID'] ??
+                  userData['groupid'] ??
+                  userData['groupID'] ??
+                  userData['branchCode'] ??
+                  userData['BranchCode'])
+              ?.toString()
+              .trim() ??
+              '';
         });
+        await _loadClosingData();
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
+    }
+  }
+
+  List<ClosingAndroidListItem> get _filteredClosingItems {
+    final q = searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return _closingItems;
+    return _closingItems.where((item) {
+      final haystack = [
+        item.id,
+        item.tanggalClosing,
+        item.codeBank,
+        item.jenisMesin,
+        item.userClosing,
+      ].whereType<String>().join(' ').toLowerCase();
+      return haystack.contains(q);
+    }).toList();
+  }
+
+  Future<void> _loadClosingData() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingClosing = true;
+      _closingLoadError = null;
+    });
+
+    try {
+      final fromStr = DateFormat('dd-MM-yyyy').format(fromDate);
+      final toStr = DateFormat('dd-MM-yyyy').format(toDate);
+      debugPrint('🔍 Loading closing list: branchCode=$_branchCode, fromDate=$fromStr, toDate=$toStr, userId=$_userId');
+
+      final data = await _konsolApiService.getClosingAndroidList(
+        branchCode: _branchCode,
+        fromDate: fromStr,
+        toDate: toStr,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _closingItems = data;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _closingLoadError = e.toString();
+      });
+      await CustomModals.showFailedModal(
+        context: context,
+        message: 'Gagal ambil data closing: ${e.toString()}',
+      );
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingClosing = false;
+      });
     }
   }
 
@@ -532,6 +603,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
                   // From date
                   _buildDateField(fromDate, isTablet, (date) {
                     setState(() => fromDate = date);
+                    _loadClosingData();
                   }),
                   
                   SizedBox(width: isTablet ? 16 : 12),
@@ -551,6 +623,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
                   // To date
                   _buildDateField(toDate, isTablet, (date) {
                     setState(() => toDate = date);
+                    _loadClosingData();
                   }),
                 ],
               ),
@@ -682,26 +755,14 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
       'User Closing'
     ];
 
-    // Calculate responsive column widths based on available width
-    final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - (isTablet ? 32.0 : 24.0); // Account for padding
-    
-    // Calculate base column width
-    final baseColumnWidth = availableWidth / columns.length;
-    
-    // Adjust column widths proportionally
-    Map<String, double> columnWidths = {};
-    for (var column in columns) {
-      if (column == 'Tanggal Closing') {
-        columnWidths[column] = baseColumnWidth * 1.3;
-      } else if (column == 'ID Closing' || column == 'Code Bank' || column == 'Jenis Mesin') {
-        columnWidths[column] = baseColumnWidth * 1.2;
-      } else if (column == 'User Closing') {
-        columnWidths[column] = baseColumnWidth * 1.1;
-      } else {
-        columnWidths[column] = baseColumnWidth * 0.8;
-      }
+    int columnFlex(String column) {
+      if (column == 'Tanggal Closing') return 13;
+      if (column == 'ID Closing' || column == 'Code Bank' || column == 'Jenis Mesin') return 12;
+      if (column == 'User Closing') return 11;
+      return 8;
     }
+
+    final rows = _filteredClosingItems;
 
     return Expanded(
       child: Container(
@@ -720,24 +781,30 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
                 ),
               ),
               child: Row(
-                children: columns.map((column) {
-                  return Container(
-                    width: columnWidths[column],
-                    padding: EdgeInsets.all(isTablet ? 8 : 4),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        right: BorderSide(color: Colors.grey.shade300),
+                children: columns.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final column = entry.value;
+                  final isLast = idx == columns.length - 1;
+
+                  return Expanded(
+                    flex: columnFlex(column),
+                    child: Container(
+                      padding: EdgeInsets.all(isTablet ? 8 : 4),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          right: isLast ? BorderSide.none : BorderSide(color: Colors.grey.shade300),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      column,
-                      style: TextStyle(
-                        fontSize: isTablet ? 12 : 9,
-                        fontWeight: FontWeight.bold,
+                      child: Text(
+                        column,
+                        style: TextStyle(
+                          fontSize: isTablet ? 12 : 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
                       ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
                     ),
                   );
                 }).toList(),
@@ -746,16 +813,85 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
             
             // Empty table body
             Expanded(
-              child: Center(
-                child: Text(
-                  'No data available',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    color: Colors.grey.shade500,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
+              child: _isLoadingClosing
+                  ? const Center(child: CircularProgressIndicator())
+                  : _closingLoadError != null
+                      ? Center(
+                          child: Text(
+                            _closingLoadError!,
+                            style: TextStyle(
+                              fontSize: isTablet ? 14 : 12,
+                              color: Colors.red.shade400,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      : rows.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No data available',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 16 : 14,
+                                  color: Colors.grey.shade500,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: rows.length,
+                              itemBuilder: (context, index) {
+                                final item = rows[index];
+                                final values = <String, String?>{
+                                  'ID Closing': item.id,
+                                  'Tanggal Closing': item.tanggalClosing,
+                                  'Code Bank': item.codeBank,
+                                  'Jenis Mesin': item.jenisMesin,
+                                  'A1': item.a1?.toString(),
+                                  'A2': item.a2?.toString(),
+                                  'A5': item.a5?.toString(),
+                                  'A10': item.a10?.toString(),
+                                  'A20': item.a20?.toString(),
+                                  'A50': item.a50?.toString(),
+                                  'A75': item.a75?.toString(),
+                                  'A100': item.a100?.toString(),
+                                  'User Closing': item.userClosing,
+                                };
+
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(color: Colors.grey.shade200),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: columns.asMap().entries.map((entry) {
+                                      final idx = entry.key;
+                                      final column = entry.value;
+                                      final isLast = idx == columns.length - 1;
+
+                                      return Expanded(
+                                        flex: columnFlex(column),
+                                        child: Container(
+                                          padding: EdgeInsets.all(isTablet ? 8 : 4),
+                                          decoration: BoxDecoration(
+                                            border: Border(
+                                              right: isLast ? BorderSide.none : BorderSide(color: Colors.grey.shade200),
+                                            ),
+                                          ),
+                                          child: Text(
+                                            values[column] ?? '',
+                                            style: TextStyle(fontSize: isTablet ? 12 : 9),
+                                            textAlign: TextAlign.center,
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 2,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                );
+                              },
+                            ),
             ),
           ],
         ),

@@ -1329,12 +1329,11 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
                         value: _useAlternativeScanner,
                         activeColor: Colors.green,
                         onChanged: (value) {
+                          Navigator.of(context).pop();
                           setState(() {
                             _useAlternativeScanner = value;
-                            Navigator.of(context).pop();
-                            // Panggil ulang metode ini untuk menampilkan dialog dengan nilai yang diperbarui
-                            _startQRScan();
                           });
+                          Future.microtask(_startQRScan);
                         },
                       ),
                     ],
@@ -1374,17 +1373,21 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         _scannerTimeoutTimer?.cancel();
         _scannerTimeoutTimer = Timer(const Duration(seconds: 45), () {
           // Jika timer habis dan scanner masih berjalan, kembali ke screen ini
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-            
-            // Tampilkan pesan timeout - tidak bisa await di dalam Timer callback
+          if (!mounted) return;
+          if (!Navigator.canPop(context)) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (!Navigator.canPop(context)) return;
+            try {
+              Navigator.pop(context);
+            } catch (_) {}
             Future.microtask(() async {
               await CustomModals.showFailedModal(
                 context: context,
                 message: 'Scanner timeout after 45 seconds. Complex QR may need more time.',
               );
             });
-          }
+          });
         });
         
         // Use the real QR scanner widget  
@@ -1436,17 +1439,21 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         _scannerTimeoutTimer?.cancel();
         _scannerTimeoutTimer = Timer(const Duration(seconds: 35), () {
           // Jika timer habis dan scanner masih berjalan, kembali ke screen ini
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-            
-            // Tampilkan pesan timeout - tidak bisa await di dalam Timer callback
+          if (!mounted) return;
+          if (!Navigator.canPop(context)) return;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            if (!Navigator.canPop(context)) return;
+            try {
+              Navigator.pop(context);
+            } catch (_) {}
             Future.microtask(() async {
               await CustomModals.showFailedModal(
                 context: context,
                 message: 'Scanner timeout. Silakan coba lagi.',
               );
             });
-          }
+          });
         });
         
         // Use the alternative QR scanner widget

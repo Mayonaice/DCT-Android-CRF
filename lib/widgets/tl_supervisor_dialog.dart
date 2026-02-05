@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class TLSupervisorDialog extends StatefulWidget {
   final Function(String nik, String password) onValidate;
@@ -87,11 +86,7 @@ class _TLSupervisorDialogState extends State<TLSupervisorDialog> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.security,
-                        color: Colors.green,
-                        size: isTablet ? 28 : 24,
-                      ),
+                     
                       const SizedBox(width: 12),
                       Text(
                         'Validasi TL Supervisor',
@@ -136,9 +131,6 @@ class _TLSupervisorDialogState extends State<TLSupervisorDialog> {
                     enabled: !_isValidating,
                     keyboardType: TextInputType.text,
                     textCapitalization: TextCapitalization.characters,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9A-Za-z]')),
-                    ],
                   ),
                   SizedBox(height: isTablet ? 16 : 12),
                   Text(

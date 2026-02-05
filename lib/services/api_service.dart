@@ -1392,6 +1392,25 @@ class ApiService {
   }) async {
     try {
       final requestHeaders = await headers;
+
+      String normalizeDenomCode(String input) {
+        final trimmed = input.trim();
+        if (trimmed.isEmpty) return '0';
+
+        final upper = trimmed.toUpperCase();
+        if (RegExp(r'^A\d+$').hasMatch(upper)) return upper;
+
+        final digits = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+        if (digits.isEmpty) return trimmed;
+
+        final numeric = int.tryParse(digits);
+        if (numeric == null) return trimmed;
+        if (numeric <= 0) return '0';
+        if (numeric >= 1000 && numeric % 1000 == 0) {
+          return 'A${numeric ~/ 1000}';
+        }
+        return 'A$numeric';
+      }
       
       // Make sure idTool is properly formatted as integer
       int idToolAsInt;
@@ -1405,6 +1424,8 @@ class ApiService {
         debugPrint('❌ Error converting idTool to int: $e');
         idToolAsInt = 0;
       }
+
+      final normalizedDenomCode = normalizeDenomCode(denomCode);
       
       // IMPORTANT: Create request body WITHOUT the InsertedId field
       // This is to prevent the "Column 'InsertedId' does not belong to table" error
@@ -1414,7 +1435,7 @@ class ApiService {
         "CatridgeCode": catridgeCode.isEmpty ? "0" : catridgeCode,
         "SealCode": sealCode.isEmpty ? "0" : sealCode,
         "CatridgeSeal": catridgeSeal.isEmpty ? "0" : catridgeSeal,
-        "DenomCode": denomCode,
+        "DenomCode": normalizedDenomCode,
         "Qty": qty,
         "UserInput": userInput,
         "SealReturn": sealReturn.isEmpty ? "0" : sealReturn,

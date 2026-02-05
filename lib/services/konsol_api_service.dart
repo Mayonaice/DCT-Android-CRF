@@ -241,6 +241,57 @@ class KonsolApiService {
       return [];
     }
   }
+
+  Future<List<ClosingAndroidListItem>> getClosingAndroidList({String? branchCode, String? fromDate, String? toDate}) async {
+    try {
+      final apiHeaders = await headers;
+
+      final queryParams = <String>[];
+      if (branchCode != null && branchCode.trim().isNotEmpty) {
+        queryParams.add('branchCode=${Uri.encodeQueryComponent(branchCode.trim())}');
+      }
+      if (fromDate != null && fromDate.trim().isNotEmpty) {
+        queryParams.add('fromDate=${Uri.encodeQueryComponent(fromDate.trim())}');
+      }
+      if (toDate != null && toDate.trim().isNotEmpty) {
+        queryParams.add('toDate=${Uri.encodeQueryComponent(toDate.trim())}');
+      }
+
+      String url = '$_baseUrl/CRF/kon/closing/list';
+      if (queryParams.isNotEmpty) {
+        url += '?${queryParams.join('&')}';
+      }
+
+      debugPrint('🔍 Get Closing List API URL: $url');
+
+      final response = await _debugHttp(
+        () => _client.get(
+          Uri.parse(url),
+          headers: apiHeaders,
+        ).timeout(_timeout),
+        'getClosingAndroidList',
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final List<dynamic> list = responseData['data'];
+          debugPrint('🔍 Closing list returned ${list.length} items');
+          return list.map((e) => ClosingAndroidListItem.fromJson(e as Map<String, dynamic>)).toList();
+        }
+
+        debugPrint('🔍 Closing list success=false or data null: ${responseData['message']}');
+        return [];
+      }
+
+      debugPrint('🔍 Closing list API error: ${response.statusCode} - ${response.body}');
+      return [];
+    } catch (e) {
+      debugPrint('🔍 Error fetching closing list: $e');
+      return [];
+    }
+  }
   
   // Insert closing data
   Future<ClosingAndroidResponse> insertClosingData(String codeBank, String jnsMesin, String dateReplenish) async {
@@ -560,6 +611,65 @@ class KonsolData {
       edited: findField('edited'),
       validate: findField('validate'),
       isClosing: findField('isClosing'),
+    );
+  }
+}
+
+class ClosingAndroidListItem {
+  final String? id;
+  final String? tanggalClosing;
+  final String? codeBank;
+  final String? jenisMesin;
+  final int? a1;
+  final int? a2;
+  final int? a5;
+  final int? a10;
+  final int? a20;
+  final int? a50;
+  final int? a75;
+  final int? a100;
+  final String? userClosing;
+  final String? branchCode;
+
+  ClosingAndroidListItem({
+    this.id,
+    this.tanggalClosing,
+    this.codeBank,
+    this.jenisMesin,
+    this.a1,
+    this.a2,
+    this.a5,
+    this.a10,
+    this.a20,
+    this.a50,
+    this.a75,
+    this.a100,
+    this.userClosing,
+    this.branchCode,
+  });
+
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
+  }
+
+  factory ClosingAndroidListItem.fromJson(Map<String, dynamic> json) {
+    return ClosingAndroidListItem(
+      id: json['id']?.toString(),
+      tanggalClosing: json['tanggalClosing']?.toString(),
+      codeBank: json['codeBank']?.toString(),
+      jenisMesin: json['jenisMesin']?.toString(),
+      a1: _toInt(json['a1']),
+      a2: _toInt(json['a2']),
+      a5: _toInt(json['a5']),
+      a10: _toInt(json['a10']),
+      a20: _toInt(json['a20']),
+      a50: _toInt(json['a50']),
+      a75: _toInt(json['a75']),
+      a100: _toInt(json['a100']),
+      userClosing: json['userClosing']?.toString(),
+      branchCode: json['branchCode']?.toString(),
     );
   }
 }

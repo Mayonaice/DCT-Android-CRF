@@ -450,8 +450,13 @@ class _LogActivityPageState extends State<LogActivityPage>
                   borderRadius: BorderRadius.circular(25),
                   color: const Color(0xFF10B981),
                 ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicatorPadding: EdgeInsets.zero,
+                dividerColor: Colors.transparent,
+                dividerHeight: 0,
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.black54,
+                labelPadding: EdgeInsets.zero,
                 labelStyle: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: isTablet ? 16 : 14,

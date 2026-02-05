@@ -55,6 +55,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
   
   // Flag to prevent duplicate modal showing
   bool _isDuplicateModalShowing = false;
+  bool _isSealCodePairModalShowing = false;
   
   // Flag to prevent duplicate API calls for Divert fields
   Map<String, bool> _divertApiCallInProgress = {};
@@ -332,6 +333,18 @@ class _PrepareModePageState extends State<PrepareModePage> {
   // NEW: Handle divert field changes to trigger manual mode per field
   void _onDivertFieldChanged(int sectionIndex, String fieldType, String value) {
     if (sectionIndex >= 0 && sectionIndex < 3) {
+      if (fieldType == 'bag_code' ||
+          fieldType == 'seal_code' ||
+          fieldType == 'seal_code_return') {
+        final String mappedFieldName = fieldType == 'bag_code'
+            ? 'bagCode'
+            : fieldType == 'seal_code'
+                ? 'sealCode'
+                : 'sealReturn';
+        _updateDetailDivertItemField(sectionIndex, mappedFieldName, value.trim());
+        return;
+      }
+
       setState(() {
         if (value.trim().isNotEmpty) {
           // Activate manual mode for specific field type
@@ -373,7 +386,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                 sealReturn: sectionIndex < _divertControllers.length ? _divertControllers[sectionIndex][4].text.trim() : '',
               );
               
-              // Also update _divertDetailItems if exists
               if (_divertDetailItems[sectionIndex] != null) {
                 _divertDetailItems[sectionIndex] = DetailCatridgeItem(
                   index: _divertDetailItems[sectionIndex]!.index,
@@ -465,6 +477,18 @@ class _PrepareModePageState extends State<PrepareModePage> {
 
   // NEW: Handle pocket field changes to trigger manual mode per field
   void _onPocketFieldChanged(String fieldType, String value) {
+    if (fieldType == 'bag_code' ||
+        fieldType == 'seal_code' ||
+        fieldType == 'seal_code_return') {
+      final String mappedFieldName = fieldType == 'bag_code'
+          ? 'bagCode'
+          : fieldType == 'seal_code'
+              ? 'sealCode'
+              : 'sealReturn';
+      _updateDetailPocketItemField(mappedFieldName, value.trim());
+      return;
+    }
+
     setState(() {
       if (value.trim().isNotEmpty) {
         // Activate manual mode for specific field type
@@ -941,7 +965,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
     return true;
   }
   
-  // Load user data from login
+  // sama
   Future<void> _loadUserData() async {
     try {
       final userData = await _authService.getUserData();
@@ -1372,6 +1396,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
       _nonFocusListenersAdded = true;
 
       for (int i = 0; i < _divertControllers.length; i++) {
+        _divertControllers[i][1].addListener(() {
+          String value = _divertControllers[i][1].text.trim();
+          _updateDetailDivertItemField(i, 'sealCatridge', value);
+        });
+
         _divertControllers[i][2].addListener(() {
           String value = _divertControllers[i][2].text.trim();
           _onDivertFieldChanged(i, 'bag_code', value);
@@ -1387,6 +1416,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
           _onDivertFieldChanged(i, 'seal_code_return', value);
         });
       }
+
+      _pocketControllers[1].addListener(() {
+        String value = _pocketControllers[1].text.trim();
+        _updateDetailPocketItemField('sealCatridge', value);
+      });
 
       _pocketControllers[2].addListener(() {
         String value = _pocketControllers[2].text.trim();
@@ -1599,7 +1633,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       _catridgeNoAlasanControllers = List.generate(count, (_) => TextEditingController());
       _catridgeSealAlasanControllers = List.generate(count, (_) => TextEditingController());
       
-      // Clear existing field-specific remark controllers
+      // sama untuk prepare_mode, 
       for (var controller in _catridgeNoRemarkControllers) {
         controller.dispose();
       }
@@ -1750,12 +1784,79 @@ class _PrepareModePageState extends State<PrepareModePage> {
   //   }
   // }
   
-  // NEW: Handle catridge field changes to trigger manual mode per field
+  // 
   void _onCatridgeFieldChanged(int catridgeIndex, int fieldIndex) {
     if (catridgeIndex >= 0 && catridgeIndex < _catridgeControllers.length) {
       String fieldValue = _catridgeControllers[catridgeIndex][fieldIndex].text;
       
       setState(() {
+        if (fieldIndex >= 2 && fieldIndex <= 4) {
+          if (fieldValue.isNotEmpty) {
+            if (catridgeIndex < _catridgeManualMode.length) {
+              _catridgeManualMode[catridgeIndex] = true;
+            }
+          }
+
+          final String noCatridge = _catridgeControllers[catridgeIndex][0].text.trim();
+          final String sealCatridge = _catridgeControllers[catridgeIndex][1].text.trim();
+          final String bagCode = _catridgeControllers[catridgeIndex][2].text.trim();
+          final String sealCode = _catridgeControllers[catridgeIndex][3].text.trim();
+          final String sealReturn = _catridgeControllers[catridgeIndex][4].text.trim();
+
+          final int existingIndex =
+              _detailCatridgeItems.indexWhere((item) => item.index == catridgeIndex + 1);
+
+          if (existingIndex >= 0) {
+            final currentItem = _detailCatridgeItems[existingIndex];
+            _detailCatridgeItems[existingIndex] = DetailCatridgeItem(
+              index: currentItem.index,
+              noCatridge: noCatridge,
+              sealCatridge: sealCatridge,
+              value: currentItem.value,
+              total: currentItem.total,
+              denom: currentItem.denom,
+              bagCode: bagCode,
+              sealCode: sealCode,
+              sealReturn: sealReturn,
+              scanCatStatus: currentItem.scanCatStatus,
+              scanCatStatusRemark: currentItem.scanCatStatusRemark,
+              scanSealStatus: currentItem.scanSealStatus,
+              scanSealStatusRemark: currentItem.scanSealStatusRemark,
+            );
+          } else {
+            if (noCatridge.isEmpty &&
+                sealCatridge.isEmpty &&
+                bagCode.isEmpty &&
+                sealCode.isEmpty &&
+                sealReturn.isEmpty) {
+              return;
+            }
+            _detailCatridgeItems.add(
+              DetailCatridgeItem(
+                index: catridgeIndex + 1,
+                noCatridge: noCatridge,
+                sealCatridge: sealCatridge,
+                value: 0,
+                total: '0',
+                denom: '',
+                bagCode: bagCode,
+                sealCode: sealCode,
+                sealReturn: sealReturn,
+              ),
+            );
+            _detailCatridgeItems.sort((a, b) => a.index.compareTo(b.index));
+          }
+
+          if (noCatridge.isEmpty &&
+              sealCatridge.isEmpty &&
+              bagCode.isEmpty &&
+              sealCode.isEmpty &&
+              sealReturn.isEmpty) {
+            _detailCatridgeItems.removeWhere((item) => item.index == catridgeIndex + 1);
+          }
+          return;
+        }
+
         if (fieldValue.isNotEmpty) {
           // Set manual mode status when user starts typing
           // Set general manual mode status for the catridge section
@@ -1924,6 +2025,55 @@ class _PrepareModePageState extends State<PrepareModePage> {
   }) async {
     if ((sealCode?.isEmpty ?? true) && (sealCodeReturn?.isEmpty ?? true)) {
       debugPrint('❌ Cannot validate seal code: Both seal codes are empty');
+      return;
+    }
+
+    String normalizeForComparison(String? value) {
+      return (value ?? '').trim().replaceAll(RegExp(r'\s+'), '').toLowerCase();
+    }
+
+    final normalizedSealCode = normalizeForComparison(sealCode);
+    final normalizedSealCodeReturn = normalizeForComparison(sealCodeReturn);
+    final normalizedFieldType = fieldType == 'sealReturn'
+        ? 'seal_code_return'
+        : fieldType == 'sealCodeReturn'
+            ? 'seal_code_return'
+            : fieldType == 'sealCode'
+                ? 'seal_code'
+                : fieldType;
+
+    if (normalizedSealCode.isNotEmpty &&
+        normalizedSealCodeReturn.isNotEmpty &&
+        normalizedSealCode == normalizedSealCodeReturn) {
+      if (_isSealCodePairModalShowing) return;
+      _isSealCodePairModalShowing = true;
+      await CustomModals.showFailedModal(
+        context: context,
+        message: 'Seal Code dan Seal Code Return tidak boleh sama',
+        buttonText: 'OK',
+        onPressed: () {
+          Navigator.of(context).pop();
+          if (!mounted) return;
+
+          if (sectionType == 'catridge' && sectionIndex != null) {
+            _clearCatridgeSealFields(sectionIndex, normalizedFieldType);
+            final detailFieldName =
+                normalizedFieldType == 'seal_code' ? 'sealCode' : 'sealReturn';
+            _updateDetailCatridgeItemField(sectionIndex, detailFieldName, '');
+          } else if (sectionType == 'divert' && sectionIndex != null) {
+            _clearDivertSealFields(sectionIndex, normalizedFieldType);
+            final detailFieldName =
+                normalizedFieldType == 'seal_code' ? 'sealCode' : 'sealReturn';
+            _updateDetailDivertItemField(sectionIndex, detailFieldName, '');
+          } else if (sectionType == 'pocket') {
+            _clearPocketSealFields(normalizedFieldType);
+            final detailFieldName =
+                normalizedFieldType == 'seal_code' ? 'sealCode' : 'sealReturn';
+            _updateDetailPocketItemField(detailFieldName, '');
+          }
+        },
+      );
+      _isSealCodePairModalShowing = false;
       return;
     }
     
@@ -4504,8 +4654,16 @@ class _PrepareModePageState extends State<PrepareModePage> {
 
     final bool skipAllValidation = (_prepareData?.isNoBag ?? false) && (_prepareData?.isEmpty ?? false);
 
-    // Ensure denomination code is set
-    String finalDenomCode = _prepareData!.denomCode.isNotEmpty ? _prepareData!.denomCode : 'TEST';
+    String resolveDenomLabelFallback() {
+      final String mesin = (_prepareData?.jnsMesin ?? '').toUpperCase();
+      if (mesin == 'CDM') return 'Rp 0';
+      final String tipeDenom = (_prepareData?.tipeDenom ?? '').toUpperCase();
+      if (tipeDenom == 'A100') return 'Rp 100.000';
+      if (tipeDenom == 'A50') return 'Rp 50.000';
+      final String denomCode = (_prepareData?.denomCode ?? '').trim();
+      if (denomCode.isNotEmpty) return denomCode;
+      return 'Rp 50.000';
+    }
 
     // Resolve userInput from auth
     String userInput = 'UNKNOWN';
@@ -4523,6 +4681,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       required String bagCode,
       required String sealCode,
       required String sealReturn,
+      required String denomCode,
       required String typeCatridgeTrx,
       String? scanCatStatus,
       String? scanCatStatusRemark,
@@ -4539,7 +4698,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         catridgeCode: noCatridge,
         sealCode: seal,
         catridgeSeal: sealCat,
-        denomCode: finalDenomCode,
+        denomCode: denomCode,
         qty: _prepareData!.isEmpty ? '0' : '1',
         userInput: userInput,
         sealReturn: sealReturn,
@@ -4584,6 +4743,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
       _postedKeys.add(keyC);
 
       final String catridgeCodeToSend = (_prepareData!.isEmpty || skipAllValidation) ? '0' : item.noCatridge.trim();
+      final String denomCodeToSend =
+          item.denom.trim().isNotEmpty ? item.denom.trim() : resolveDenomLabelFallback();
 
       await insertOne(
         section: 'Catridge ${item.index}',
@@ -4592,6 +4753,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         bagCode: bagCode,
         sealCode: sealCode,
         sealReturn: sealReturn,
+        denomCode: denomCodeToSend,
         typeCatridgeTrx: 'C',
         scanCatStatus: (noAlasan?.isNotEmpty ?? false) ? noAlasan : null,
         scanCatStatusRemark: (noRemark?.isNotEmpty ?? false) ? noRemark : null,
@@ -4625,6 +4787,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
         bagCode: _divertControllers[i][2].text.trim(),
         sealCode: _divertControllers[i][3].text.trim(),
         sealReturn: sealReturn,
+        denomCode: (_divertDetailItems[i]?.denom.trim().isNotEmpty ?? false)
+            ? _divertDetailItems[i]!.denom.trim()
+            : resolveDenomLabelFallback(),
         typeCatridgeTrx: 'D',
         scanCatStatus: (noAlasan?.isNotEmpty ?? false) ? noAlasan : null,
         scanCatStatusRemark: (noRemark?.isNotEmpty ?? false) ? noRemark : null,
@@ -4656,6 +4821,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
         bagCode: _pocketControllers[2].text.trim(),
         sealCode: _pocketControllers[3].text.trim(),
         sealReturn: sealReturn,
+        denomCode: _pocketDetailItem!.denom.trim().isNotEmpty
+            ? _pocketDetailItem!.denom.trim()
+            : resolveDenomLabelFallback(),
         typeCatridgeTrx: 'P',
         scanCatStatus: (noAlasan?.isNotEmpty ?? false) ? noAlasan : null,
         scanCatStatusRemark: (noRemark?.isNotEmpty ?? false) ? noRemark : null,
@@ -7147,11 +7315,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
             onBarcodeDetected: (String barcode) {
               print('Barcode detected for $cleanLabel: $barcode');
               
-              // Fill the field with scanned barcode
-              setState(() {
-                controller.text = barcode;
-              });
-              
               // Reset manual mode immediately after successful scan
               if (cleanLabel == 'No. Catridge') {
                 // Find catridge index for this controller and reset manual mode
@@ -7238,40 +7401,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
                   });
                 }
               } else if (cleanLabel == 'Bag Code' || cleanLabel == 'Seal Code' || cleanLabel == 'Seal Code Return') {
-                 // Check if this is a Cartridge field (Bag Code, Seal Code, or Seal Code Return)
-                 for (int i = 0; i < _catridgeControllers.length; i++) {
-                   for (int j = 2; j < _catridgeControllers[i].length; j++) {
-                     if (_catridgeControllers[i][j] == controller) {
-                       // Update the detail catridge item field
-                       String fieldName = '';
-                       if (j == 2) fieldName = 'bagCode';
-                       else if (j == 3) fieldName = 'sealCode';
-                       else if (j == 4) fieldName = 'sealReturn';
-                       
-                       if (fieldName.isNotEmpty) {
-                         _updateDetailCatridgeItemField(i, fieldName, controller.text);
-                         print('🔄 UPDATE: Cartridge section $i field $fieldName updated with scanned value: ${controller.text}');
-                         
-                         // Trigger seal code validation if this is a seal-related field
-                         if (fieldName == 'sealCode' || fieldName == 'sealReturn') {
-                           String sealCode = _catridgeControllers[i][3].text.trim();
-                           String sealCodeReturn = _catridgeControllers[i][4].text.trim();
-                           if (sealCode.isNotEmpty || sealCodeReturn.isNotEmpty) {
-                             _validateSealCode(
-                               sealCode: sealCode.isEmpty ? null : sealCode,
-                               sealCodeReturn: sealCodeReturn.isEmpty ? null : sealCodeReturn,
-                               fieldType: fieldName,
-                               sectionType: 'catridge',
-                               sectionIndex: i,
-                             );
-                           }
-                         }
-                       }
-                       break;
-                     }
-                   }
-                 }
-                 
                  // Check if this is a Divert field (Bag Code, Seal Code, or Seal Code Return)
                  for (int i = 0; i < _divertControllers.length; i++) {
                    for (int j = 2; j < _divertControllers[i].length; j++) {
@@ -7306,8 +7435,11 @@ class _PrepareModePageState extends State<PrepareModePage> {
       
       // Handle result after scanner closes
       if (result != null && result.isNotEmpty) {
-        // Show success message after scanner closes
-        CustomModals.showSuccessModal(
+        setState(() {
+          controller.text = result;
+        });
+
+        await CustomModals.showSuccessModal(
           context: context,
           message: '$cleanLabel berhasil diisi: $result',
         );
@@ -7324,13 +7456,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
             if (_catridgeControllers[i].isNotEmpty && _catridgeControllers[i][0] == controller) {
               String fieldKey = 'catridge_${i}_no';
               String fieldName = 'No. Catridge (Catridge ${i + 1})';
-              if (!_isDuplicateModalShowing && _validateFieldForDuplicates(result, fieldKey, fieldName)) {
-                Future.delayed(const Duration(milliseconds: 2000), () {
-                  _lookupCatridgeAndCreateDetail(i, result);
+              if (_isDuplicateValue(result, fieldKey)) {
+                await CustomModals.showFailedModal(
+                  context: context,
+                  message: 'Kode $fieldName "$result" sudah diinput. Silakan input kode lain.',
+                  buttonText: 'OK',
+                );
+                if (!mounted) return;
+                setState(() {
+                  controller.clear();
                 });
-              } else if (_isDuplicateValue(result, fieldKey)) {
-                controller.clear();
+                return;
               }
+              Future.delayed(const Duration(milliseconds: 2000), () {
+                _lookupCatridgeAndCreateDetail(i, result);
+              });
               break;
             }
           }
@@ -7349,15 +7489,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
                 return;
               }
               
-              // Skip duplicate validation if modal is already showing to prevent double modals
-              if (!_isDuplicateModalShowing && _validateFieldForDuplicates(result, fieldKey, fieldName)) {
-                Future.delayed(const Duration(milliseconds: 2000), () {
-                  _lookupDivertCatridge(i, result);
+              if (_isDuplicateValue(result, fieldKey)) {
+                await CustomModals.showFailedModal(
+                  context: context,
+                  message: 'Kode $fieldName "$result" sudah diinput. Silakan input kode lain.',
+                  buttonText: 'OK',
+                );
+                if (!mounted) return;
+                setState(() {
+                  controller.clear();
                 });
-              } else if (_isDuplicateValue(result, fieldKey)) {
-                // Clear the field if duplicate found, but don't show modal again
-                controller.clear();
+                return;
               }
+              Future.delayed(const Duration(milliseconds: 2000), () {
+                _lookupDivertCatridge(i, result);
+              });
               break;
             }
           }
@@ -7373,6 +7519,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
               return;
             }
             
+            String fieldKey = 'pocket_0_no';
+            String fieldName = 'No. Catridge (Pocket)';
+            if (_isDuplicateValue(result, fieldKey)) {
+              await CustomModals.showFailedModal(
+                context: context,
+                message: 'Kode $fieldName "$result" sudah diinput. Silakan input kode lain.',
+                buttonText: 'OK',
+              );
+              if (!mounted) return;
+              setState(() {
+                controller.clear();
+              });
+              return;
+            }
+
             Future.delayed(const Duration(milliseconds: 2000), () {
               _lookupPocketCatridge(result);
             });
@@ -7381,6 +7542,20 @@ class _PrepareModePageState extends State<PrepareModePage> {
           // Find catridge index for this controller
           for (int i = 0; i < _catridgeControllers.length; i++) {
             if (_catridgeControllers[i].length > 1 && _catridgeControllers[i][1] == controller) {
+              String fieldKey = 'catridge_${i}_seal';
+              String fieldName = 'Seal Catridge (Catridge ${i + 1})';
+              if (_isDuplicateValue(result, fieldKey)) {
+                await CustomModals.showFailedModal(
+                  context: context,
+                  message: 'Kode $fieldName "$result" sudah diinput. Silakan input kode lain.',
+                  buttonText: 'OK',
+                );
+                if (!mounted) return;
+                setState(() {
+                  controller.clear();
+                });
+                return;
+              }
               Future.delayed(const Duration(milliseconds: 2000), () {
                 _validateSealAndUpdateDetail(i, result);
               });
@@ -7404,15 +7579,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
                 return;
               }
               
-              // Skip duplicate validation if modal is already showing to prevent double modals
-              if (!_isDuplicateModalShowing && _validateFieldForDuplicates(result, fieldKey, fieldName)) {
-                Future.delayed(const Duration(milliseconds: 2000), () {
-                  _validateDivertSeal(i, result);
+              if (_isDuplicateValue(result, fieldKey)) {
+                await CustomModals.showFailedModal(
+                  context: context,
+                  message: 'Kode $fieldName "$result" sudah diinput. Silakan input kode lain.',
+                  buttonText: 'OK',
+                );
+                if (!mounted) return;
+                setState(() {
+                  controller.clear();
                 });
-              } else if (_isDuplicateValue(result, fieldKey)) {
-                // Clear the field if duplicate found, but don't show modal again
-                controller.clear();
+                return;
               }
+              Future.delayed(const Duration(milliseconds: 2000), () {
+                _validateDivertSeal(i, result);
+              });
               break;
             }
           }
@@ -7428,6 +7609,21 @@ class _PrepareModePageState extends State<PrepareModePage> {
               return;
             }
             
+            String fieldKey = 'pocket_0_seal';
+            String fieldName = 'Seal Catridge (Pocket)';
+            if (_isDuplicateValue(result, fieldKey)) {
+              await CustomModals.showFailedModal(
+                context: context,
+                message: 'Kode $fieldName "$result" sudah diinput. Silakan input kode lain.',
+                buttonText: 'OK',
+              );
+              if (!mounted) return;
+              setState(() {
+                controller.clear();
+              });
+              return;
+            }
+
             Future.delayed(const Duration(milliseconds: 2000), () {
               _validatePocketSeal(result);
             });
@@ -7485,6 +7681,93 @@ class _PrepareModePageState extends State<PrepareModePage> {
                 sectionType: 'pocket',
               ).whenComplete(() {
                 _bagValidationInProgress[validationKey] = false;
+              });
+            });
+          }
+        } else if (cleanLabel == 'Seal Code' || cleanLabel == 'Seal Code Return') {
+          final bool isReturn = cleanLabel == 'Seal Code Return';
+          final String normalizedFieldType = isReturn ? 'seal_code_return' : 'seal_code';
+
+          for (int i = 0; i < _catridgeControllers.length; i++) {
+            final int controllerIndex = isReturn ? 4 : 3;
+            if (_catridgeControllers[i].length > controllerIndex &&
+                _catridgeControllers[i][controllerIndex] == controller) {
+              Future.delayed(const Duration(milliseconds: 2000), () {
+                if (!mounted) return;
+                if (_prepareData?.isNoBag ?? false) return;
+                final String validationValue = result.trim();
+                final String validationKey = isReturn
+                    ? 'catridge_${i}_seal_code_return_$validationValue'
+                    : 'catridge_${i}_seal_code_$validationValue';
+                if (_sealCodeValidationInProgress[validationKey] == true) return;
+                _sealCodeValidationInProgress[validationKey] = true;
+                final String sealCode = _catridgeControllers[i][3].text.trim();
+                final String sealCodeReturn = _catridgeControllers[i][4].text.trim();
+                _validateSealCode(
+                  sealCode: sealCode,
+                  sealCodeReturn: sealCodeReturn,
+                  fieldType: normalizedFieldType,
+                  sectionType: 'catridge',
+                  sectionIndex: i,
+                ).whenComplete(() {
+                  _sealCodeValidationInProgress[validationKey] = false;
+                });
+              });
+              break;
+            }
+          }
+
+          for (int i = 0; i < _divertControllers.length; i++) {
+            final int controllerIndex = isReturn ? 4 : 3;
+            if (_divertControllers[i].length > controllerIndex &&
+                _divertControllers[i][controllerIndex] == controller) {
+              Future.delayed(const Duration(milliseconds: 2000), () {
+                if (!mounted) return;
+                if (_prepareData?.isNoBag ?? false) return;
+                final String validationValue = result.trim();
+                final String validationKey = isReturn
+                    ? 'divert_${i}_seal_code_return_$validationValue'
+                    : 'divert_${i}_seal_code_$validationValue';
+                if (_sealCodeValidationInProgress[validationKey] == true) return;
+                _sealCodeValidationInProgress[validationKey] = true;
+                final String sealCode = _divertControllers[i][3].text.trim();
+                final String sealCodeReturn = _divertControllers[i][4].text.trim();
+                _validateSealCode(
+                  sealCode: sealCode,
+                  sealCodeReturn: sealCodeReturn,
+                  fieldType: normalizedFieldType,
+                  sectionType: 'divert',
+                  sectionIndex: i,
+                ).whenComplete(() {
+                  _sealCodeValidationInProgress[validationKey] = false;
+                });
+              });
+              break;
+            }
+          }
+
+          final int pocketIndex = isReturn ? 4 : 3;
+          if (_pocketControllers.length > pocketIndex &&
+              _pocketControllers[pocketIndex] == controller) {
+            Future.delayed(const Duration(milliseconds: 2000), () {
+              if (!mounted) return;
+              if (_prepareData?.isNoBag ?? false) return;
+              final String validationValue = result.trim();
+              final String validationKey = isReturn
+                  ? 'pocket_0_seal_code_return_$validationValue'
+                  : 'pocket_0_seal_code_$validationValue';
+              if (_sealCodeValidationInProgress[validationKey] == true) return;
+              _sealCodeValidationInProgress[validationKey] = true;
+              final String sealCode = _pocketControllers[3].text.trim();
+              final String sealCodeReturn = _pocketControllers[4].text.trim();
+              _validateSealCode(
+                sealCode: sealCode,
+                sealCodeReturn: sealCodeReturn,
+                fieldType: normalizedFieldType,
+                sectionType: 'pocket',
+                sectionIndex: 0,
+              ).whenComplete(() {
+                _sealCodeValidationInProgress[validationKey] = false;
               });
             });
           }
@@ -9161,9 +9444,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
       try {
         final catridgeData = PrepareCatridgeQRData(
           idTool: int.tryParse(_prepareData?.id?.toString() ?? _idCRFController.text) ?? 0,
-            bagCode: _divertControllers[i][2].text.isNotEmpty ? _divertControllers[i][2].text : 'TEST',
+            bagCode: _divertControllers[i][2].text,
             catridgeCode: _divertControllers[i][0].text.trim(),
-            sealCode: _divertControllers[i][3].text.isNotEmpty ? _divertControllers[i][3].text : 'TEST',
+            sealCode: _divertControllers[i][3].text,
             catridgeSeal: _divertControllers[i][1].text.trim(),
           denomCode: '', // Default denom for divert
           qty: '1', // Default value
@@ -9191,9 +9474,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
       try {
         final catridgeData = PrepareCatridgeQRData(
           idTool: int.tryParse(_prepareData?.id?.toString() ?? _idCRFController.text) ?? 0,
-          bagCode: _pocketControllers[2].text.isNotEmpty ? _pocketControllers[2].text : 'TEST',
+          bagCode: _pocketControllers[2].text,
           catridgeCode: _pocketDetailItem!.noCatridge,
-          sealCode: _pocketControllers[3].text.isNotEmpty ? _pocketControllers[3].text : 'TEST',
+          sealCode: _pocketControllers[3].text,
           catridgeSeal: _pocketDetailItem!.sealCatridge,
           denomCode: _pocketDetailItem!.denom,
           qty: '1', // Default value

@@ -879,8 +879,12 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
         columnWidths[column] = baseColumnWidth * 1.3;
       } else if (column == 'WSID' || column == 'ID Tool') {
         columnWidths[column] = baseColumnWidth * 1.2;
-      } else if (column == 'QTY' || column == 'Value') {
+      } else if (column == 'QTY') {
         columnWidths[column] = baseColumnWidth * 1.1;
+      } else if (column == 'Value') {
+        final minWidth = isTablet ? 220.0 : 180.0;
+        final calculated = baseColumnWidth * 1.6;
+        columnWidths[column] = calculated < minWidth ? minWidth : calculated;
       } else {
         columnWidths[column] = baseColumnWidth * 0.8;
       }
@@ -1063,15 +1067,27 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
                                                     bottom: BorderSide(color: Colors.grey.shade300),
                                                   ),
                                                 ),
-                                                child: Text(
-                                                  value,
-                                                  style: TextStyle(
-                                                    fontSize: isTablet ? 12 : 9,
-                                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
+                                                child: column == 'Value'
+                                                    ? SingleChildScrollView(
+                                                        scrollDirection: Axis.horizontal,
+                                                        child: Text(
+                                                          value,
+                                                          style: TextStyle(
+                                                            fontSize: isTablet ? 12 : 9,
+                                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                          ),
+                                                          softWrap: false,
+                                                        ),
+                                                      )
+                                                    : Text(
+                                                        value,
+                                                        style: TextStyle(
+                                                          fontSize: isTablet ? 12 : 9,
+                                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                        ),
+                                                        textAlign: TextAlign.center,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
                                               );
                                             }).toList(),
                                           ),
@@ -1219,8 +1235,12 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
           width += (idValueLength - 12) * (isTablet ? 8.0 : 7.0);
         }
         columnWidths[column] = width > maxWidth ? maxWidth : width;
-      } else if (column == 'QTY' || column == 'Value') {
+      } else if (column == 'QTY') {
         columnWidths[column] = baseColumnWidth * 1.1;
+      } else if (column == 'Value') {
+        final minWidth = isTablet ? 220.0 : 180.0;
+        final calculated = baseColumnWidth * 1.6;
+        columnWidths[column] = calculated < minWidth ? minWidth : calculated;
       } else {
         columnWidths[column] = baseColumnWidth * 0.9;
       }
@@ -1527,17 +1547,20 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
                         width: columnWidths['Value'],
                         padding: EdgeInsets.all(isTablet ? 4 : 2),
                         child: Center(
-                          child: Text(
-                            NumberFormat.currency(
-                              locale: 'id',
-                              symbol: '',
-                              decimalDigits: 0,
-                            ).format(_calculateTotalValue(_selectedKonsolData!)),
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              NumberFormat.currency(
+                                locale: 'id',
+                                symbol: '',
+                                decimalDigits: 0,
+                              ).format(_calculateTotalValue(_selectedKonsolData!)),
+                              style: TextStyle(
+                                fontSize: isTablet ? 10 : 8,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              softWrap: false,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),

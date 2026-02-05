@@ -1151,6 +1151,24 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
   }
   
   Widget _buildTotalRow(String label, bool isTablet) {
+    final denomBoxes = <Widget>[
+      _buildTotalBox(label == 'Total Proses' ? totalA1.toString() : '', isTablet),
+      _buildTotalBox(label == 'Total Proses' ? totalA2.toString() : '', isTablet),
+      _buildTotalBox(label == 'Total Proses' ? totalA5.toString() : '', isTablet),
+      _buildTotalBox(label == 'Total Proses' ? totalA10.toString() : '', isTablet),
+      _buildTotalBox(label == 'Total Proses' ? totalA20.toString() : '', isTablet),
+      _buildTotalBox(label == 'Total Proses' ? totalA50.toString() : '', isTablet),
+      _buildTotalBox(label == 'Total Proses' ? totalA75.toString() : '', isTablet),
+      _buildTotalBox(
+        label == 'Total Proses'
+            ? totalA100.toString()
+            : label == 'Sisa Uang Proses (Closing Konsol)'
+                ? '100'
+                : '',
+        isTablet,
+      ),
+    ];
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1169,23 +1187,47 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         ),
         
         // Denomination boxes
-        Row(
-          children: [
-            _buildTotalBox(label == 'Total Proses' ? totalA1.toString() : '', isTablet),
-            _buildTotalBox(label == 'Total Proses' ? totalA2.toString() : '', isTablet),
-            _buildTotalBox(label == 'Total Proses' ? totalA5.toString() : '', isTablet),
-            _buildTotalBox(label == 'Total Proses' ? totalA10.toString() : '', isTablet),
-            _buildTotalBox(label == 'Total Proses' ? totalA20.toString() : '', isTablet),
-            _buildTotalBox(label == 'Total Proses' ? totalA50.toString() : '', isTablet),
-            _buildTotalBox(label == 'Total Proses' ? totalA75.toString() : '', isTablet),
-            _buildTotalBox(
-              label == 'Total Proses' ? totalA100.toString() : 
-              label == 'Sisa Uang Proses (Closing Konsol)' ? '100' : '', 
-              isTablet
-            ),
-          ],
-        ),
+        if (label == 'Total Proses')
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _buildDenomHeader('A1', isTablet),
+                  _buildDenomHeader('A2', isTablet),
+                  _buildDenomHeader('A5', isTablet),
+                  _buildDenomHeader('A10', isTablet),
+                  _buildDenomHeader('A20', isTablet),
+                  _buildDenomHeader('A50', isTablet),
+                  _buildDenomHeader('A75', isTablet),
+                  _buildDenomHeader('A100', isTablet),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Row(children: denomBoxes),
+            ],
+          )
+        else
+          Row(children: denomBoxes),
       ],
+    );
+  }
+
+  Widget _buildDenomHeader(String value, bool isTablet) {
+    return Container(
+      width: 50,
+      height: 18,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      child: Center(
+        child: Text(
+          value,
+          style: TextStyle(
+            fontSize: isTablet ? 12 : 10,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
     );
   }
   

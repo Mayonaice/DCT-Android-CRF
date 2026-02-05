@@ -158,6 +158,26 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
         .toList();
   }
 
+  List<String> _getAllNoCatridgeValues({String? excludeSectionId}) {
+    if (_cartridgeSectionKeys.isEmpty) return [];
+    return _cartridgeSectionKeys
+        .map((k) => k.currentState)
+        .where((s) => s != null && (excludeSectionId == null || s!.sectionId != excludeSectionId))
+        .map((s) => s!.noCatridgeController.text.trim())
+        .where((v) => v.isNotEmpty)
+        .toList();
+  }
+
+  List<String> _getAllNoSealValues({String? excludeSectionId}) {
+    if (_cartridgeSectionKeys.isEmpty) return [];
+    return _cartridgeSectionKeys
+        .map((k) => k.currentState)
+        .where((s) => s != null && (excludeSectionId == null || s!.sectionId != excludeSectionId))
+        .map((s) => s!.noSealController.text.trim())
+        .where((v) => v.isNotEmpty)
+        .toList();
+  }
+
   // Helper method to get all seal codes from catridge data
   List<String> _getAllSealCodes() {
     if (_returnHeaderResponse?.data == null) return [];
@@ -3193,13 +3213,25 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     });
     
     // Get the catridge code
-    final catridgeCode = noCatridgeController.text;
+    final catridgeCode = noCatridgeController.text.trim();
     
     // Basic validation - ensure it's not empty
-    if (catridgeCode.isEmpty) {
+    if (catridgeCode.isEmpty || catridgeCode == '0' || catridgeCode.toLowerCase() == 'false') {
       setState(() {
         isNoCatridgeValid = false;
         noCatridgeError = 'Nomor Catridge tidak boleh kosong';
+        _isValidating = false;
+      });
+      return;
+    }
+
+    final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+    final otherValues = parentState?._getAllNoCatridgeValues(excludeSectionId: sectionId) ?? [];
+    final isDuplicate = otherValues.any((v) => v.toLowerCase() == catridgeCode.toLowerCase());
+    if (isDuplicate) {
+      setState(() {
+        isNoCatridgeValid = false;
+        noCatridgeError = 'No. Catridge sudah dipakai di section lain';
         _isValidating = false;
       });
       return;
@@ -3227,13 +3259,25 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     });
     
     // Get the seal code
-    final sealCode = noSealController.text;
+    final sealCode = noSealController.text.trim();
     
     // Basic validation - ensure it's not empty
-    if (sealCode.isEmpty) {
+    if (sealCode.isEmpty || sealCode == '0' || sealCode.toLowerCase() == 'false') {
       setState(() {
         isNoSealValid = false;
         noSealError = 'Nomor Seal tidak boleh kosong';
+        _isValidating = false;
+      });
+      return;
+    }
+
+    final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+    final otherValues = parentState?._getAllNoSealValues(excludeSectionId: sectionId) ?? [];
+    final isDuplicate = otherValues.any((v) => v.toLowerCase() == sealCode.toLowerCase());
+    if (isDuplicate) {
+      setState(() {
+        isNoSealValid = false;
+        noSealError = 'No. Seal sudah dipakai di section lain';
         _isValidating = false;
       });
       return;
@@ -4097,6 +4141,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   ) {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
+    final bool forceNonRedUi = fieldKey == 'catridgeFisik';
+    final bool uiIsValid = forceNonRedUi ? true : isValid;
     
     // Hide underline for No. Catridge and No. Seal in all cases
     bool shouldHideUnderline = (fieldKey == 'noCatridge' || fieldKey == 'noSeal') ? true : isPreFilled;
@@ -4117,8 +4163,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   child: Text(
                     '$label :',
                     style: TextStyle(
-                      fontWeight: isValid ? FontWeight.normal : FontWeight.bold,
-                      color: isValid ? Colors.black : Colors.red,
+                      fontWeight: uiIsValid ? FontWeight.normal : FontWeight.bold,
+                      color: uiIsValid ? Colors.black : Colors.red,
                       fontSize: isSmallScreen ? 12 : 14,
                     ),
                   ),
@@ -4131,7 +4177,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   decoration: BoxDecoration(
                     border: shouldHideUnderline ? null : Border(
                       bottom: BorderSide(
-                        color: isValid ? Colors.grey.shade400 : Colors.red,
+                        color: uiIsValid ? Colors.grey.shade400 : Colors.red,
                         width: 1.5,
                       ),
                     ),
@@ -4162,7 +4208,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           },
                           style: TextStyle(
                             fontSize: isSmallScreen ? 12 : 14,
-                            color: isValid ? Colors.black : Colors.red,
+                            color: uiIsValid ? Colors.black : Colors.red,
                           ),
                           decoration: InputDecoration(
                             contentPadding: EdgeInsets.only(
@@ -4242,7 +4288,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             child: Text(
               errorText,
               style: TextStyle(
-                color: Colors.red,
+                color: forceNonRedUi ? Colors.grey.shade600 : Colors.red,
                 fontSize: isSmallScreen ? 10 : 12,
               ),
             ),

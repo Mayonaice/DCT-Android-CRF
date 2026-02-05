@@ -165,11 +165,17 @@ class _TLQRScannerWidgetState extends State<TLQRScannerWidget> {
       return;
     }
 
+    if (_isProcessing) {
+      return;
+    }
+    _isProcessing = true;
+
     print('🔍 [QR_HANDLE] Processing QR code: ${code.length > 50 ? "${code.substring(0, 50)}..." : code}');
     print('🔍 [QR_HANDLE] QR code length: ${code.length}');
     print('🔍 [QR_HANDLE] Current state - Disposed: $_isDisposed, Mounted: $mounted');
 
     try {
+      await _streamSubscription?.cancel();
       // Pause camera to prevent multiple scans
       await controller?.pauseCamera();
       print('🔍 [QR_HANDLE] Camera paused successfully');
@@ -178,28 +184,33 @@ class _TLQRScannerWidgetState extends State<TLQRScannerWidget> {
     }
 
     // Execute callback if still valid
-    if (!_isDisposed && mounted && widget.onQRDetected != null) {
+    if (!_isDisposed && mounted) {
       print('🔍 [QR_HANDLE] Executing onQRDetected callback');
       try {
-        widget.onQRDetected!(code);
+        widget.onQRDetected(code);
         print('🔍 [QR_HANDLE] Callback executed successfully');
       } catch (e) {
         print('🔍 [QR_HANDLE] Error in callback: $e');
       }
     }
 
-    // Close scanner with delay to ensure callback completes
     await Future.delayed(const Duration(milliseconds: 200));
-    
-    if (!_isDisposed && mounted) {
-      print('🔍 [QR_HANDLE] Closing scanner');
-      try {
-        Navigator.of(context).pop(code);
-        print('🔍 [QR_HANDLE] Scanner closed successfully');
-      } catch (e) {
-        print('🔍 [QR_HANDLE] Error closing scanner: $e');
-      }
+
+    if (_isDisposed || !mounted) return;
+
+    final currentRoute = ModalRoute.of(context);
+    if (currentRoute == null || currentRoute.isCurrent != true) {
+      return;
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isDisposed || !mounted) return;
+      final navigator = Navigator.of(context);
+      if (!navigator.canPop()) return;
+      try {
+        navigator.pop(code);
+      } catch (_) {}
+    });
   }
 
   // Method to restart scanning when errors occur
