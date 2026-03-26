@@ -60,188 +60,190 @@ class _TLSupervisorDialogState extends State<TLSupervisorDialog> {
 
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return AnimatedPadding(
-      padding: EdgeInsets.only(bottom: bottomInset),
-      duration: const Duration(milliseconds: 150),
-      curve: Curves.easeOut,
-      child: Dialog(
-        insetPadding: EdgeInsets.symmetric(
-          horizontal: isTablet ? 40 : 24,
-          vertical: 24,
+    final EdgeInsets contentPadding = EdgeInsets.fromLTRB(
+      isTablet ? 24 : 16,
+      isTablet ? 24 : 16,
+      isTablet ? 24 : 16,
+      (isTablet ? 24 : 16) + bottomInset,
+    );
+
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 40 : 24,
+        vertical: 24,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.9,
-          ),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(isTablet ? 24 : 16),
-            child: SizedBox(
-              width: isTablet ? 500 : 320,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                     
-                      const SizedBox(width: 12),
-                      Text(
-                        'Validasi TL Supervisor',
-                        style: TextStyle(
-                          fontSize: isTablet ? 20 : 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: isTablet ? 20 : 16),
-                  Text(
-                    'Masukkan NIK dan Password TL Supervisor untuk melanjutkan proses submit data.',
-                    style: TextStyle(
-                      fontSize: isTablet ? 16 : 14,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                  SizedBox(height: isTablet ? 24 : 20),
-                  Text(
-                    'NIK TL Supervisor',
-                    style: TextStyle(
-                      fontSize: isTablet ? 16 : 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _nikController,
-                    decoration: InputDecoration(
-                      hintText: 'Masukkan NIK',
-                      prefixIcon: const Icon(Icons.person),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: isTablet ? 16 : 12,
-                        horizontal: isTablet ? 16 : 12,
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: contentPadding,
+          child: SizedBox(
+            width: isTablet ? 500 : 320,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const SizedBox(width: 12),
+                    Text(
+                      'Validasi TL Supervisor',
+                      style: TextStyle(
+                        fontSize: isTablet ? 20 : 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
                       ),
                     ),
-                    enabled: !_isValidating,
-                    keyboardType: TextInputType.text,
-                    textCapitalization: TextCapitalization.characters,
+                  ],
+                ),
+                SizedBox(height: isTablet ? 20 : 16),
+                Text(
+                  'Masukkan NIK dan Password TL Supervisor untuk melanjutkan proses submit data.',
+                  style: TextStyle(
+                    fontSize: isTablet ? 16 : 14,
+                    color: Colors.grey[700],
                   ),
-                  SizedBox(height: isTablet ? 16 : 12),
-                  Text(
-                    'Password',
-                    style: TextStyle(
-                      fontSize: isTablet ? 16 : 14,
-                      fontWeight: FontWeight.w500,
+                ),
+                SizedBox(height: isTablet ? 24 : 20),
+                Text(
+                  'NIK TL Supervisor',
+                  style: TextStyle(
+                    fontSize: isTablet ? 16 : 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _nikController,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan NIK',
+                    prefixIcon: const Icon(Icons.person),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: isTablet ? 16 : 12,
+                      horizontal: isTablet ? 16 : 12,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      hintText: 'Masukkan Password',
-                      prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        vertical: isTablet ? 16 : 12,
-                        horizontal: isTablet ? 16 : 12,
-                      ),
-                    ),
-                    enabled: !_isValidating,
+                  enabled: !_isValidating,
+                  keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.characters,
+                ),
+                SizedBox(height: isTablet ? 16 : 12),
+                Text(
+                  'Password',
+                  style: TextStyle(
+                    fontSize: isTablet ? 16 : 14,
+                    fontWeight: FontWeight.w500,
                   ),
-                  SizedBox(height: isTablet ? 16 : 12),
-                  if (_errorMessage.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.red.shade200),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan Password',
+                    prefixIcon: const Icon(Icons.lock),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility : Icons.visibility_off,
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 16),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              _errorMessage,
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: isTablet ? 14 : 12,
-                              ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: isTablet ? 16 : 12,
+                      horizontal: isTablet ? 16 : 12,
+                    ),
+                  ),
+                  enabled: !_isValidating,
+                ),
+                SizedBox(height: isTablet ? 16 : 12),
+                if (_errorMessage.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage,
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontSize: isTablet ? 14 : 12,
                             ),
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                  ),
+                SizedBox(height: isTablet ? 24 : 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _isValidating ? null : widget.onCancel,
+                      child: Text(
+                        'Batal',
+                        style: TextStyle(
+                          fontSize: isTablet ? 16 : 14,
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ),
-                  SizedBox(height: isTablet ? 24 : 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: _isValidating ? null : widget.onCancel,
-                        child: Text(
-                          'Batal',
-                          style: TextStyle(
-                            fontSize: isTablet ? 16 : 14,
-                            color: Colors.grey[600],
-                          ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _isValidating ? null : _validate,
+                      icon: _isValidating
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Icon(Icons.check, size: isTablet ? 18 : 16),
+                      label: Text(
+                        _isValidating ? 'Memvalidasi...' : 'Validasi',
+                        style: TextStyle(
+                          fontSize: isTablet ? 16 : 14,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: _isValidating ? null : _validate,
-                        icon: _isValidating
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                ),
-                              )
-                            : Icon(Icons.check, size: isTablet ? 18 : 16),
-                        label: Text(
-                          _isValidating ? 'Memvalidasi...' : 'Validasi',
-                          style: TextStyle(
-                            fontSize: isTablet ? 16 : 14,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isTablet ? 20 : 16,
+                          vertical: isTablet ? 12 : 8,
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 20 : 16,
-                            vertical: isTablet ? 12 : 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

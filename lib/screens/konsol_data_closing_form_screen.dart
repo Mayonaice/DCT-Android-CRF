@@ -676,7 +676,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
             ],
           ),
           
-          // Bank
+          // lalu saya 
           Row(
             children: [
               Text(
@@ -898,7 +898,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                 children: [
                   _buildTotalRow('Total Proses', isTablet),
                   const SizedBox(height: 8),
-                  _buildTotalRow('Pengurangan Untuk Prepare, Stock Uang, Delivery', isTablet),
+                  _buildTotalRow('Pengurangan Untuk Prepare', isTablet),
+                  const SizedBox(height: 8),
+                  _buildTotalRow('Penambahan Untuk Prepare', isTablet),
                   const SizedBox(height: 8),
                   _buildTotalRow('Sisa Uang Proses (Closing Konsol)', isTablet),
                 ],
@@ -1150,30 +1152,83 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
     );
   }
   
+  List<int> _getTotalsForRowLabel(String label) {
+    if (label == 'Total Proses') {
+      return [totalA1, totalA2, totalA5, totalA10, totalA20, totalA50, totalA75, totalA100];
+    }
+
+    int a1 = 0;
+    int a2 = 0;
+    int a5 = 0;
+    int a10 = 0;
+    int a20 = 0;
+    int a50 = 0;
+    int a75 = 0;
+    int a100 = 0;
+
+    if (label == 'Pengurangan Untuk Prepare') {
+      for (final item in closingPreviewItems) {
+        a1 += item.a1Pengurangan;
+        a2 += item.a2Pengurangan;
+        a5 += item.a5Pengurangan;
+        a10 += item.a10Pengurangan;
+        a20 += item.a20Pengurangan;
+        a50 += item.a50Pengurangan;
+        a75 += item.a75Pengurangan;
+        a100 += item.a100Pengurangan;
+      }
+      return [a1, a2, a5, a10, a20, a50, a75, a100];
+    }
+
+    if (label == 'Penambahan Untuk Prepare') {
+      for (final item in closingPreviewItems) {
+        a1 += item.a1Penambahan;
+        a2 += item.a2Penambahan;
+        a5 += item.a5Penambahan;
+        a10 += item.a10Penambahan;
+        a20 += item.a20Penambahan;
+        a50 += item.a50Penambahan;
+        a75 += item.a75Penambahan;
+        a100 += item.a100Penambahan;
+      }
+      return [a1, a2, a5, a10, a20, a50, a75, a100];
+    }
+
+    if (label == 'Sisa Uang Proses (Closing Konsol)') {
+      for (final item in closingPreviewItems) {
+        a1 += (item.a1Default - item.a1Edit);
+        a2 += (item.a2Default - item.a2Edit);
+        a5 += (item.a5Default - item.a5Edit);
+        a10 += (item.a10Default - item.a10Edit);
+        a20 += (item.a20Default - item.a20Edit);
+        a50 += (item.a50Default - item.a50Edit);
+        a75 += (item.a75Default - item.a75Edit);
+        a100 += (item.a100Default - item.a100Edit);
+      }
+      return [a1, a2, a5, a10, a20, a50, a75, a100];
+    }
+
+    return [0, 0, 0, 0, 0, 0, 0, 0];
+  }
+
   Widget _buildTotalRow(String label, bool isTablet) {
+    final totals = _getTotalsForRowLabel(label);
     final denomBoxes = <Widget>[
-      _buildTotalBox(label == 'Total Proses' ? totalA1.toString() : '', isTablet),
-      _buildTotalBox(label == 'Total Proses' ? totalA2.toString() : '', isTablet),
-      _buildTotalBox(label == 'Total Proses' ? totalA5.toString() : '', isTablet),
-      _buildTotalBox(label == 'Total Proses' ? totalA10.toString() : '', isTablet),
-      _buildTotalBox(label == 'Total Proses' ? totalA20.toString() : '', isTablet),
-      _buildTotalBox(label == 'Total Proses' ? totalA50.toString() : '', isTablet),
-      _buildTotalBox(label == 'Total Proses' ? totalA75.toString() : '', isTablet),
-      _buildTotalBox(
-        label == 'Total Proses'
-            ? totalA100.toString()
-            : label == 'Sisa Uang Proses (Closing Konsol)'
-                ? '100'
-                : '',
-        isTablet,
-      ),
+      _buildTotalBox(totals[0].toString(), isTablet),
+      _buildTotalBox(totals[1].toString(), isTablet),
+      _buildTotalBox(totals[2].toString(), isTablet),
+      _buildTotalBox(totals[3].toString(), isTablet),
+      _buildTotalBox(totals[4].toString(), isTablet),
+      _buildTotalBox(totals[5].toString(), isTablet),
+      _buildTotalBox(totals[6].toString(), isTablet),
+      _buildTotalBox(totals[7].toString(), isTablet),
     ];
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Label
+        // 
         Container(
           width: 300,
           padding: const EdgeInsets.symmetric(vertical: 8),

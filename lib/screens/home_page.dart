@@ -40,6 +40,18 @@ class _HomePageState extends State<HomePage> {
     _loadUserData();
   }
 
+  @override
+  void dispose() {
+    // Reset orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    super.dispose();
+  }
+
   // Enhanced user data loading with role information
   Future<void> _loadUserData() async {
     try {

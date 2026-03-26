@@ -159,6 +159,16 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
     return _filteredData;
   }
 
+  String _formatTanggalReturn(String? rawDate) {
+    if (rawDate == null || rawDate.trim().isEmpty) return 'N/A';
+    try {
+      final parsed = DateTime.parse(rawDate.trim());
+      return DateFormat('dd MMM yyyy').format(parsed);
+    } catch (_) {
+      return rawDate;
+    }
+  }
+
   @override
   void dispose() {
     _horizontalScrollController.dispose();
@@ -254,7 +264,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
           ),
           SizedBox(width: isTablet ? 20 : 16),
           
-          // Title
+          // lalu
           Text(
             'Konsol Mode',
             style: TextStyle(
@@ -785,7 +795,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
       'Total Value'
     ];
 
-    // Calculate responsive column widths based on available width
+    // 
     final screenWidth = MediaQuery.of(context).size.width;
     final availableWidth = screenWidth - (isTablet ? 32.0 : 24.0); // Account for padding
     
@@ -907,7 +917,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                                         ),
                                       ),
                                       child: Text(
-                                        data.dateSTReturn ?? 'N/A',
+                                        _formatTanggalReturn(data.dateSTReturn),
                                         style: TextStyle(
                                           fontSize: isTablet ? 11 : 8,
                                         ),

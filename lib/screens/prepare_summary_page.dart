@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/prepare_model.dart';
 import '../services/api_service.dart';
@@ -43,6 +44,12 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
   @override
   void initState() {
     super.initState();
+
+    // Lock orientation to landscape
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     debugPrint('🚀 [PREPARE_SUMMARY] InitState called');
     debugPrint('🔧 [PREPARE_SUMMARY] Environment Info:');
     debugPrint('   - Debug mode: ${kDebugMode}');
@@ -111,6 +118,14 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
     _tlNikController.dispose();
     _tlPasswordController.dispose();
     debugPrint('✅ [DISPOSE] Controllers disposed successfully');
+
+    // Reset orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
@@ -1512,6 +1527,24 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
   Widget _buildMoneyImageSection(bool isSmallScreen) {
     // Get tipeDenom from API data if available
     String? tipeDenom = widget.prepareData?.tipeDenom;
+    final String denomCode = (widget.prepareData?.denomCode ?? '').trim();
+    final String jnsMesin = (widget.prepareData?.jnsMesin ?? '').trim();
+    final String normalizedDenomCode = denomCode.toUpperCase();
+    final String normalizedMesin = jnsMesin.toUpperCase();
+    final String normalizedTipeDenom = (tipeDenom ?? '').trim().toUpperCase();
+    final bool isCrmOrCdm = normalizedDenomCode == 'CRM' ||
+        normalizedDenomCode == 'CDM' ||
+        normalizedMesin == 'CRM' ||
+        normalizedMesin == 'CDM' ||
+        normalizedTipeDenom == 'CRM' ||
+        normalizedTipeDenom == 'CDM';
+    final String mesinText = (normalizedDenomCode == 'CRM' || normalizedDenomCode == 'CDM')
+        ? normalizedDenomCode
+        : (normalizedMesin == 'CRM' || normalizedMesin == 'CDM')
+            ? normalizedMesin
+            : (normalizedTipeDenom == 'CRM' || normalizedTipeDenom == 'CDM')
+                ? normalizedTipeDenom
+                : '';
     
     // Convert tipeDenom to rupiah value and determine image
     String denomText = '';
@@ -1551,15 +1584,6 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
           ),
         ),
         const SizedBox(height: 8),
-        Text(
-          denomText,
-          style: TextStyle(
-            fontSize: isSmallScreen ? 12 : 14,
-            fontWeight: FontWeight.w500,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 8),
         Container(
           height: isSmallScreen ? 80 : 100,
           width: double.infinity,
@@ -1568,27 +1592,8 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
           ),
-          child: imagePath != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    imagePath,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Text(
-                          'Gambar tidak\nditemukan',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                )
-              : Center(
+          child: widget.prepareData == null
+              ? Center(
                   child: Text(
                     'Tidak ada data\ndenominasi',
                     textAlign: TextAlign.center,
@@ -1597,7 +1602,49 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
                       fontSize: 12,
                     ),
                   ),
-                ),
+                )
+              : (isCrmOrCdm
+                  ? Center(
+                      child: Text(
+                        mesinText,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 32 : 42,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : (imagePath != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            imagePath,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Text(
+                                  'Gambar tidak\nditemukan',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        )
+                      : Center(
+                          child: Text(
+                            'Tidak ada data\ndenominasi',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ))),
         ),
       ],
     );

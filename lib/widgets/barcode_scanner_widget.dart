@@ -29,15 +29,19 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? controller;
   bool _isProcessing = false;
+  bool _isClosing = false;
   StreamSubscription<Barcode>? _streamSubscription;
 
   @override
   void reassemble() {
     super.reassemble();
+    final qrController = controller;
+    if (qrController == null) return;
+
     if (Platform.isAndroid) {
-      controller!.pauseCamera();
+      qrController.pauseCamera();
     } else if (Platform.isIOS) {
-      controller!.resumeCamera();
+      qrController.resumeCamera();
     }
   }
 
@@ -101,7 +105,14 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
     );
   }
 
-  void _onQRViewCreated(QRViewController controller) {
+  Future<void> _onQRViewCreated(QRViewController controller) async {
+    await _streamSubscription?.cancel();
+
+    final previousController = this.controller;
+    if (previousController != null && !identical(previousController, controller)) {
+      previousController.dispose();
+    }
+
     this.controller = controller;
     _streamSubscription = controller.scannedDataStream.listen((scanData) {
       if (!_isProcessing && scanData.code != null && mounted) {
@@ -111,13 +122,22 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
     });
   }
 
-  void _handleBarcode(String barcode) {
+  Future<void> _handleBarcode(String barcode) async {
+    if (_isClosing || !mounted) return;
+    _isClosing = true;
+
     // Vibrate and provide feedback
     // HapticFeedback.vibrate();
-    
+
+    await _streamSubscription?.cancel();
+    _streamSubscription = null;
+    await controller?.pauseCamera();
+
+    if (!mounted) return;
+
     // Close the scanner first to ensure auto-close
     Navigator.of(context).pop(barcode);
-    
+
     // Call the callback after navigation to prevent blocking
     Future.microtask(() {
       widget.onBarcodeDetected(barcode);
@@ -128,6 +148,7 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
 
   @override
   void dispose() {
+    _isClosing = true;
     _streamSubscription?.cancel();
     controller?.dispose();
     super.dispose();

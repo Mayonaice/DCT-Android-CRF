@@ -45,6 +45,14 @@ class ClosingPreviewItem {
   final String jnsMesin;
   final String name;
   final String branchCode;
+  final int a1Default;
+  final int a2Default;
+  final int a5Default;
+  final int a10Default;
+  final int a20Default;
+  final int a50Default;
+  final int a75Default;
+  final int a100Default;
   final int a1Edit;
   final int a2Edit;
   final int a5Edit;
@@ -53,6 +61,22 @@ class ClosingPreviewItem {
   final int a50Edit;
   final int a75Edit;
   final int a100Edit;
+  final int a1Pengurangan;
+  final int a2Pengurangan;
+  final int a5Pengurangan;
+  final int a10Pengurangan;
+  final int a20Pengurangan;
+  final int a50Pengurangan;
+  final int a75Pengurangan;
+  final int a100Pengurangan;
+  final int a1Penambahan;
+  final int a2Penambahan;
+  final int a5Penambahan;
+  final int a10Penambahan;
+  final int a20Penambahan;
+  final int a50Penambahan;
+  final int a75Penambahan;
+  final int a100Penambahan;
   final int tQtyEdit;
   final double tValueEdit;
   final String timeStart;
@@ -67,6 +91,14 @@ class ClosingPreviewItem {
     required this.jnsMesin,
     required this.name,
     required this.branchCode,
+    required this.a1Default,
+    required this.a2Default,
+    required this.a5Default,
+    required this.a10Default,
+    required this.a20Default,
+    required this.a50Default,
+    required this.a75Default,
+    required this.a100Default,
     required this.a1Edit,
     required this.a2Edit,
     required this.a5Edit,
@@ -75,6 +107,22 @@ class ClosingPreviewItem {
     required this.a50Edit,
     required this.a75Edit,
     required this.a100Edit,
+    required this.a1Pengurangan,
+    required this.a2Pengurangan,
+    required this.a5Pengurangan,
+    required this.a10Pengurangan,
+    required this.a20Pengurangan,
+    required this.a50Pengurangan,
+    required this.a75Pengurangan,
+    required this.a100Pengurangan,
+    required this.a1Penambahan,
+    required this.a2Penambahan,
+    required this.a5Penambahan,
+    required this.a10Penambahan,
+    required this.a20Penambahan,
+    required this.a50Penambahan,
+    required this.a75Penambahan,
+    required this.a100Penambahan,
     required this.tQtyEdit,
     required this.tValueEdit,
     required this.timeStart,
@@ -84,6 +132,13 @@ class ClosingPreviewItem {
   });
 
   factory ClosingPreviewItem.fromJson(Map<String, dynamic> json) {
+    int parseInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value.toString()) ?? 0;
+    }
+
     return ClosingPreviewItem(
       id: json['Id']?.toString() ?? '',
       codeBank: json['CodeBank']?.toString() ?? '',
@@ -91,15 +146,39 @@ class ClosingPreviewItem {
       jnsMesin: json['JnsMesin']?.toString() ?? '',
       name: json['Name']?.toString() ?? '',
       branchCode: json['BranchCode']?.toString() ?? '',
-      a1Edit: json['A1Edit'] is int ? json['A1Edit'] : int.tryParse(json['A1Edit']?.toString() ?? '0') ?? 0,
-      a2Edit: json['A2Edit'] is int ? json['A2Edit'] : int.tryParse(json['A2Edit']?.toString() ?? '0') ?? 0,
-      a5Edit: json['A5Edit'] is int ? json['A5Edit'] : int.tryParse(json['A5Edit']?.toString() ?? '0') ?? 0,
-      a10Edit: json['A10Edit'] is int ? json['A10Edit'] : int.tryParse(json['A10Edit']?.toString() ?? '0') ?? 0,
-      a20Edit: json['A20Edit'] is int ? json['A20Edit'] : int.tryParse(json['A20Edit']?.toString() ?? '0') ?? 0,
-      a50Edit: json['A50Edit'] is int ? json['A50Edit'] : int.tryParse(json['A50Edit']?.toString() ?? '0') ?? 0,
-      a75Edit: json['A75Edit'] is int ? json['A75Edit'] : int.tryParse(json['A75Edit']?.toString() ?? '0') ?? 0,
-      a100Edit: json['A100Edit'] is int ? json['A100Edit'] : int.tryParse(json['A100Edit']?.toString() ?? '0') ?? 0,
-      tQtyEdit: json['TQtyEdit'] is int ? json['TQtyEdit'] : int.tryParse(json['TQtyEdit']?.toString() ?? '0') ?? 0,
+      a1Default: parseInt(json['A1Default']),
+      a2Default: parseInt(json['A2Default']),
+      a5Default: parseInt(json['A5Default']),
+      a10Default: parseInt(json['A10Default']),
+      a20Default: parseInt(json['A20Default']),
+      a50Default: parseInt(json['A50Default']),
+      a75Default: parseInt(json['A75Default']),
+      a100Default: parseInt(json['A100Default']),
+      a1Edit: parseInt(json['A1Edit']),
+      a2Edit: parseInt(json['A2Edit']),
+      a5Edit: parseInt(json['A5Edit']),
+      a10Edit: parseInt(json['A10Edit']),
+      a20Edit: parseInt(json['A20Edit']),
+      a50Edit: parseInt(json['A50Edit']),
+      a75Edit: parseInt(json['A75Edit']),
+      a100Edit: parseInt(json['A100Edit']),
+      a1Pengurangan: parseInt(json['A1Pengurangan']),
+      a2Pengurangan: parseInt(json['A2Pengurangan']),
+      a5Pengurangan: parseInt(json['A5Pengurangan']),
+      a10Pengurangan: parseInt(json['A10Pengurangan']),
+      a20Pengurangan: parseInt(json['A20Pengurangan']),
+      a50Pengurangan: parseInt(json['A50Pengurangan']),
+      a75Pengurangan: parseInt(json['A75Pengurangan']),
+      a100Pengurangan: parseInt(json['A100Pengurangan']),
+      a1Penambahan: parseInt(json['A1Penambahan']),
+      a2Penambahan: parseInt(json['A2Penambahan']),
+      a5Penambahan: parseInt(json['A5Penambahan']),
+      a10Penambahan: parseInt(json['A10Penambahan']),
+      a20Penambahan: parseInt(json['A20Penambahan']),
+      a50Penambahan: parseInt(json['A50Penambahan']),
+      a75Penambahan: parseInt(json['A75Penambahan']),
+      a100Penambahan: parseInt(json['A100Penambahan']),
+      tQtyEdit: parseInt(json['TQtyEdit']),
       tValueEdit: json['TValueEdit'] is double 
           ? json['TValueEdit'] 
           : double.tryParse(json['TValueEdit']?.toString() ?? '0.0') ?? 0.0,

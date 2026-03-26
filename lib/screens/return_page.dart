@@ -265,10 +265,16 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   void initState() {
     super.initState();
     
+    // Lock orientation to landscape
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     // Initialize detail return controllers with empty values
-    _detailReturnLembarControllers.forEach((key, controller) {
+    for (var controller in _detailReturnLembarControllers.values) {
       controller.text = '0';
-    });
+    }
     _detailReturnNominalControllers.forEach((key, controller) {
       controller.text = _formatCurrency(0);
     });
@@ -305,6 +311,14 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     if (_idToolTypingTimer != null) {
       _idToolTypingTimer!.cancel();
     }
+
+    // Reset orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
@@ -563,10 +577,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       
     } catch (e) {
       print('Error opening ID Tool barcode scanner: $e');
-      await CustomModals.showFailedModal(
-        context: context,
-        message: 'Gagal membuka scanner ID Tool: ${e.toString()}',
-      );
+      debugPrint('Gagal membuka scanner ID Tool: ${e.toString()}');
     }
   }
 
@@ -1157,7 +1168,11 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           },
         );
       } else {
-        await _showErrorDialog('Gagal menyimpan data return: $errorMessage');
+        if (errorMessage.trim() == 'Inputan Return masih ada yang kosong!') {
+          await _showErrorDialog(errorMessage);
+        } else {
+          await _showErrorDialog('Gagal menyimpan data return: $errorMessage');
+        }
       }
     } catch (e) {
       if (mounted) setState(() { _isSubmitting = false; });
@@ -1420,6 +1435,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
               bagCode: c.bagCode.toString(),
               sealCodeReturn: c.sealCodeReturn.toString(),
               typeCatridgeTrx: c.typeCatridgeTrx.toString(), // Fix: Map to correct field
+              isMdm: c.isMdm,
+              isKios: c.isKios,
             )).toList(),
           );
           
@@ -1476,6 +1493,11 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     Function(String)? onChanged,
     Function(bool)? onFocusChange,
   }) {
+    final List<TextInputFormatter>? inputFormatters = (label == 'ID CRF :')
+        ? <TextInputFormatter>[
+            FilteringTextInputFormatter.digitsOnly,
+          ]
+        : null;
     return SizedBox(
       height: 45, // Fixed height for consistency with prepare mode
       child: Row(
@@ -1515,6 +1537,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                       child: TextField(
                         controller: controller,
                         readOnly: readOnly,
+                        inputFormatters: inputFormatters,
                         style: const TextStyle(fontSize: 14), // Fixed size
                         decoration: InputDecoration(
                           hintText: hintText,
@@ -1541,14 +1564,14 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                         bottom: 4,
                       ),
                       child: IconButton(
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.qr_code_scanner,
-                          color: Colors.blue,
+                          color: readOnly ? Colors.grey.shade400 : Colors.blue,
                           size: 18, // Fixed size
                         ),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(), // Remove constraints
-                        onPressed: onIconPressed,
+                        onPressed: readOnly ? null : onIconPressed,
                       ),
                     ),
                   
@@ -1619,10 +1642,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       _fetchDataByIdTool(barcode);
     } catch (e) {
       print('Error opening barcode scanner: $e');
-      await CustomModals.showFailedModal(
-        context: context,
-        message: 'Gagal membuka scanner: ${e.toString()}',
-      );
+      debugPrint('Gagal membuka scanner: ${e.toString()}');
     }
   }
 
@@ -2543,10 +2563,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     
     // Validate barcode if field already has content
     if (controller.text.isNotEmpty && controller.text != barcode) {
-      await CustomModals.showFailedModal(
-        context: context,
-        message: '❌ [${widget.sectionId}] Kode tidak sesuai! Expected: ${controller.text}, Scanned: $barcode',
-      );
+      debugPrint('Scan mismatch [${widget.sectionId}] expected=${controller.text} scanned=$barcode');
       return;
     }
     
@@ -2589,12 +2606,6 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         
         print('✅ CARTRIDGE [${widget.sectionId}]: $fieldKey validated with checkmark - scannedFields[$fieldKey] = ${scannedFields[fieldKey]}');
       });
-      
-      // Show success message AFTER setState
-      await CustomModals.showSuccessModal(
-        context: context,
-        message: '✅ [$sectionId] $label berhasil divalidasi: $barcode',
-      );
       
       // Force rebuild untuk memastikan checkmark muncul
       Future.microtask(() {
@@ -2666,30 +2677,143 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     '1K': TextEditingController(),
   };
   String? _resolvedDenomCode;
-  bool _isDenomEnabled(String label) {
-    final type = widget.returnData?.typeCatridgeTrx?.toUpperCase() ?? 'C';
-    if (type != 'C') return true;
-    String code = _resolvedDenomCode?.toUpperCase() ?? widget.returnData?.denomCode?.toUpperCase() ?? '';
-    if (code.isEmpty) {
-      code = catridgeFisikController.text.trim().toUpperCase();
+
+  String _normalizeDenomCode(String rawCode) {
+    final code = rawCode.trim().toUpperCase();
+    if (code.isEmpty) return '';
+
+    final compact = code.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (compact == 'CRM' || compact == 'CDM') {
+      return compact;
     }
+
+    if (compact.startsWith('A')) {
+      final int? aValue = int.tryParse(compact.substring(1));
+      if (aValue == null) return compact;
+      switch (aValue) {
+        case 1:
+        case 2:
+        case 5:
+        case 10:
+        case 20:
+        case 50:
+        case 75:
+        case 100:
+          return 'A$aValue';
+        default:
+          return compact;
+      }
+    }
+
+    switch (compact) {
+      case '1K':
+      case '1000':
+        return 'A1';
+      case '2K':
+      case '2000':
+        return 'A2';
+      case '5K':
+      case '5000':
+        return 'A5';
+      case '10K':
+      case '10000':
+        return 'A10';
+      case '20K':
+      case '20000':
+        return 'A20';
+      case '50K':
+      case '50000':
+        return 'A50';
+      case '75K':
+      case '75000':
+        return 'A75';
+      case '100K':
+      case '100000':
+        return 'A100';
+      default:
+        return compact;
+    }
+  }
+
+  bool _isMainCatridgeSection() {
+    final normalizedTitle = widget.title.trim().toUpperCase();
+    if (normalizedTitle.contains('DIVERT') || normalizedTitle.contains('POCKET')) {
+      return false;
+    }
+
+    final normalizedType = (widget.returnData?.typeCatridgeTrx ?? '').trim().toUpperCase();
+    if (normalizedType == 'D' || normalizedType == 'P') {
+      return false;
+    }
+
+    return true;
+  }
+
+  String? _labelFromADenomCode(String code) {
+    final raw = code.trim().toUpperCase();
+    if (!raw.startsWith('A')) return null;
+
+    final numericPart = raw.substring(1);
+    final value = int.tryParse(numericPart);
+    switch (value) {
+      case 1:
+        return '1K';
+      case 2:
+        return '2K';
+      case 5:
+        return '5K';
+      case 10:
+        return '10K';
+      case 20:
+        return '20K';
+      case 50:
+        return '50K';
+      case 75:
+        return '75K';
+      case 100:
+        return '100K';
+      default:
+        return null;
+    }
+  }
+
+  bool _isDenomEnabled(String label) {
+    if (!_isMainCatridgeSection()) return true;
+
+    String code = _normalizeDenomCode(_resolvedDenomCode ?? widget.returnData?.denomCode ?? '');
+    if (code.isEmpty) {
+      code = _normalizeDenomCode(noCatridgeController.text);
+    }
+    if (code.isEmpty) {
+      code = _normalizeDenomCode(catridgeFisikController.text);
+    }
+
+    if (code == 'CRM') {
+      // Legacy CRM behavior (keep for reference):
+      // return true;
+      return label == '100K' || label == '50K' || label == '20K';
+    }
+
+    final mappedLabel = _labelFromADenomCode(code);
+    if (mappedLabel != null) {
+      return label == mappedLabel;
+    }
+
+    if (code.startsWith('A')) {
+      return false;
+    }
+
     switch (code) {
-      case 'A1':
-        return label == '1K';
-      case 'A2':
-        return label == '2K';
-      case 'A5':
-        return label == '5K';
-      case 'A10':
-        return label == '10K';
-      case 'A20':
-        return label == '20K';
-      case 'A50':
-        return label == '50K';
-      case 'A75':
-        return label == '75K';
-      case 'A100':
-        return label == '100K';
+      case 'CDM':
+        final bool enableAllForCdm = widget.returnData?.isMdm == true || widget.returnData?.isKios == true;
+        if (enableAllForCdm) {
+          return true;
+        }
+        return label == '100K' ||
+            label == '75K' ||
+            label == '50K' ||
+            label == '20K' ||
+            label == '10K';
       default:
         return true;
     }
@@ -2739,7 +2863,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           default:
             code = '';
         }
-        if (mounted) {
+        if (mounted && code.isNotEmpty) {
           setState(() {
             _resolvedDenomCode = code;
           });
@@ -3421,6 +3545,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       print('📊 Setting controller values...');
       noCatridgeController.text = widget.returnData!.catridgeCode;
       noSealController.text = widget.returnData!.catridgeSeal;
+      _resolvedDenomCode = _normalizeDenomCode(widget.returnData!.denomCode);
       
       // FIXED: Only clear catridgeFisik field if it's empty - preserve user input
       if (catridgeFisikController.text.isEmpty) {
@@ -3580,7 +3705,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         
         // Trigger validation based on field type
         if (fieldKey == 'catridgeFisik') {
-          _validateCatridgeFisikMatch();
+          _validateCatridgeFisikMatch(showResultModal: false);
         }
         
         print('🎯 FIELD UPDATED: $fieldKey = $scannedBarcode');
@@ -3590,10 +3715,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       
     } catch (e) {
       print('Error opening barcode scanner: $e');
-      await CustomModals.showFailedModal(
-        context: context,
-        message: 'Gagal membuka scanner: ${e.toString()}',
-      );
+      debugPrint('Gagal membuka scanner: ${e.toString()}');
     }
   }
   
@@ -4020,11 +4142,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           child: IconButton(
                 icon: Icon(
                   Icons.qr_code_scanner, 
-                  color: Colors.blue,
+                  color: readOnly ? Colors.grey.shade400 : Colors.blue,
                               size: isSmallScreen ? 20 : 24,
                 ),
                             padding: EdgeInsets.zero,
-                            onPressed: onScan,
+                            onPressed: readOnly ? null : onScan,
                           ),
               ),
                     ],
@@ -4143,6 +4265,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     final isSmallScreen = size.width < 600;
     final bool forceNonRedUi = fieldKey == 'catridgeFisik';
     final bool uiIsValid = forceNonRedUi ? true : isValid;
+
+    final List<TextInputFormatter>? inputFormatters = (fieldKey == 'catridgeFisik')
+        ? <TextInputFormatter>[
+            LengthLimitingTextInputFormatter(20),
+          ]
+        : null;
     
     // Hide underline for No. Catridge and No. Seal in all cases
     bool shouldHideUnderline = (fieldKey == 'noCatridge' || fieldKey == 'noSeal') ? true : isPreFilled;
@@ -4190,6 +4318,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           focusNode: focusNode,
                           readOnly: readOnly,
                           obscureText: isPassword,
+                          inputFormatters: inputFormatters,
                           onChanged: (value) {
                             if (fieldKey == 'catridgeFisik') {
                               if (value.isNotEmpty) {
@@ -4267,11 +4396,13 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           child: IconButton(
                             icon: Icon(
                               isScanned ? Icons.qr_code : Icons.qr_code_scanner,
-                              color: isScanned ? Colors.green : Colors.blue,
+                              color: readOnly
+                                  ? Colors.grey.shade400
+                                  : (isScanned ? Colors.green : Colors.blue),
                               size: isSmallScreen ? 18 : 22,
                             ),
                             padding: EdgeInsets.zero,
-                            onPressed: onScan,
+                            onPressed: readOnly ? null : onScan,
                             tooltip: isScanned ? 'Sudah di-scan' : 'Scan barcode',
                           ),
                         ),
@@ -4323,10 +4454,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         }
       });
       
-      await CustomModals.showSuccessModal(
-        context: context,
-        message: '🧪 [$sectionId] $label validated (TEST)!',
-      );
+      debugPrint('[$sectionId] $label validated (TEST)!');
     }
   }
 
@@ -4602,16 +4730,20 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     }
   }
 
-  void _validateCatridgeFisikMatch() {
+  void _validateCatridgeFisikMatch({bool showResultModal = true}) {
     final catridgeFisikValue = catridgeFisikController.text.trim();
     final noCatridgeValue = noCatridgeController.text.trim();
 
     if (catridgeFisikValue.isNotEmpty && noCatridgeValue.isNotEmpty) {
       if (catridgeFisikValue != noCatridgeValue) {
-        CustomModals.showFailedModal(
-          context: context,
-          message: 'Catridge Fisik tidak sesuai dengan No. Catridge',
-        );
+        if (showResultModal) {
+          CustomModals.showFailedModal(
+            context: context,
+            message: 'Catridge Fisik tidak sesuai dengan No. Catridge',
+          );
+        } else {
+          debugPrint('Catridge Fisik mismatch after scan: $catridgeFisikValue != $noCatridgeValue');
+        }
         if (mounted) {
           setState(() {
             catridgeFisikController.clear();

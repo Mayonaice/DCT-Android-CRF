@@ -61,6 +61,26 @@ class _TLHomePageState extends State<TLHomePage> {
     return 0;
   }
 
+  String _normalizeQrPayload(String raw) {
+    var value = raw.trim();
+
+    if (value.startsWith('CRF:')) {
+      value = value.substring(4);
+    }
+
+    value = value.replaceAll(RegExp(r'\s+'), '');
+    value = value.replaceAll('-', '+').replaceAll('_', '/');
+    value = value.replaceAll(' ', '+');
+
+    if (RegExp(r'^[A-Za-z0-9+/=]+$').hasMatch(value)) {
+      while (value.length % 4 != 0) {
+        value += '=';
+      }
+    }
+
+    return value;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -767,8 +787,17 @@ class _TLHomePageState extends State<TLHomePage> {
       debugPrint('🔍 [QR_PROCESS] Processing QR data...');
       debugPrint('🔍 [QR_PROCESS] QR data length: ${qrData.length}');
       
-      final decryptedData = _authService.decryptDataFromQR(qrData);
-      debugPrint('🔓 [QR_DECRYPT] Decrypted QR data: ${decryptedData.toString().substring(0, math.min(200, decryptedData.toString().length))}...');
+      final normalizedQrData = _normalizeQrPayload(qrData);
+
+      Map<String, dynamic>? decryptedData = _authService.decryptDataFromQR(qrData);
+      decryptedData ??= _authService.decryptDataFromQR(normalizedQrData);
+      decryptedData ??= _authService.decryptDataFromQR(
+        normalizedQrData.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', ''),
+      );
+
+      debugPrint(
+        '🔓 [QR_DECRYPT] Decrypted QR data: ${decryptedData.toString().substring(0, math.min(200, decryptedData.toString().length))}...',
+      );
       if (decryptedData == null) {
         throw Exception('Invalid QR data');
       }
@@ -886,11 +915,12 @@ class _TLHomePageState extends State<TLHomePage> {
       
       // Navigate to TL Approval Summary Screen only for full data QR
       if (hasCatridges && hasDetails) {
+        final Map<String, dynamic> qrDataForSummary = decryptedData;
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => TLApprovalSummaryScreen(
-              qrData: decryptedData,
+              qrData: qrDataForSummary,
               userName: _userName,
               branchName: _branchName,
             ),
@@ -902,10 +932,21 @@ class _TLHomePageState extends State<TLHomePage> {
       
     } catch (e) {
       debugPrint('❌ [QR_PROCESS] Error processing QR data: $e');
-      
+
+      final errorText = e.toString();
+      final normalizedError = errorText.toLowerCase();
+      final bool isInvalidQr = normalizedError.contains('invalid qr') ||
+          normalizedError.contains('invalid qr data') ||
+          normalizedError.contains('qr code tidak lengkap') ||
+          normalizedError.contains('format qr code') ||
+          normalizedError.contains('format') ||
+          normalizedError.contains('decrypt') ||
+          normalizedError.contains('dekrip') ||
+          normalizedError.contains('base64');
+
       await CustomModals.showFailedModal(
         context: context,
-        message: 'Error processing QR code: ${e.toString()}',
+        message: isInvalidQr ? 'Data yang di scan tidak sesuai' : 'Error processing QR code: $errorText',
       );
     } finally {
       setState(() {

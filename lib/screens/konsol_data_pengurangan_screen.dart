@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -807,28 +808,88 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
       'Keterangan'
     ];
 
-    // Calculate responsive column widths based on available width
-    final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - (isTablet ? 32.0 : 24.0); // Account for padding
-    
-    // Calculate base column width
-    final baseColumnWidth = availableWidth / columns.length;
-    
-    // Adjust column widths proportionally
-    Map<String, double> columnWidths = {};
-    for (var column in columns) {
-      if (column == 'Tanggal Replenish' || column == 'Tanggal Proses') {
-        columnWidths[column] = baseColumnWidth * 1.3;
-      } else if (column == 'Bank' || column == 'Mesin' || column == 'User Input') {
-        columnWidths[column] = baseColumnWidth * 1.2;
-      } else if (column == 'Keterangan') {
-        columnWidths[column] = baseColumnWidth * 1.4;
-      } else if (column == 'Jenis') {
-        columnWidths[column] = baseColumnWidth * 1.0;
-      } else {
-        columnWidths[column] = baseColumnWidth * 0.7;
+    String getValue(PenguranganData item, String column) {
+      switch (column) {
+        case 'Jenis':
+          return item.jenis ?? '';
+        case 'Tanggal Replenish':
+          return item.tanggalReplenish ?? '';
+        case 'Tanggal Proses':
+          return item.tanggalProses ?? '';
+        case 'Bank':
+          return item.bank ?? '';
+        case 'Mesin':
+          return item.mesin ?? '';
+        case 'A1':
+          return item.a1?.toString() ?? '0';
+        case 'A2':
+          return item.a2?.toString() ?? '0';
+        case 'A5':
+          return item.a5?.toString() ?? '0';
+        case 'A10':
+          return item.a10?.toString() ?? '0';
+        case 'A20':
+          return item.a20?.toString() ?? '0';
+        case 'A50':
+          return item.a50?.toString() ?? '0';
+        case 'A75':
+          return item.a75?.toString() ?? '0';
+        case 'A100':
+          return item.a100?.toString() ?? '0';
+        case 'User Input':
+          return item.userInput ?? '';
+        case 'Keterangan':
+          return item.keterangan ?? '';
+      }
+      return '';
+    }
+
+    double measureTextWidth(String text, TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: ui.TextDirection.ltr,
+        textScaleFactor: MediaQuery.of(context).textScaleFactor,
+        maxLines: 1,
+      )..layout();
+      return painter.width;
+    }
+
+    final cellPadding = EdgeInsets.symmetric(
+      horizontal: isTablet ? 12 : 8,
+      vertical: isTablet ? 8 : 6,
+    );
+    final cellTextStyle = TextStyle(fontSize: isTablet ? 12 : 9);
+    final headerTextStyle = TextStyle(
+      fontSize: isTablet ? 12 : 9,
+      fontWeight: FontWeight.bold,
+    );
+
+    final Map<String, String> longestTextByColumn = {
+      for (final c in columns) c: c,
+    };
+
+    for (final item in _penguranganDataList) {
+      for (final column in columns) {
+        final candidate = getValue(item, column);
+        if (candidate.length > (longestTextByColumn[column]?.length ?? 0)) {
+          longestTextByColumn[column] = candidate;
+        }
       }
     }
+
+    final Map<String, double> columnWidths = {};
+    for (final column in columns) {
+      final sample = longestTextByColumn[column] ?? column;
+      final headerWidth = measureTextWidth(column, headerTextStyle);
+      final cellWidth = measureTextWidth(sample, cellTextStyle);
+      final width = (headerWidth > cellWidth ? headerWidth : cellWidth) + cellPadding.horizontal + 8;
+      columnWidths[column] = width < 60 ? 60 : width;
+    }
+
+    final totalTableWidth = columns.fold<double>(
+      0,
+      (sum, c) => sum + (columnWidths[c] ?? 0),
+    );
 
     return Expanded(
       child: Container(
@@ -839,151 +900,119 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
         ),
         child: Column(
           children: [
-            // Table Header - No horizontal scrolling
-            Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
-              child: Row(
-                children: columns.map((column) {
-                  return Container(
-                    width: columnWidths[column],
-                    padding: EdgeInsets.all(isTablet ? 8 : 4),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        right: BorderSide(color: Colors.grey.shade300),
-                      ),
-                    ),
-                    child: Text(
-                      column,
-                      style: TextStyle(
-                        fontSize: isTablet ? 12 : 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 2,
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            
-            // Table body with data or loading indicator
             Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty 
-                  ? Center(
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          color: Colors.red,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : _penguranganDataList.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No data available',
-                          style: TextStyle(
-                            fontSize: isTablet ? 16 : 14,
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage.isNotEmpty
+                      ? Center(
+                          child: Text(
+                            _errorMessage,
+                            style: TextStyle(
+                              fontSize: isTablet ? 16 : 14,
+                              color: Colors.red,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: _penguranganDataList.length,
-                        itemBuilder: (context, index) {
-                          final item = _penguranganDataList[index];
-                          return Container(
-                            decoration: BoxDecoration(
-                              border: Border(
-                                bottom: BorderSide(color: Colors.grey.shade300),
+                        )
+                      : _penguranganDataList.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No data available',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 16 : 14,
+                                  color: Colors.grey.shade500,
+                                  fontStyle: FontStyle.italic,
+                                ),
                               ),
-                              color: index % 2 == 0 ? Colors.white : Colors.grey.shade50,
-                            ),
-                            child: Row(
-                              children: columns.map((column) {
-                                String value = '';
-                                switch (column) {
-                                  case 'Jenis':
-                                    value = item.jenis ?? '';
-                                    break;
-                                  case 'Tanggal Replenish':
-                                    value = item.tanggalReplenish ?? '';
-                                    break;
-                                  case 'Tanggal Proses':
-                                    value = item.tanggalProses ?? '';
-                                    break;
-                                  case 'Bank':
-                                    value = item.bank ?? '';
-                                    break;
-                                  case 'Mesin':
-                                    value = item.mesin ?? '';
-                                    break;
-                                  case 'A1':
-                                    value = item.a1?.toString() ?? '0';
-                                    break;
-                                  case 'A2':
-                                    value = item.a2?.toString() ?? '0';
-                                    break;
-                                  case 'A5':
-                                    value = item.a5?.toString() ?? '0';
-                                    break;
-                                  case 'A10':
-                                    value = item.a10?.toString() ?? '0';
-                                    break;
-                                  case 'A20':
-                                    value = item.a20?.toString() ?? '0';
-                                    break;
-                                  case 'A50':
-                                    value = item.a50?.toString() ?? '0';
-                                    break;
-                                  case 'A75':
-                                    value = item.a75?.toString() ?? '0';
-                                    break;
-                                  case 'A100':
-                                    value = item.a100?.toString() ?? '0';
-                                    break;
-                                  case 'User Input':
-                                    value = item.userInput ?? '';
-                                    break;
-                                  case 'Keterangan':
-                                    value = item.keterangan ?? '';
-                                    break;
-                                }
-                                
-                                return Container(
-                                  width: columnWidths[column],
-                                  padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      right: BorderSide(color: Colors.grey.shade300),
+                            )
+                          : SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: SizedBox(
+                                width: totalTableWidth,
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(color: Colors.grey.shade300),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: columns.map((column) {
+                                          final isLast = column == columns.last;
+                                          return Container(
+                                            width: columnWidths[column],
+                                            padding: cellPadding,
+                                            decoration: BoxDecoration(
+                                              border: Border(
+                                                right: isLast
+                                                    ? BorderSide.none
+                                                    : BorderSide(color: Colors.grey.shade300),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              column,
+                                              style: headerTextStyle,
+                                              textAlign: TextAlign.center,
+                                              softWrap: false,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.visible,
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
                                     ),
-                                  ),
-                                  child: Text(
-                                    value,
-                                    style: TextStyle(
-                                      fontSize: isTablet ? 12 : 9,
+                                    Expanded(
+                                      child: ListView.builder(
+                                        itemCount: _penguranganDataList.length,
+                                        itemBuilder: (context, index) {
+                                          final item = _penguranganDataList[index];
+                                          return Container(
+                                            decoration: BoxDecoration(
+                                              border: Border(
+                                                bottom: BorderSide(color: Colors.grey.shade300),
+                                              ),
+                                              color: index % 2 == 0
+                                                  ? Colors.white
+                                                  : Colors.grey.shade50,
+                                            ),
+                                            child: Row(
+                                              children: columns.map((column) {
+                                                final isLast = column == columns.last;
+                                                final value = getValue(item, column);
+                                                return Container(
+                                                  width: columnWidths[column],
+                                                  padding: cellPadding,
+                                                  decoration: BoxDecoration(
+                                                    border: Border(
+                                                      right: isLast
+                                                          ? BorderSide.none
+                                                          : BorderSide(color: Colors.grey.shade300),
+                                                    ),
+                                                  ),
+                                                  child: Text(
+                                                    value,
+                                                    style: cellTextStyle,
+                                                    textAlign: column.startsWith('A')
+                                                        ? TextAlign.right
+                                                        : TextAlign.left,
+                                                    softWrap: false,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.visible,
+                                                  ),
+                                                );
+                                              }).toList(),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                    textAlign: column.contains('A') ? TextAlign.right : TextAlign.left,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 2,
-                                  ),
-                                );
-                              }).toList(),
+                                  ],
+                                ),
+                              ),
                             ),
-                          );
-                        },
-                      ),
-            ),
+            )
           ],
         ),
       ),

@@ -1,6 +1,16 @@
 // Import shared models from prepare_model.dart instead of duplicating them
 import 'dart:convert'; // Added for jsonDecode
 
+bool _parseBool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'true' || normalized == '1' || normalized == 'y' || normalized == 'yes';
+  }
+  return false;
+}
+
 // Model untuk response validasi dan replenish dari API
 class ValidateAndGetReplenishResponse {
   final bool success;
@@ -161,6 +171,8 @@ class CatridgeReplenishData {
   final String sealCodeReturn;
   final String typeCatridgeTrx;
   final String denomCode;
+  final bool isMdm;
+  final bool isKios;
 
   CatridgeReplenishData({
     required this.dataType,
@@ -173,6 +185,8 @@ class CatridgeReplenishData {
     this.sealCodeReturn = '',
     this.typeCatridgeTrx = '',
     this.denomCode = '',
+    this.isMdm = false,
+    this.isKios = false,
   });
 
   factory CatridgeReplenishData.fromJson(Map<String, dynamic> json) {
@@ -187,6 +201,8 @@ class CatridgeReplenishData {
       sealCodeReturn: json['sealCodeReturn'] ?? '',
       typeCatridgeTrx: json['typeCatridgeTrx'] ?? '',
       denomCode: json['denomCode'] ?? json['DenomCode'] ?? '',
+      isMdm: _parseBool(json['ismdm'] ?? json['isMdm'] ?? json['IsMDM']),
+      isKios: _parseBool(json['iskios'] ?? json['isKios'] ?? json['isKiosk'] ?? json['IsKios'] ?? json['IsKiosk']),
     );
   }
 }
@@ -229,6 +245,8 @@ class ReturnCatridgeData {
   final String? qty; // Tambahkan qty
   final String? typeCatridgeTrx; // Add typeCatridgeTrx property
   final String? sealCodeReturn; // Add sealCodeReturn property
+  final bool isMdm;
+  final bool isKios;
 
   ReturnCatridgeData({
     required this.idTool,
@@ -240,6 +258,8 @@ class ReturnCatridgeData {
     this.qty, // Property opsional
     this.typeCatridgeTrx, // Property opsional
     this.sealCodeReturn, // Property opsional
+    this.isMdm = false,
+    this.isKios = false,
   });
 
   factory ReturnCatridgeData.fromJson(Map<String, dynamic> json) {
@@ -253,6 +273,8 @@ class ReturnCatridgeData {
       qty: json['qty'] ?? json['Qty'], // Tambahkan mapping untuk qty
       typeCatridgeTrx: json['typeCatridgeTrx'], // Remove default value to preserve null/actual value
       sealCodeReturn: json['sealCodeReturn'], // Add mapping for sealCodeReturn
+      isMdm: _parseBool(json['ismdm'] ?? json['isMdm'] ?? json['IsMDM']),
+      isKios: _parseBool(json['iskios'] ?? json['isKios'] ?? json['isKiosk'] ?? json['IsKios'] ?? json['IsKiosk']),
     );
   }
 }

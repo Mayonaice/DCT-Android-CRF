@@ -733,6 +733,42 @@ class ApiService {
           message: 'Session expired: Please login again',
           status: 'error'
         );
+      } else if (response.statusCode == 400) {
+        bool isValidationError = false;
+        final bodyLower = response.body.toLowerCase();
+        if (bodyLower.contains('one or more validation') ||
+            bodyLower.contains('validation errors occurred')) {
+          isValidationError = true;
+        } else {
+          try {
+            final decoded = json.decode(response.body);
+            if (decoded is Map) {
+              final title = (decoded['title'] ?? '').toString().toLowerCase();
+              final message = (decoded['message'] ?? '').toString().toLowerCase();
+              if (title.contains('one or more validation') ||
+                  message.contains('one or more validation') ||
+                  title.contains('validation errors occurred') ||
+                  message.contains('validation errors occurred')) {
+                isValidationError = true;
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (isValidationError) {
+          return ApiResponse(
+            success: false,
+            message: 'Inputan Return masih ada yang kosong!',
+            status: 'error',
+          );
+        }
+
+        debugPrint('❌ HTTP 400 on return ATM catridge TEMP insert: ${response.body}');
+        return ApiResponse(
+          success: false,
+          message: 'Server error (400): ${response.body}',
+          status: 'error',
+        );
       } else {
         debugPrint('❌ HTTP error on return ATM catridge TEMP insert: ${response.statusCode}, body: ${response.body}');
         return ApiResponse(

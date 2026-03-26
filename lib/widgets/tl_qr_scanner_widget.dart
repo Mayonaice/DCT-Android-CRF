@@ -183,32 +183,18 @@ class _TLQRScannerWidgetState extends State<TLQRScannerWidget> {
       print('🔍 [QR_HANDLE] Error pausing camera: $e');
     }
 
-    // Execute callback if still valid
     if (!_isDisposed && mounted) {
-      print('🔍 [QR_HANDLE] Executing onQRDetected callback');
-      try {
-        widget.onQRDetected(code);
-        print('🔍 [QR_HANDLE] Callback executed successfully');
-      } catch (e) {
-        print('🔍 [QR_HANDLE] Error in callback: $e');
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        try {
+          navigator.pop(code);
+        } catch (_) {}
       }
     }
 
-    await Future.delayed(const Duration(milliseconds: 200));
-
-    if (_isDisposed || !mounted) return;
-
-    final currentRoute = ModalRoute.of(context);
-    if (currentRoute == null || currentRoute.isCurrent != true) {
-      return;
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isDisposed || !mounted) return;
-      final navigator = Navigator.of(context);
-      if (!navigator.canPop()) return;
+    Future.microtask(() {
       try {
-        navigator.pop(code);
+        widget.onQRDetected(code);
       } catch (_) {}
     });
   }

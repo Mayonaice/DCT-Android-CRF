@@ -595,7 +595,7 @@ class _LoginPageState extends State<LoginPage> {
         const Padding(
           padding: EdgeInsets.only(top: 20, bottom: 20),
           child: Text(
-            'Login Yout Account',
+            'Login Your Account',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -837,7 +837,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 15),
                     child: Text(
-                      'IMEI = $_androidId',
+                      'Android ID = $_androidId',
                       style: const TextStyle(
                         fontSize: 13,
                         color: Colors.black54,

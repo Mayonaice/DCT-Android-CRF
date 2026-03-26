@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/return_model.dart';
 import '../models/prepare_model.dart';
 import '../services/api_service.dart';
@@ -65,6 +66,12 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
   @override
   void initState() {
     super.initState();
+
+    // Lock orientation to landscape
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _loadUserData();
   }
 
@@ -87,6 +94,14 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
   void dispose() {
     _tlNikController.dispose();
     _tlPasswordController.dispose();
+
+    // Reset orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 

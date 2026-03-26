@@ -86,6 +86,18 @@ class _DeviceInfoScreenState extends State<DeviceInfoScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    // Reset orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    super.dispose();
+  }
+
   void _copyAndroidId() async {
     Clipboard.setData(ClipboardData(text: _androidId));
     await CustomModals.showSuccessModal(
