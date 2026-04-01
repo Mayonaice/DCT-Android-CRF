@@ -15,6 +15,7 @@ class ReturnSummaryPage extends StatefulWidget {
   final Map<String, TextEditingController> detailReturnLembarControllers;
   final Map<String, TextEditingController> detailReturnNominalControllers;
   final String idTool; // Add idTool parameter
+  final String? dateStartReturn;
 
   const ReturnSummaryPage({
     Key? key,
@@ -23,6 +24,7 @@ class ReturnSummaryPage extends StatefulWidget {
     required this.detailReturnLembarControllers,
     required this.detailReturnNominalControllers,
     required this.idTool, // Add idTool parameter
+    this.dateStartReturn,
   }) : super(key: key);
 
   @override
@@ -241,7 +243,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
         "idTool": idTool,
         "CashierReturnCode": _userData?['nik'] ?? '',
         "TableReturnCode": _userData?['tableCode'] ?? '',
-        "DateStartReturn": DateTime.now().toIso8601String(),
+        "DateStartReturn": widget.dateStartReturn ?? DateTime.now().toIso8601String(),
         "WarehouseCode": _userData?['warehouseCode'] ?? 'Cideng',
         "UserATMReturn": _tlNikController.text,
         "SPVBARusak": _tlNikController.text,

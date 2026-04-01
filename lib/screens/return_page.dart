@@ -86,6 +86,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   
   // Add tanggal replenish controller
   final TextEditingController _tanggalReplenishController = TextEditingController();
+  String? _capturedDateStartReturn;
   
   // NEW: Controllers for detail return forms (read-only)
   final Map<String, TextEditingController> _detailReturnLembarControllers = {
@@ -138,6 +139,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       _cartridgeSectionKeys.clear();
       _formsLocked = true;
       _errorMessage = '';
+      _capturedDateStartReturn = null;
       if (clearIdTool) {
         _idToolController.clear();
       }
@@ -816,6 +818,128 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     return qtyCount;
   }
 
+  String _normalizeSubmitDenomCode(String rawCode) {
+    final code = rawCode.trim().toUpperCase();
+    if (code.isEmpty) return '';
+
+    final compact = code.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    if (compact == 'CRM' || compact == 'CDM') {
+      return compact;
+    }
+
+    if (compact.startsWith('A')) {
+      final int? aValue = int.tryParse(compact.substring(1));
+      if (aValue == null) return compact;
+      switch (aValue) {
+        case 1:
+        case 2:
+        case 5:
+        case 10:
+        case 20:
+        case 50:
+        case 75:
+        case 100:
+          return 'A$aValue';
+        default:
+          return compact;
+      }
+    }
+
+    switch (compact) {
+      case '1K':
+      case '1000':
+        return 'A1';
+      case '2K':
+      case '2000':
+        return 'A2';
+      case '5K':
+      case '5000':
+        return 'A5';
+      case '10K':
+      case '10000':
+        return 'A10';
+      case '20K':
+      case '20000':
+        return 'A20';
+      case '50K':
+      case '50000':
+        return 'A50';
+      case '75K':
+      case '75000':
+        return 'A75';
+      case '100K':
+      case '100000':
+        return 'A100';
+      default:
+        return compact;
+    }
+  }
+
+  String? _aCodeFromDenomLabel(String label) {
+    switch (label.toUpperCase()) {
+      case '1K':
+        return 'A1';
+      case '2K':
+        return 'A2';
+      case '5K':
+        return 'A5';
+      case '10K':
+        return 'A10';
+      case '20K':
+        return 'A20';
+      case '50K':
+        return 'A50';
+      case '75K':
+        return 'A75';
+      case '100K':
+        return 'A100';
+      default:
+        return null;
+    }
+  }
+
+  List<Map<String, String>> _buildTempRowsForSection({
+    required String baseDenomCode,
+    required Map<String, TextEditingController> denomControllers,
+  }) {
+    final normalizedBaseCode = _normalizeSubmitDenomCode(baseDenomCode);
+    final isCdmOrCrm = normalizedBaseCode == 'CDM' || normalizedBaseCode == 'CRM';
+
+    if (!isCdmOrCrm) {
+      return [
+        {
+          'denomCode': normalizedBaseCode.isEmpty ? baseDenomCode : normalizedBaseCode,
+          'qty': _calculateQtyFromDenomControllers(denomControllers).toString(),
+        }
+      ];
+    }
+
+    final List<Map<String, String>> rows = [];
+    for (final label in ['1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K']) {
+      final count = int.tryParse((denomControllers[label]?.text ?? '').trim()) ?? 0;
+      if (count <= 0) continue;
+
+      final mappedCode = _aCodeFromDenomLabel(label);
+      if (mappedCode == null) continue;
+
+      rows.add({
+        'denomCode': mappedCode,
+        'qty': count.toString(),
+      });
+    }
+
+    if (rows.isNotEmpty) {
+      return rows;
+    }
+
+    return [
+      {
+        'denomCode': normalizedBaseCode,
+        'qty': _calculateQtyFromDenomControllers(denomControllers).toString(),
+      }
+    ];
+  }
+
   Future<void> _navigateToSummaryPage() async {
     // Validate manual mode requirements before collecting data
     for (int i = 0; i < _cartridgeSectionKeys.length; i++) {
@@ -942,33 +1066,48 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           ? sectionState._catridgeFisikRemarkController.text
           : '';
       try {
-        final String denomCodeVal = (
+        final String baseDenomCode = (
           _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
           _returnHeaderResponse!.data[i].denomCode.isNotEmpty
         )
             ? _returnHeaderResponse!.data[i].denomCode
             : ((sectionState?._resolvedDenomCode ?? sectionState?.catridgeFisikController.text) ?? '');
-        final resp = await _apiService.insertReturnAtmCatridgeTemp(
-          idTool: idTool,
-          bagCode: (c['bagCode'] ?? '').toString(),
-          catridgeCode: (c['noCatridge'] ?? '').toString(),
-          sealCode: (c['sealCode'] ?? '').toString(),
-          catridgeSeal: (c['sealCatridge'] ?? '').toString(),
-          denomCode: denomCodeVal,
-          qty: (sectionState != null
-                  ? _calculateQtyFromDenomControllers(sectionState.denomControllers).toString()
-                  : (c['qty'] ?? '0').toString()),
-          userInput: userNIK,
-          isBalikKaset: 'N',
-          catridgeCodeOld: '',
-          scanCatStatus: scanCatStatusVal,
-          scanCatStatusRemark: scanCatRemarkVal,
-          scanSealStatus: '',
-          scanSealStatusRemark: '',
-        );
-        if (!resp.success) {
-          allSuccess = false;
-          errorMessages.add(resp.message);
+        final tempRows = sectionState != null
+            ? _buildTempRowsForSection(
+                baseDenomCode: baseDenomCode,
+                denomControllers: sectionState.denomControllers,
+              )
+            : [
+                {
+                  'denomCode': _normalizeSubmitDenomCode(baseDenomCode),
+                  'qty': (c['qty'] ?? '0').toString(),
+                }
+              ];
+
+        for (final row in tempRows) {
+          final resp = await _apiService.insertReturnAtmCatridgeTemp(
+            idTool: idTool,
+            bagCode: (c['bagCode'] ?? '').toString(),
+            catridgeCode: (c['noCatridge'] ?? '').toString(),
+            sealCode: (c['sealCode'] ?? '').toString(),
+            catridgeSeal: (c['sealCatridge'] ?? '').toString(),
+            denomCode: row['denomCode'] ?? '',
+            qty: row['qty'] ?? '0',
+            userInput: userNIK,
+            isBalikKaset: 'N',
+            catridgeCodeOld: '',
+            scanCatStatus: scanCatStatusVal,
+            scanCatStatusRemark: scanCatRemarkVal,
+            scanSealStatus: '',
+            scanSealStatusRemark: '',
+          );
+          if (!resp.success) {
+            allSuccess = false;
+            errorMessages.add(resp.message);
+            break;
+          }
+        }
+        if (!allSuccess) {
           break;
         }
       } catch (e) {
@@ -992,6 +1131,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           detailReturnLembarControllers: _detailReturnLembarControllers,
           detailReturnNominalControllers: _detailReturnNominalControllers,
           idTool: idTool,
+          dateStartReturn: _capturedDateStartReturn,
         ),
       ),
     );
@@ -1025,7 +1165,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
         "idTool": _idToolController.text,
         "CashierReturnCode": _userData?['nik'] ?? '',
         "TableReturnCode": _userData?['tableCode'] ?? '',
-        "DateStartReturn": DateTime.now().toIso8601String(),
+        "DateStartReturn": _capturedDateStartReturn ?? DateTime.now().toIso8601String(),
         "WarehouseCode": _userData?['warehouseCode'] ?? 'Cideng',
         "UserATMReturn": _tlNikController.text,
         "SPVBARusak": _tlNikController.text,
@@ -1100,57 +1240,65 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
             : '';
 
         // Send to RTN endpoint dengan parameter sesuai ketentuan
-        final String denomCodeVal = (
+        final String baseDenomCode = (
           _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
           _returnHeaderResponse!.data[i].denomCode.isNotEmpty
         )
             ? _returnHeaderResponse!.data[i].denomCode
             : ((catridgeState?._resolvedDenomCode ?? catridgeState?.catridgeFisikController.text) ?? '');
-        final rtneResponse = await _apiService.insertReturnAtmCatridgeTemp(
-          // field Id Tool diisi ke IdTool
-          idTool: _idToolController.text,
-          // field No Bag diisi ke BagCode
-          bagCode: catridge.bagCode ?? '0',
-          // field No Catridge diisi ke CatridgeCode
-          catridgeCode: catridge.catridgeCode,
-          // field Seal Code diisi ke SealCode
-          sealCode: '0', // Use default or get from catridge data if available
-          // field No Seal diisi ke CatridgeSeal
-          catridgeSeal: catridge.catridgeSeal,
-          // DenomCode diisi dari response validate-and-get-replenish atau fallback ke Catridge Fisik
-          denomCode: denomCodeVal,
-          // qty diambil dari jumlah lembar per section (sum semua denom)
-          qty: (() {
-            int qtyCount = 0;
-            if (catridgeState != null) {
-              for (final denom in ['1K','2K','5K','10K','20K','50K','75K','100K']) {
-                final txt = catridgeState!.denomControllers[denom]?.text ?? '';
-                if (txt.isNotEmpty) {
-                  qtyCount += int.tryParse(txt) ?? 0;
+
+        final tempRows = catridgeState != null
+            ? _buildTempRowsForSection(
+                baseDenomCode: baseDenomCode,
+                denomControllers: catridgeState.denomControllers,
+              )
+            : [
+                {
+                  'denomCode': _normalizeSubmitDenomCode(baseDenomCode),
+                  'qty': '0',
                 }
-              }
-            }
-            return qtyCount.toString();
-          })(),
-          // nik saat login yang tersimpan akan mengisi ke UserInput
-          userInput: userNIK,
-          // N untuk isBalikKaset
-          isBalikKaset: "N",
-          // CatridgeCodeOld kosong jika tidak ada
-          catridgeCodeOld: "",
-          scanCatStatus: scanCatStatusVal,
-          scanCatStatusRemark: scanCatRemarkVal,
-          scanSealStatus: '',
-          scanSealStatusRemark: ''
-        );
-        
-        if (!rtneResponse.success) {
-          allSuccess = false;
-          errorMessage = rtneResponse.message;
-          print('Failed to insert catridge ${catridge.catridgeCode}: ${rtneResponse.message}');
+              ];
+
+        for (final row in tempRows) {
+          final rtneResponse = await _apiService.insertReturnAtmCatridgeTemp(
+            // field Id Tool diisi ke IdTool
+            idTool: _idToolController.text,
+            // field No Bag diisi ke BagCode
+            bagCode: catridge.bagCode ?? '0',
+            // field No Catridge diisi ke CatridgeCode
+            catridgeCode: catridge.catridgeCode,
+            // field Seal Code diisi ke SealCode
+            sealCode: '0', // Use default or get from catridge data if available
+            // field No Seal diisi ke CatridgeSeal
+            catridgeSeal: catridge.catridgeSeal,
+            // DenomCode diisi sesuai mapping row submit
+            denomCode: row['denomCode'] ?? '',
+            // qty per row sesuai denom
+            qty: row['qty'] ?? '0',
+            // nik saat login yang tersimpan akan mengisi ke UserInput
+            userInput: userNIK,
+            // N untuk isBalikKaset
+            isBalikKaset: "N",
+            // CatridgeCodeOld kosong jika tidak ada
+            catridgeCodeOld: "",
+            scanCatStatus: scanCatStatusVal,
+            scanCatStatusRemark: scanCatRemarkVal,
+            scanSealStatus: '',
+            scanSealStatusRemark: ''
+          );
+
+          if (!rtneResponse.success) {
+            allSuccess = false;
+            errorMessage = rtneResponse.message;
+            print('Failed to insert catridge ${catridge.catridgeCode}: ${rtneResponse.message}');
+            break;
+          }
+        }
+
+        if (!allSuccess) {
           break;
         }
-        
+
         print('Successfully inserted catridge ${catridge.catridgeCode}');
       }
       
@@ -1340,6 +1488,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       _idToolController.clear();
       setState(() {
         _returnHeaderResponse = null;
+        _capturedDateStartReturn = null;
         _formsLocked = true;
       });
       
@@ -1411,6 +1560,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
 
       if (result.success && result.data != null) {
         setState(() {
+          _capturedDateStartReturn ??= DateTime.now().toIso8601String();
           // Create a header response with all the new fields - ensure all values are converted to String
           _returnHeaderResponse = ReturnHeaderResponse(
             success: true,
@@ -1475,7 +1625,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   // Add method to set current date for tanggal replenish
   void _setCurrentDate() {
     final now = DateTime.now();
-    final formattedDate = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final formattedDate = DateFormat('dd MMM yyyy').format(now);
     _tanggalReplenishController.text = formattedDate;
   }
 
@@ -1796,6 +1946,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
               _idToolController.clear();
               _jamMulaiController.clear();
               _errorMessage = '';
+              _capturedDateStartReturn = null;
               _formsLocked = true;
             });
           },
@@ -1940,6 +2091,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                     _idToolController.clear();
                     _jamMulaiController.clear();
                     _errorMessage = '';
+                    _capturedDateStartReturn = null;
                     _formsLocked = true;
                   });
                 },
@@ -2127,7 +2279,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                               hasIcon: true,
                               iconData: Icons.calendar_today,
                               isSmallScreen: false,
-                              hintText: 'dd/mm/yyyy',
+                              hintText: 'dd MMM yyyy',
                             ),
                           ),
                         ],
@@ -2778,8 +2930,6 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   }
 
   bool _isDenomEnabled(String label) {
-    if (!_isMainCatridgeSection()) return true;
-
     String code = _normalizeDenomCode(_resolvedDenomCode ?? widget.returnData?.denomCode ?? '');
     if (code.isEmpty) {
       code = _normalizeDenomCode(noCatridgeController.text);

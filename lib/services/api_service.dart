@@ -1173,6 +1173,7 @@ class ApiService {
     required String cashierCode,
     required String spvTLCode,
     required String tableCode,
+    String? dateStart,
     String warehouseCode = "Cideng",
   }) async {
     try {
@@ -1196,7 +1197,7 @@ class ApiService {
         "CashierCode": cashierCode,
         "CashierCode2": "", // Kosongkan sesuai requirement
         "TableCode": tableCode,
-        "DateStart": DateTime.now().toIso8601String(),
+        "DateStart": dateStart ?? DateTime.now().toIso8601String(),
         "WarehouseCode": warehouseCode,
         "SpvTLCode": spvTLCode,
         "IsManual": "N"

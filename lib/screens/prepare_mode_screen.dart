@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import '../models/prepare_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -32,6 +33,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
   String _branchName = '';
   String _userId = '';
   Map<String, dynamic>? _userData;
+  String? _capturedDateStart;
   
   // Focus node for ID CRF field
   final FocusNode _idCRFFocusNode = FocusNode();
@@ -1572,7 +1574,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
   // Set current date
   void _setCurrentDate() {
     final now = DateTime.now();
-    _tanggalReplenishController.text = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    _tanggalReplenishController.text = DateFormat('dd MMM yyyy').format(now);
   }
 
   // Initialize catridge controllers for the given count
@@ -1748,6 +1750,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       
       // Clear data
       _prepareData = null;
+      _capturedDateStart = null;
       _detailCatridgeItems.clear();
       _catridgeData.clear();
       _denomValues.clear();
@@ -4665,6 +4668,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
           catridgeData: catridgeSummaryData, // Filter hanya catridge asli, bukan divert/pocket
           divertData: _divertDetailItems.where((item) => item != null).map((item) => item!.toJson()).toList(),
           pocketData: _pocketDetailItem?.toJson(),
+          dateStart: _capturedDateStart,
         ),
       ),
     );
@@ -4915,6 +4919,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         cashierCode: cashierCode,
         spvTLCode: _nikTLController.text,
         tableCode: _prepareData!.tableCode,
+        dateStart: _capturedDateStart,
       );
       
       if (!planningResponse.success) {
@@ -5124,6 +5129,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       setState(() {
         _isLoading = false;
         _prepareData = response.data;
+        _capturedDateStart ??= DateTime.now().toIso8601String();
 
         int kasetCount = _prepareData!.jmlKaset;
         if (kasetCount <= 0) kasetCount = 1;
@@ -5307,7 +5313,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
                               hasIcon: true,
                               iconData: Icons.calendar_today,
                               isSmallScreen: isSmallScreen,
-                              hintText: 'dd/mm/yyyy',
+                              hintText: 'dd MMM yyyy',
                             ),
                           ),
                         ],
@@ -9504,6 +9510,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       // Reset loading and error states
       _isLoading = false;
       _errorMessage = '';
+      _capturedDateStart = null;
       
       // Reset prepare data
       _prepareData = null;

@@ -16,6 +16,7 @@ class PrepareSummaryPage extends StatefulWidget {
   final List<DetailCatridgeItem> catridgeData;
   final List<Map<String, dynamic>> divertData;
   final Map<String, dynamic>? pocketData;
+  final String? dateStart;
 
   const PrepareSummaryPage({
     Key? key,
@@ -24,6 +25,7 @@ class PrepareSummaryPage extends StatefulWidget {
     required this.catridgeData,
     required this.divertData,
     this.pocketData,
+    this.dateStart,
   }) : super(key: key);
 
   @override
@@ -342,6 +344,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
         cashierCode: cashierCode,
         spvTLCode: userId,
         tableCode: tableCode,
+        dateStart: widget.dateStart,
       );
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime);
