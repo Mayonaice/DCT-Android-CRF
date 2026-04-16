@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'dart:io';
 
@@ -25,12 +26,59 @@ class BarcodeScannerWidget extends StatefulWidget {
   State<BarcodeScannerWidget> createState() => _BarcodeScannerWidgetState();
 }
 
-class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
+class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> with WidgetsBindingObserver {
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   QRViewController? controller;
   bool _isProcessing = false;
   bool _isClosing = false;
+  bool _orientationEnforceScheduled = false;
+  Timer? _orientationLockTimer;
   StreamSubscription<Barcode>? _streamSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
+  }
 
   @override
   void reassemble() {
@@ -47,6 +95,7 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
@@ -124,6 +173,11 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
 
   Future<void> _handleBarcode(String barcode) async {
     if (_isClosing || !mounted) return;
+    final normalizedBarcode = barcode.trim();
+    if (normalizedBarcode.isEmpty) {
+      _isProcessing = false;
+      return;
+    }
     _isClosing = true;
 
     // Vibrate and provide feedback
@@ -135,13 +189,11 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
 
     if (!mounted) return;
 
-    // Close the scanner first to ensure auto-close
-    Navigator.of(context).pop(barcode);
+    widget.onBarcodeDetected(normalizedBarcode);
 
-    // Call the callback after navigation to prevent blocking
-    Future.microtask(() {
-      widget.onBarcodeDetected(barcode);
-    });
+    if (!Navigator.of(context).canPop()) return;
+
+    Navigator.of(context).pop(normalizedBarcode);
   }
 
 
@@ -149,6 +201,8 @@ class _BarcodeScannerWidgetState extends State<BarcodeScannerWidget> {
   @override
   void dispose() {
     _isClosing = true;
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     _streamSubscription?.cancel();
     controller?.dispose();
     super.dispose();

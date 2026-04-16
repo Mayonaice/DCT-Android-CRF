@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 
 import '../models/prepare_model.dart';
 import '../services/api_service.dart';
@@ -32,7 +33,7 @@ class PrepareSummaryPage extends StatefulWidget {
   State<PrepareSummaryPage> createState() => _PrepareSummaryPageState();
 }
 
-class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
+class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
@@ -42,16 +43,15 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
   String _userName = '';
   String _branchName = '';
   Map<String, dynamic>? _userData;
+  bool _orientationEnforceScheduled = false;
+  Timer? _orientationLockTimer;
 
   @override
   void initState() {
     super.initState();
-
-    // Lock orientation to landscape
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     debugPrint('🚀 [PREPARE_SUMMARY] InitState called');
     debugPrint('🔧 [PREPARE_SUMMARY] Environment Info:');
     debugPrint('   - Debug mode: ${kDebugMode}');
@@ -69,6 +69,43 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
     
     debugPrint('✅ [PREPARE_SUMMARY] Services initialized');
     _loadUserData();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -116,18 +153,12 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     debugPrint('🗑️ [DISPOSE] Disposing PrepareSummaryPage resources');
     _tlNikController.dispose();
     _tlPasswordController.dispose();
     debugPrint('✅ [DISPOSE] Controllers disposed successfully');
-
-    // Reset orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
 
@@ -171,7 +202,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
       wsid: widget.prepareData?.atmCode ?? '',
       bank: widget.prepareData?.codeBank ?? '',
       lokasi: widget.prepareData?.lokasi ?? '',
-      atmType: widget.prepareData?.jnsMesin ?? '',
+      atmType: widget.prepareData?.idTypeATM ?? widget.prepareData?.jnsMesin ?? '',
       jumlahKaset: widget.prepareData?.jmlKaset?.toString() ?? '0',
     );
     
@@ -941,6 +972,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final buildStartTime = DateTime.now();
     debugPrint('🎨 [BUILD] Building PrepareSummaryPage UI');
     debugPrint('⏰ [BUILD] Build start time: ${buildStartTime.toIso8601String()}');
@@ -1491,7 +1523,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
           _buildDetailRow('WSID', widget.prepareData?.atmCode ?? '-', isSmallScreen),
           _buildDetailRow('Bank', widget.prepareData?.codeBank ?? '-', isSmallScreen),
           _buildDetailRow('Lokasi', widget.prepareData?.lokasi ?? '-', isSmallScreen),
-          _buildDetailRow('ATM Type', widget.prepareData?.jnsMesin ?? '-', isSmallScreen),
+          _buildDetailRow('ATM Type', widget.prepareData?.idTypeATM ?? widget.prepareData?.jnsMesin ?? '-', isSmallScreen),
           _buildDetailRow('Jumlah Kaset', '${widget.prepareData?.jmlKaset ?? 0}', isSmallScreen),
         ],
       ),
@@ -1505,15 +1537,23 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: isSmallScreen ? 80 : 100,
+            width: isSmallScreen ? 88 : 118,
             child: Text(
-              '$label :',
+              label,
               style: TextStyle(
                 fontSize: isSmallScreen ? 12 : 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
+          Text(
+            ':',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 12 : 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(width: isSmallScreen ? 6 : 8),
           Expanded(
             child: Text(
               value,

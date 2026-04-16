@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 // import 'package:device_info_plus/device_info_plus.dart'; // REMOVED - namespace conflict
 import 'dart:io';
 import '../services/device_service.dart';
@@ -14,7 +15,7 @@ class DeviceInfoScreen extends StatefulWidget {
   State<DeviceInfoScreen> createState() => _DeviceInfoScreenState();
 }
 
-class _DeviceInfoScreenState extends State<DeviceInfoScreen> {
+class _DeviceInfoScreenState extends State<DeviceInfoScreen> with WidgetsBindingObserver {
   String _deviceName = 'Xiaomi Tab 11';
   String _androidVersion = 'Android Versi 14';
   String _osVersion = 'HYPER OS 14';
@@ -22,17 +23,54 @@ class _DeviceInfoScreenState extends State<DeviceInfoScreen> {
   String _idCreationDate = 'Unknown';
   bool _isLoading = true;
   bool _isPersistent = false;
+  bool _orientationEnforceScheduled = false;
+  Timer? _orientationLockTimer;
 
   @override
   void initState() {
     super.initState();
-    // Lock orientation to landscape
-    SystemChrome.setPreferredOrientations([
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
+    
+    _loadDeviceInfo();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    
-    _loadDeviceInfo();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   // Helper method to detect if device is tablet
@@ -88,13 +126,8 @@ class _DeviceInfoScreenState extends State<DeviceInfoScreen> {
 
   @override
   void dispose() {
-    // Reset orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     super.dispose();
   }
 
@@ -134,6 +167,7 @@ class _DeviceInfoScreenState extends State<DeviceInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
     

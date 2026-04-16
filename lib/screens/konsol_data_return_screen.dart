@@ -172,12 +172,6 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
   @override
   void dispose() {
     _horizontalScrollController.dispose();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
 

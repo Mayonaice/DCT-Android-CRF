@@ -54,7 +54,7 @@ class ReturnModePage extends StatefulWidget {
   State<ReturnModePage> createState() => _ReturnModePageState();
 }
 
-class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
+class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, WidgetsBindingObserver {
   final TextEditingController _idCRFController = TextEditingController();
   final ApiService _apiService = ApiService();
   final ProfileService _profileService = ProfileService();
@@ -113,6 +113,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   
   // Timer for debouncing ID Tool typing
   Timer? _idToolTypingTimer;
+  Timer? _orientationLockTimer;
+  bool _orientationEnforceScheduled = false;
   
   // TL approval controllers
   final TextEditingController _tlNikController = TextEditingController();
@@ -266,12 +268,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
   @override
   void initState() {
     super.initState();
-    
-    // Lock orientation to landscape
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     
     // Initialize detail return controllers with empty values
     for (var controller in _detailReturnLembarControllers.values) {
@@ -294,6 +293,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     _idCRFController.dispose();
     _tlNikController.dispose();
     _tlPasswordController.dispose();
@@ -314,13 +315,6 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       _idToolTypingTimer!.cancel();
     }
 
-    // Reset orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
 
@@ -559,6 +553,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           ),
         ),
       );
+      _enforceLandscapeOrientation();
       
       // Handle the scanned result directly
       if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
@@ -1137,6 +1132,43 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
     );
   }
 
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
+  }
+
   // Validate TL credentials and submit data
   Future<void> _validateTLAndSubmit() async {
     if (_tlNikController.text.isEmpty || _tlPasswordController.text.isEmpty) {
@@ -1592,6 +1624,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           
           // Set current time to jam mulai when data is fetched successfully
           _setCurrentTime();
+          _setTanggalReplenishFromData(result.data!.dateReplenish);
           _formsLocked = false;
         });
       }
@@ -1612,21 +1645,27 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
       }
             }
 
-  // Add method to set current time and date
+  // Add method to set current time
   void _setCurrentTime() {
     final now = DateTime.now();
     final formattedTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     _jamMulaiController.text = formattedTime;
-    
-    // Set tanggal replenish to current date
-    _setCurrentDate();
   }
-  
-  // Add method to set current date for tanggal replenish
-  void _setCurrentDate() {
-    final now = DateTime.now();
-    final formattedDate = DateFormat('dd MMM yyyy').format(now);
-    _tanggalReplenishController.text = formattedDate;
+
+  void _setTanggalReplenishFromData(String rawDateReplenish) {
+    final String value = rawDateReplenish.trim();
+    if (value.isEmpty) {
+      _tanggalReplenishController.text = '';
+      return;
+    }
+
+    final DateTime? parsedDate = DateTime.tryParse(value);
+    if (parsedDate != null) {
+      _tanggalReplenishController.text = DateFormat('dd MMM yyyy').format(parsedDate);
+      return;
+    }
+
+    _tanggalReplenishController.text = value;
   }
 
   // Method for building form fields with proper styling
@@ -1767,6 +1806,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
           ),
         ),
       );
+      _enforceLandscapeOrientation();
       
       // If no barcode was scanned (user cancelled), return early
       if (result == null) {
@@ -1798,6 +1838,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final size = MediaQuery.of(context).size;
     final isTabletOrLandscapeMobile = size.width >= 600;
     final isLandscape = size.width > size.height;
@@ -2267,7 +2308,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin {
                             ),
                           ),
                           
-                          const SizedBox(width: 20),
+                          const SizedBox(width: 12),
                           
                           // Tanggal Replenish field
                           Expanded(
@@ -2380,6 +2421,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   bool _bagCodeManualMode = false; // For Bag Code field
   bool _sealCodeManualMode = false; // For Seal Code field
   bool _catridgeFisikManualMode = false; // For Catridge Fisik field
+  bool _isApplyingScannerValue = false;
 
   final TextEditingController noCatridgeController = TextEditingController();
   final TextEditingController noSealController = TextEditingController();
@@ -3141,7 +3183,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
    }
    
    // NEW: Build total field with same design as form No. Catridge
-   Widget _buildTotalField(String label, TextEditingController controller) {
+  Widget _buildTotalField(String label, TextEditingController controller) {
      final size = MediaQuery.of(context).size;
      final isSmallScreen = size.width < 600;
      
@@ -3151,10 +3193,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
          children: [
            // Label section - fixed width
            SizedBox(
-             width: isSmallScreen ? 90 : 110,
-             child: Padding(
-               padding: EdgeInsets.only(bottom: isSmallScreen ? 6 : 8),
-               child: Text(
+            width: isSmallScreen ? 88 : 102,
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isSmallScreen ? 6 : 8),
+              child: Text(
                  '$label :',
                  style: TextStyle(
                    fontWeight: FontWeight.bold,
@@ -3176,27 +3218,32 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                    ),
                  ),
                ),
-               child: TextField(
-                 controller: controller,
-                 readOnly: true,
-                 textAlign: TextAlign.center,
-                 style: TextStyle(
-                   fontSize: isSmallScreen ? 12 : 14,
-                   color: Colors.black,
-                   fontWeight: FontWeight.bold,
-                 ),
-                 decoration: InputDecoration(
-                   contentPadding: EdgeInsets.only(
-                     left: isSmallScreen ? 4 : 6,
-                     right: isSmallScreen ? 4 : 6,
-                     bottom: isSmallScreen ? 6 : 8,
-                   ),
-                   border: InputBorder.none,
-                   isDense: true,
-                 ),
-               ),
-             ),
-           ),
+               child: Padding(
+                padding: EdgeInsets.only(
+                  left: isSmallScreen ? 4 : 6,
+                  right: isSmallScreen ? 4 : 6,
+                  bottom: isSmallScreen ? 6 : 8,
+                ),
+                child: AnimatedBuilder(
+                  animation: controller,
+                  builder: (context, _) {
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Text(
+                        controller.text,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 12 : 14,
+                          color: Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
          ],
        ),
      );
@@ -3681,7 +3728,21 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   @override
   void didUpdateWidget(CartridgeSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    _loadReturnData();
+
+    final oldData = oldWidget.returnData;
+    final newData = widget.returnData;
+
+    final bool shouldReload =
+        oldData?.idTool != newData?.idTool ||
+        oldData?.catridgeCode != newData?.catridgeCode ||
+        oldData?.catridgeSeal != newData?.catridgeSeal ||
+        oldData?.denomCode != newData?.denomCode ||
+        oldData?.bagCode != newData?.bagCode ||
+        oldData?.sealCodeReturn != newData?.sealCodeReturn;
+
+    if (shouldReload) {
+      _loadReturnData();
+    }
   }
 
   void _loadReturnData() {
@@ -3753,6 +3814,31 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       print('📊 _loadReturnData() completed');
     } else {
       print('📊 No return data to load');
+      setState(() {
+        noCatridgeController.clear();
+        noSealController.clear();
+        catridgeFisikController.clear();
+        bagCodeController.clear();
+        sealCodeReturnController.clear();
+
+        selectedBagCode = null;
+        selectedSealCode = null;
+        _resolvedDenomCode = null;
+
+        for (final controller in denomControllers.values) {
+          controller.clear();
+        }
+
+        totalLembarController.text = '0';
+        totalNominalController.text = _formatCurrency(0);
+
+        scannedFields.updateAll((key, value) => false);
+
+        _catridgeFisikManualMode = false;
+        _catridgeFisikAlasanController.clear();
+        _catridgeFisikRemarkController.clear();
+        _catridgeFisikRemarkFilled = false;
+      });
     }
   }
 
@@ -3815,6 +3901,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       
       // Clean field label for display
       String cleanLabel = label.replaceAll(':', '').trim();
+      String? scannedFromCallback;
       
       // Navigate to barcode scanner and wait for result
       final String? scannedBarcode = await Navigator.push<String?>(
@@ -3826,23 +3913,47 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             fieldLabel: cleanLabel,
             sectionId: sectionId,
             onBarcodeDetected: (String barcode) {
-              print('🎯 SCANNER CALLBACK: $barcode for $fieldKey in section $sectionId');
+              final normalized = barcode.trim();
+              if (normalized.isEmpty) return;
+              scannedFromCallback = normalized;
+              print('🎯 SCANNER CALLBACK: $normalized for $fieldKey in section $sectionId');
+
+              if (!mounted) return;
+              setState(() {
+                _isApplyingScannerValue = true;
+                controller.text = normalized;
+                scannedFields[fieldKey] = true;
+
+                if (fieldKey == 'catridgeFisik') {
+                  _catridgeFisikManualMode = false;
+                  _catridgeFisikAlasanController.clear();
+                  _catridgeFisikRemarkController.clear();
+                  _catridgeFisikRemarkFilled = false;
+                }
+                _isApplyingScannerValue = false;
+              });
             },
           ),
         ),
       );
+      final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+      parentState?._enforceLandscapeOrientation();
       
       // Handle the scanned result directly
-      if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
-        print('🎯 SCANNER RESULT: $scannedBarcode for $fieldKey in section $sectionId');
+      final String effectiveScanned =
+          (scannedBarcode ?? scannedFromCallback ?? '').trim();
+
+      if (effectiveScanned.isNotEmpty) {
+        print('🎯 SCANNER RESULT: $effectiveScanned for $fieldKey in section $sectionId');
         
         // Update the controller with scanned value
         setState(() {
-          controller.text = scannedBarcode;
+          _isApplyingScannerValue = true;
+          controller.text = effectiveScanned;
           
           // IMPORTANT: Mark field as scanned
           scannedFields[fieldKey] = true;
-          print('🎯 SCANNER [${sectionId}]: SETTING scannedFields[$fieldKey] = true for scanned value: $scannedBarcode');
+          print('🎯 SCANNER [${sectionId}]: SETTING scannedFields[$fieldKey] = true for scanned value: $effectiveScanned');
           
           // Reset manual mode for Catridge Fisik when scanned (like prepare_mode)
           if (fieldKey == 'catridgeFisik') {
@@ -3851,14 +3962,17 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _catridgeFisikRemarkController.clear();
             print('🔄 RESET: Catridge Fisik manual mode reset after scan');
           }
+          _isApplyingScannerValue = false;
         });
-        
-        // Trigger validation based on field type
+
         if (fieldKey == 'catridgeFisik') {
-          _validateCatridgeFisikMatch(showResultModal: false);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _validateCatridgeFisikMatch(showResultModal: true);
+          });
         }
         
-        print('🎯 FIELD UPDATED: $fieldKey = $scannedBarcode');
+        print('🎯 FIELD UPDATED: $fieldKey = $effectiveScanned');
       } else {
         print('🎯 SCANNER CANCELLED: No barcode scanned for $fieldKey');
       }
@@ -4119,7 +4233,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               
               // Right side - Total Lembar and Total Nominal (vertical alignment)
                SizedBox(
-                 width: 200, // Fixed width to make it narrower
+                 width: 210,
                  child: Column(
                    crossAxisAlignment: CrossAxisAlignment.start,
                    children: [
@@ -4471,6 +4585,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           inputFormatters: inputFormatters,
                           onChanged: (value) {
                             if (fieldKey == 'catridgeFisik') {
+                              if (_isApplyingScannerValue) {
+                                return;
+                              }
                               if (value.isNotEmpty) {
                                 setState(() {
                                   scannedFields['catridgeFisik'] = false;
@@ -5236,7 +5353,6 @@ class DetailSection extends StatelessWidget {
           _buildLabelValue('Lokasi', returnData?.header?.lokasi ?? ''),
           _buildLabelValue('Jenis Mesin', returnData?.header?.jnsMesin ?? ''),
           _buildLabelValue('ATM Type', returnData?.header?.idTypeAtm ?? returnData?.header?.typeATM ?? ''),
-          _buildLabelValue('Tgl. Unload', returnData?.header?.timeSTReturn ?? ''),
           const Divider(height: 24, thickness: 1),
           const Text(
             '| Detail Return',
@@ -5247,11 +5363,12 @@ class DetailSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
+                flex: 2,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Total Seluruh Lembar (Denom)',
+                      'Total Lembar',
                       style: greenTextStyle,
                     ),
                     const SizedBox(height: 8),
@@ -5259,13 +5376,14 @@ class DetailSection extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 16),
               Expanded(
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Total Seluruh Nominal (Denom)',
+                      'Total Seluruh Nominal',
                       style: greenTextStyle,
                     ),
                     const SizedBox(height: 8),
@@ -5324,12 +5442,17 @@ class DetailSection extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 80,
+            width: 118,
             child: Text(
-              '$label :',
+              label,
               style: const TextStyle(fontWeight: FontWeight.normal),
             ),
           ),
+          const Text(
+            ':',
+            style: TextStyle(fontWeight: FontWeight.normal),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(value),
           ),
@@ -5347,13 +5470,14 @@ class DetailSection extends StatelessWidget {
             child: Row(
               children: [
                 SizedBox(
-                  width: 50,
+                  width: 42,
                   child: Text(
                     label,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
-                Expanded(
+                Flexible(
+                  flex: 2,
                   child: TextField(
                     controller: detailReturnLembarControllers[label],
                     readOnly: true, // Make it read-only
@@ -5375,8 +5499,16 @@ class DetailSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Text('Lembar'),
+                const SizedBox(width: 6),
+                const Flexible(
+                  child: FittedBox(
+                    alignment: Alignment.centerLeft,
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Lembar',
+                    ),
+                  ),
+                ),
               ],
             ),
           ),

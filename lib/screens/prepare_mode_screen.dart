@@ -20,7 +20,7 @@ class PrepareModePage extends StatefulWidget {
   State<PrepareModePage> createState() => _PrepareModePageState();
 }
 
-class _PrepareModePageState extends State<PrepareModePage> {
+class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingObserver {
   final TextEditingController _idCRFController = TextEditingController();
   final TextEditingController _jamMulaiController = TextEditingController();
   final TextEditingController _tanggalReplenishController = TextEditingController();
@@ -82,6 +82,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
   bool _pocketListenersAdded = false;
   bool _nonFocusListenersAdded = false;
   bool _highlightListenersAdded = false;
+  bool _orientationEnforceScheduled = false;
+  Timer? _orientationLockTimer;
 
   // Divert controllers - UPDATED: Now 3 sections with 5 fields each
   final List<List<TextEditingController>> _divertControllers = [
@@ -148,6 +150,42 @@ class _PrepareModePageState extends State<PrepareModePage> {
       onPressed: onPressed ?? () => Navigator.of(context).pop(),
     );
     _isSuccessModalActive = false;
+  }
+
+  void _clearPrepareDependentState() {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _prepareData = null;
+      _capturedDateStart = null;
+      _showApprovalForm = false;
+      _nikTLController.clear();
+      _passwordTLController.clear();
+
+      for (final section in _catridgeControllers) {
+        for (final controller in section) {
+          controller.clear();
+        }
+      }
+
+      for (final section in _divertControllers) {
+        for (final controller in section) {
+          controller.clear();
+        }
+      }
+      for (final controller in _pocketControllers) {
+        controller.clear();
+      }
+
+      _denomValues = List.generate(_catridgeControllers.length, (_) => 0);
+      _catridgeData = List.generate(_catridgeControllers.length, (_) => null);
+      _detailCatridgeItems.clear();
+
+      _divertCatridgeData = [null, null, null];
+      _pocketCatridgeData = null;
+      _divertDetailItems = [null, null, null];
+      _pocketDetailItem = null;
+    });
   }
 
   // Wrapper to show failed modal with priority check
@@ -286,11 +324,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
   @override
   void initState() {
     super.initState();
-    // Lock orientation to landscape
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     
     // Add focus listener for ID CRF field
     _idCRFFocusNode.addListener(() {
@@ -298,6 +334,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
       if (!_idCRFFocusNode.hasFocus && _idCRFController.text.isNotEmpty) {
         print('DEBUG: Triggering _fetchPrepareData() from FocusNode');
         _fetchPrepareData();
+      } else if (!_idCRFFocusNode.hasFocus && _idCRFController.text.trim().isEmpty) {
+        _clearPrepareDependentState();
       }
     });
     
@@ -331,6 +369,43 @@ class _PrepareModePageState extends State<PrepareModePage> {
     // NEW: Add listeners to Pocket remark controllers
     _pocketNoRemarkController.addListener(() => _onPocketRemarkChanged('no_catridge'));
     _pocketSealRemarkController.addListener(() => _onPocketRemarkChanged('seal_catridge'));
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   // NEW: Handle divert field changes to trigger manual mode per field
@@ -1448,6 +1523,8 @@ class _PrepareModePageState extends State<PrepareModePage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     // 
     for (var timer in _debounceTimers.values) {
       timer?.cancel();
@@ -1553,14 +1630,6 @@ class _PrepareModePageState extends State<PrepareModePage> {
     _nikTLController.dispose();
     _passwordTLController.dispose();
     _tanggalReplenishController.dispose();
-
-    // Reset orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     
     super.dispose();
   }
@@ -4684,13 +4753,31 @@ class _PrepareModePageState extends State<PrepareModePage> {
 
     String resolveDenomLabelFallback() {
       final String mesin = (_prepareData?.jnsMesin ?? '').toUpperCase();
-      if (mesin == 'CDM') return 'Rp 0';
+      if (mesin == 'CDM') return 'CDM';
       final String tipeDenom = (_prepareData?.tipeDenom ?? '').toUpperCase();
       if (tipeDenom == 'A100') return 'Rp 100.000';
       if (tipeDenom == 'A50') return 'Rp 50.000';
       final String denomCode = (_prepareData?.denomCode ?? '').trim();
       if (denomCode.isNotEmpty) return denomCode;
       return 'Rp 50.000';
+    }
+
+    String normalizeSubmitDenomCode(String raw) {
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) return trimmed;
+
+      final upper = trimmed.toUpperCase();
+      if (upper == 'CDM' || upper == 'CRM') return upper;
+
+      final compact = upper.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      if (compact == 'CDM' || compact == 'CRM') return compact;
+
+      final isCdmMachine = (_prepareData?.jnsMesin ?? '').toUpperCase() == 'CDM';
+      if (isCdmMachine && (compact == 'RP0' || compact == '0')) {
+        return 'CDM';
+      }
+
+      return trimmed;
     }
 
     // Resolve userInput from auth
@@ -4719,6 +4806,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       final String bag = bagCode; // send empty to allow null conversion in service
       final String seal = sealCode; // send empty to allow null conversion in service
       final String sealCat = sealCatridge.isNotEmpty ? sealCatridge : '0';
+      final String denomCodeForSubmit = normalizeSubmitDenomCode(denomCode);
 
       final resp = await _apiService.insertAtmCatridge(
         idTool: _prepareData!.id,
@@ -4726,7 +4814,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
         catridgeCode: noCatridge,
         sealCode: seal,
         catridgeSeal: sealCat,
-        denomCode: denomCode,
+        denomCode: denomCodeForSubmit,
         qty: _prepareData!.isEmpty ? '0' : '1',
         userInput: userInput,
         sealReturn: sealReturn,
@@ -5048,6 +5136,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
     
     final idText = _idCRFController.text.trim();
     if (idText.isEmpty) {
+      _clearPrepareDependentState();
       _showErrorDialog('ID CRF tidak boleh kosong');
       return;
     }
@@ -5057,6 +5146,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
     try {
       id = int.parse(idText);
     } catch (e) {
+      _clearPrepareDependentState();
       _showErrorDialog('ID CRF harus berupa angka');
       return;
     }
@@ -5087,9 +5177,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       if (!mounted) return;
 
       if (!response.success || response.data == null) {
-        setState(() {
-          _isLoading = false;
-        });
+        _clearPrepareDependentState();
         String message = response.message.trim();
         if (message.isEmpty) {
           message = 'Gagal mengambil data';
@@ -5112,9 +5200,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
 
       final dataBranchCode = response.data!.branchCode;
       if (dataBranchCode.isNotEmpty && _isBranchCodeMismatch(loginBranchCode, dataBranchCode)) {
-        setState(() {
-          _isLoading = false;
-        });
+        _clearPrepareDependentState();
         await CustomModals.showFailedModal(
           context: context,
           message: _branchMismatchMessage,
@@ -5202,6 +5288,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     // Get screen size for responsive layout
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
@@ -5817,33 +5904,36 @@ class _PrepareModePageState extends State<PrepareModePage> {
     bool isSmallScreen
   ) {
     // Get tipeDenom from API data if available (fallback only)
+    final bool hasValidPrepare = _prepareData != null && _isIdCRFValid();
     String? tipeDenom = _prepareData?.tipeDenom;
     final String? jnsMesin = _prepareData?.jnsMesin;
     final bool isCrmOrCdm = jnsMesin != null &&
         (jnsMesin.toUpperCase() == 'CRM' || jnsMesin.toUpperCase() == 'CDM');
     final String mesinText = jnsMesin ?? '';
     
-    final int denomFromApi = _getDenomCassForSection(index);
-    final int qtyFromApi = _getJmlCassForSection(index);
+    final int denomFromApi = hasValidPrepare ? _getDenomCassForSection(index) : 0;
+    final int qtyFromApi = hasValidPrepare ? _getJmlCassForSection(index) : 0;
 
-    int denomAmount = denomFromApi;
-    if (denomAmount <= 0) {
+    int denomAmount = hasValidPrepare ? denomFromApi : 0;
+    if (hasValidPrepare && denomAmount <= 0) {
       denomAmount = _getDenomAmount();
     }
 
-    int actualValue = qtyFromApi;
-    if (actualValue <= 0) {
+    int actualValue = hasValidPrepare ? qtyFromApi : 0;
+    if (hasValidPrepare && actualValue <= 0) {
       actualValue = denomValue;
     }
 
-    String denomText = denomAmount > 0 ? _formatCurrency(denomAmount) : '—';
+    String denomText = (hasValidPrepare && denomAmount > 0)
+        ? _formatCurrency(denomAmount)
+        : '—';
 
     String formattedTotal = '—';
-    if (denomAmount > 0 && actualValue > 0) {
+    if (hasValidPrepare && denomAmount > 0 && actualValue > 0) {
       formattedTotal = _formatCurrency(denomAmount * actualValue);
     }
 
-    if (jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
+    if (hasValidPrepare && jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
       denomAmount = 0;
       actualValue = 0;
       denomText = 'Rp 0';
@@ -5859,10 +5949,10 @@ class _PrepareModePageState extends State<PrepareModePage> {
     } else {
       imageKey = tipeDenom;
     }
-    if (_prepareData != null && imageKey != null && imageKey.isNotEmpty) {
+    if (hasValidPrepare && imageKey != null && imageKey.isNotEmpty) {
       imagePath = 'assets/images/$imageKey.png';
     }
-    if (jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
+    if (hasValidPrepare && jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
       imagePath = null;
     }
     
@@ -6386,15 +6476,23 @@ class _PrepareModePageState extends State<PrepareModePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: isSmallScreen ? 80 : 100,
+            width: isSmallScreen ? 88 : 118,
             child: Text(
-              '$label :',
+              label,
               style: TextStyle(
                 fontSize: isSmallScreen ? 12 : 14,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ),
+          Text(
+            ':',
+            style: TextStyle(
+              fontSize: isSmallScreen ? 12 : 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(width: isSmallScreen ? 6 : 8),
           Expanded(
             child: Text(
               value,
@@ -6504,7 +6602,10 @@ class _PrepareModePageState extends State<PrepareModePage> {
                         ),
                       ),
                       const SizedBox(width: 20),
-                      if (!isError)
+                      if (!isError &&
+                          _prepareData != null &&
+                          _isIdCRFValid() &&
+                          item.denom.trim().isNotEmpty)
                         Flexible(
                           child: Text(
                             'Denom : ${item.denom}',
@@ -6579,9 +6680,9 @@ class _PrepareModePageState extends State<PrepareModePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: isSmallScreen ? 100 : 120,
+          width: isSmallScreen ? 102 : 132,
           child: Text(
-            '$label :',
+            label,
             style: TextStyle(
               fontSize: isSmallScreen ? 12 : 14,
               fontWeight: FontWeight.w500,
@@ -6589,6 +6690,15 @@ class _PrepareModePageState extends State<PrepareModePage> {
             ),
           ),
         ),
+        Text(
+          ':',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 12 : 14,
+            fontWeight: FontWeight.w500,
+            color: isError ? Colors.red.shade700 : null,
+          ),
+        ),
+        SizedBox(width: isSmallScreen ? 6 : 8),
         Expanded(
           child: Text(
             value,
@@ -7479,6 +7589,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
           ),
         ),
       );
+      _enforceLandscapeOrientation();
       
       // Handle result after scanner closes
       if (result != null && result.isNotEmpty) {
@@ -7779,6 +7890,7 @@ class _PrepareModePageState extends State<PrepareModePage> {
       print('Error opening barcode scanner: $e');
       debugPrint('Gagal membuka scanner: ${e.toString()}');
     } finally {
+      _enforceLandscapeOrientation();
       await Future.delayed(const Duration(milliseconds: 250));
       _isOpeningBarcodeScanner = false;
     }

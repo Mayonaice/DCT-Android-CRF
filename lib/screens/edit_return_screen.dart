@@ -115,14 +115,6 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     _a75Controller.dispose();
     _a100Controller.dispose();
     
-    // Reset orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    
     super.dispose();
   }
   

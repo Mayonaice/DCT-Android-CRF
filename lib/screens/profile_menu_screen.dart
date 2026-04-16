@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../widgets/custom_modals.dart';
@@ -11,7 +12,7 @@ class ProfileMenuScreen extends StatefulWidget {
   State<ProfileMenuScreen> createState() => _ProfileMenuScreenState();
 }
 
-class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
+class _ProfileMenuScreenState extends State<ProfileMenuScreen> with WidgetsBindingObserver {
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
   String _userName = '';
@@ -19,17 +20,54 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
   String _roleID = '';
   String _branchName = '';
   final String _employeeAddress = 'Jl. Kebangsaan Timur 12 No.98, Sawah Panjang,\nJakarta Pusat, DKI Jakarta';
+  bool _orientationEnforceScheduled = false;
+  Timer? _orientationLockTimer;
 
   @override
   void initState() {
     super.initState();
-    // Lock orientation to landscape
-    SystemChrome.setPreferredOrientations([
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
+    
+    _loadUserData();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    
-    _loadUserData();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -51,18 +89,14 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
 
   @override
   void dispose() {
-    // Reset orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
     

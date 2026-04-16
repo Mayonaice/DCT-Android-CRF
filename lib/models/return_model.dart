@@ -44,6 +44,7 @@ class ValidateAndGetReplenishData {
   final String lokasi;
   final String idTypeAtm;
   final String timeSTReturn;
+  final String dateReplenish;
   final List<CatridgeReplenishData> catridges;
 
   ValidateAndGetReplenishData({
@@ -58,6 +59,7 @@ class ValidateAndGetReplenishData {
     this.lokasi = '',
     this.idTypeAtm = '',
     this.timeSTReturn = '',
+    this.dateReplenish = '',
     required this.catridges,
   });
 
@@ -84,6 +86,7 @@ class ValidateAndGetReplenishData {
       lokasi: json['lokasi'] ?? '',
       idTypeAtm: json['idTypeAtm'] ?? '',
       timeSTReturn: json['timeSTReturn'] ?? '',
+      dateReplenish: json['dateReplenish'] ?? json['DateReplenish'] ?? '',
       catridges: catridgesList,
     );
   }

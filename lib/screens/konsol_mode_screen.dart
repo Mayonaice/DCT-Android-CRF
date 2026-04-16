@@ -208,12 +208,6 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
     _tableHorizontalScrollController.dispose();
     _detailHeaderScrollController.dispose();
     _detailBodyScrollController.dispose();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
 

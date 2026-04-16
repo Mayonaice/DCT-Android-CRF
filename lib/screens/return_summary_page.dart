@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../models/return_model.dart';
 import '../models/prepare_model.dart';
 import '../services/api_service.dart';
@@ -31,7 +32,7 @@ class ReturnSummaryPage extends StatefulWidget {
   State<ReturnSummaryPage> createState() => _ReturnSummaryPageState();
 }
 
-class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
+class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
@@ -41,13 +42,19 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
   String _userName = '';
   String _branchName = '';
   Map<String, dynamic>? _userData;
+  bool _orientationEnforceScheduled = false;
+  Timer? _orientationLockTimer;
+
+  static const List<String> _denominationLabels = [
+    '1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K'
+  ];
 
   Map<String, int> _calculateOverallTotals() {
     int totalLembar = 0;
     int totalNominal = 0;
 
     for (final cartridge in widget.cartridgeData) {
-      for (final denom in ['1K', '2K', '5K', '10K', '20K', '50K', '100K']) {
+      for (final denom in _denominationLabels) {
         final lembar = int.tryParse(cartridge['lembar_$denom'] ?? '0') ?? 0;
         final denomValue = _getDenomValue(denom);
         totalLembar += lembar;
@@ -68,13 +75,47 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
+    _loadUserData();
+  }
 
-    // Lock orientation to landscape
-    SystemChrome.setPreferredOrientations([
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    _loadUserData();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -94,16 +135,10 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     _tlNikController.dispose();
     _tlPasswordController.dispose();
-
-    // Reset orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
 
@@ -447,7 +482,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
-                    ...['1K', '2K', '5K', '10K', '20K', '50K', '100K'].where((denom) {
+                    ..._denominationLabels.where((denom) {
                       final lembar = int.tryParse(cartridge['lembar_$denom'] ?? '0') ?? 0;
                       return lembar > 0; // Only show denominations with input > 0
                     }).map((denom) {
@@ -807,12 +842,17 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
       child: Row(
         children: [
           SizedBox(
-            width: 80,
+            width: 118,
             child: Text(
-              '$label :',
+              label,
               style: const TextStyle(fontWeight: FontWeight.normal),
             ),
           ),
+          const Text(
+            ':',
+            style: TextStyle(fontWeight: FontWeight.normal),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(value),
           ),
@@ -830,6 +870,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
       case '10K': return 10000;
       case '20K': return 20000;
       case '50K': return 50000;
+      case '75K': return 75000;
       case '100K': return 100000;
       default: return 0;
     }
@@ -847,7 +888,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
     int totalLembar = 0;
     int totalNominal = 0;
 
-    for (String denom in ['1K', '2K', '5K', '10K', '20K', '50K', '100K']) {
+    for (String denom in _denominationLabels) {
       final lembar = int.tryParse(cartridge['lembar_$denom'] ?? '0') ?? 0;
       final denomValue = _getDenomValue(denom);
       totalLembar += lembar;
@@ -898,7 +939,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
 
     // Calculate totals from all cartridges
     for (var cartridge in widget.cartridgeData) {
-      for (String denom in ['1K', '2K', '5K', '10K', '20K', '50K', '100K']) {
+      for (String denom in _denominationLabels) {
         final lembar = int.tryParse(cartridge['lembar_$denom'] ?? '0') ?? 0;
         final denomValue = _getDenomValue(denom);
         totalLembar += lembar;
@@ -961,6 +1002,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final size = MediaQuery.of(context).size;
     final isTabletOrLandscapeMobile = size.width >= 600;
     final isTablet = isTabletOrLandscapeMobile;

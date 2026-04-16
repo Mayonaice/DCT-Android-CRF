@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:async';
 import '../services/auth_service.dart';
 import '../services/history_api_service.dart';
 import '../models/history_model.dart';
@@ -11,7 +13,7 @@ class LogActivityPage extends StatefulWidget {
 }
 
 class _LogActivityPageState extends State<LogActivityPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final AuthService _authService = AuthService();
   final HistoryApiService _historyApiService = HistoryApiService();
   
@@ -25,6 +27,8 @@ class _LogActivityPageState extends State<LogActivityPage>
   
   bool _isLoadingPrepare = false;
   bool _isLoadingReturn = false;
+  bool _orientationEnforceScheduled = false;
+  Timer? _orientationLockTimer;
   
   String _branchName = '';
   String _userName = '';
@@ -33,10 +37,50 @@ class _LogActivityPageState extends State<LogActivityPage>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
     _loadUserData();
     _loadHistoryData();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   void _onTabChanged() {
@@ -82,6 +126,8 @@ class _LogActivityPageState extends State<LogActivityPage>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -711,39 +757,40 @@ class _LogActivityPageState extends State<LogActivityPage>
   }
 
   Widget _buildDataRowInline(String label, String value) {
-    // Create padded label with consistent spacing
-    String paddedLabel = '';
-    if (label == 'Tanggal Return') {
-      paddedLabel = 'Tanggal Return     ';
-    } else if (label == 'Jam Mulai') {
-      paddedLabel = 'Jam Mulai     ';
-    } else if (label == 'Jam Selesai') {
-      paddedLabel = 'Jam Finish    ';
-    } else {
-      paddedLabel = '$label     ';
-    }
-    
-    return RichText(
-      text: TextSpan(
-        children: [
-          TextSpan(
-            text: '$paddedLabel: ',
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(
+            label,
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
-          TextSpan(
-            text: value,
+        ),
+        const Text(
+          ':',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            value,
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -799,6 +846,7 @@ class _LogActivityPageState extends State<LogActivityPage>
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: Column(
