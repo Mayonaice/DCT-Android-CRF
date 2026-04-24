@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
@@ -43,10 +44,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   Future<void> _enforceLandscapeOrientation() async {
     if (!mounted) return;
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    await OrientationLock.landscape();
   }
 
   @override
@@ -133,9 +131,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           _groupId = groupId;
         });
 
-        print('🎯 HOME: User role from getUserRole: $_userRole');
-        print('🎯 HOME: Available menus: $_availableMenus');
-        print('🎯 HOME: Group ID for API calls: $_groupId');
+        print('ðŸŽ¯ HOME: User role from getUserRole: $_userRole');
+        print('ðŸŽ¯ HOME: Available menus: $_availableMenus');
+        print('ðŸŽ¯ HOME: Group ID for API calls: $_groupId');
 
         // Load counts after user data is loaded
         _loadCounts();
@@ -153,7 +151,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   // NEW: Load counts from API endpoints
   Future<void> _loadCounts() async {
     if (_groupId == null) {
-      print('🚨 HOME: No groupId available, using default values');
+      print('ðŸš¨ HOME: No groupId available, using default values');
       setState(() {
         _isLoadingCounts = false;
       });
@@ -174,9 +172,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       });
 
       print(
-          '🎯 HOME: Loaded counts - Prepare: $_belumPrepareCount, Return: $_belumReturnCount');
+          'ðŸŽ¯ HOME: Loaded counts - Prepare: $_belumPrepareCount, Return: $_belumReturnCount');
     } catch (e) {
-      print('🚨 HOME: Error loading counts: $e');
+      print('ðŸš¨ HOME: Error loading counts: $e');
       setState(() {
         _isLoadingCounts = false;
       });
@@ -188,8 +186,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     try {
       final url =
           'https://dev.advantagescm.com/LocalCRF/api/CRF/belumprepare?branchCode=$branchCode';
-      print('🔍 HOME: Calling BelumPrepare API with URL: $url');
-      print('🔍 HOME: BranchCode parameter: $branchCode');
+      print('ðŸ” HOME: Calling BelumPrepare API with URL: $url');
+      print('ðŸ” HOME: BranchCode parameter: $branchCode');
 
       final response = await http.get(
         Uri.parse(url),
@@ -198,16 +196,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('🔍 HOME: BelumPrepare API Response: ${response.body}');
+        print('ðŸ” HOME: BelumPrepare API Response: ${response.body}');
         if (data['success'] == true && data['data'] != null) {
           return data['data']['belumPrepare'] ?? 0;
         }
       }
       print(
-          '🚨 HOME: Failed to get belum prepare count: ${response.statusCode}');
+          'ðŸš¨ HOME: Failed to get belum prepare count: ${response.statusCode}');
       return 0;
     } catch (e) {
-      print('🚨 HOME: Error getting belum prepare count: $e');
+      print('ðŸš¨ HOME: Error getting belum prepare count: $e');
       return 0;
     }
   }
@@ -217,8 +215,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     try {
       final url =
           'https://dev.advantagescm.com/LocalCRF/api/CRF/belumreturn?branchCode=$branchCode';
-      print('🔍 HOME: Calling BelumReturn API with URL: $url');
-      print('🔍 HOME: BranchCode parameter: $branchCode');
+      print('ðŸ” HOME: Calling BelumReturn API with URL: $url');
+      print('ðŸ” HOME: BranchCode parameter: $branchCode');
 
       final response = await http.get(
         Uri.parse(url),
@@ -227,16 +225,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('🔍 HOME: BelumReturn API Response: ${response.body}');
+        print('ðŸ” HOME: BelumReturn API Response: ${response.body}');
         if (data['success'] == true && data['data'] != null) {
           return data['data']['belumReturn'] ?? 0;
         }
       }
       print(
-          '🚨 HOME: Failed to get belum return count: ${response.statusCode}');
+          'ðŸš¨ HOME: Failed to get belum return count: ${response.statusCode}');
       return 0;
     } catch (e) {
-      print('🚨 HOME: Error getting belum return count: $e');
+      print('ðŸš¨ HOME: Error getting belum return count: $e');
       return 0;
     }
   }
@@ -247,6 +245,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     switch (_userRole!.toLowerCase()) {
       case 'crf_konsol':
+      case 'crf_kasir':
         return 'Dashboard Konsol CRF';
       case 'crf_tl':
         return 'Dashboard Team Leader';
@@ -262,6 +261,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     switch (_userRole!.toLowerCase()) {
       case 'crf_konsol':
+      case 'crf_kasir':
         return Colors.blue;
       case 'crf_tl':
         return Colors.orange;
@@ -338,6 +338,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     switch (_userRole!.toLowerCase()) {
       case 'crf_konsol':
+      case 'crf_kasir':
         return 'Menu Konsol :';
       case 'crf_tl':
         return 'Menu TL :';
@@ -355,6 +356,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     switch (_userRole!.toLowerCase()) {
       case 'crf_konsol':
+      case 'crf_kasir':
         // For CRF_KONSOL, add the device_info and settings_opr buttons
         if (_isMenuAvailable('device_info')) {
           roleSpecificMenus.add(_buildSmallMenuButton(
@@ -440,9 +442,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       // Reload all data from scratch as if opening for the first time
       await _loadUserData();
       
-      print('🔄 HOME: Complete refresh completed - page reset to initial state');
+      print('ðŸ”„ HOME: Complete refresh completed - page reset to initial state');
     } catch (e) {
-      print('🚨 HOME: Error during complete refresh: $e');
+      print('ðŸš¨ HOME: Error during complete refresh: $e');
     }
   }
 

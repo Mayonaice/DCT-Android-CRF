@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Add clipboard import
+import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart'; // Add clipboard import
 import 'package:intl/intl.dart'; // Add NumberFormat import
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -405,11 +406,11 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     // DEBUG: Print current token to verify it's correctly stored
     try {
       final token = await _authService.getToken();
-      debugPrint('🔴 DEBUG: Current token before fetch: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
+      debugPrint('ðŸ”´ DEBUG: Current token before fetch: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
       
       // If token is null, try to log the user out and redirect to login page
       if (token == null || token.isEmpty) {
-        debugPrint('🔴 DEBUG: Token is null or empty, forcing logout');
+        debugPrint('ðŸ”´ DEBUG: Token is null or empty, forcing logout');
         
         setState(() {
           _isLoading = false;
@@ -431,10 +432,10 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       }
       
       // Validate token before proceeding
-      debugPrint('🔴 DEBUG: Validating token before fetch...');
+      debugPrint('ðŸ”´ DEBUG: Validating token before fetch...');
       final isTokenValid = await _apiService.checkTokenValidity();
       if (!isTokenValid) {
-        debugPrint('🔴 DEBUG: Token validation failed, forcing logout');
+        debugPrint('ðŸ”´ DEBUG: Token validation failed, forcing logout');
         
         setState(() {
           _isLoading = false;
@@ -455,9 +456,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         return;
       }
       
-      debugPrint('🔴 DEBUG: Token validation successful, proceeding with fetch');
+      debugPrint('ðŸ”´ DEBUG: Token validation successful, proceeding with fetch');
     } catch (e) {
-      debugPrint('🔴 DEBUG: Error getting token: $e');
+      debugPrint('ðŸ”´ DEBUG: Error getting token: $e');
     }
     
     final idCrf = _idCRFController.text.trim();
@@ -548,7 +549,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
             fieldKey: 'idTool',
             fieldLabel: 'ID Tool',
             onBarcodeDetected: (String barcode) {
-              print('🎯 ID TOOL SCANNER CALLBACK: $barcode');
+              print('ðŸŽ¯ ID TOOL SCANNER CALLBACK: $barcode');
             },
           ),
         ),
@@ -557,7 +558,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       
       // Handle the scanned result directly
       if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
-        print('🎯 ID TOOL SCANNER RESULT: $scannedBarcode');
+        print('ðŸŽ¯ ID TOOL SCANNER RESULT: $scannedBarcode');
         
         // Update the ID Tool field with scanned value
         setState(() {
@@ -567,9 +568,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         // Fetch data based on scanned ID Tool
         _fetchDataByIdTool(scannedBarcode);
         
-        print('🎯 ID TOOL FIELD UPDATED: $scannedBarcode');
+        print('ðŸŽ¯ ID TOOL FIELD UPDATED: $scannedBarcode');
       } else {
-        print('🎯 ID TOOL SCANNER CANCELLED: No barcode scanned');
+        print('ðŸŽ¯ ID TOOL SCANNER CANCELLED: No barcode scanned');
       }
       
     } catch (e) {
@@ -1134,10 +1135,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
 
   Future<void> _enforceLandscapeOrientation() async {
     if (!mounted) return;
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    await OrientationLock.landscape();
   }
 
   @override
@@ -1801,7 +1799,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
             sectionId: null, // ID Tool doesn't belong to a specific section
             onBarcodeDetected: (String barcode) {
               // This will be handled by stream, but we still need the callback
-              print('🎯 ID Tool callback: $barcode');
+              print('ðŸŽ¯ ID Tool callback: $barcode');
             },
           ),
         ),
@@ -1815,7 +1813,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       }
       
       String barcode = result;
-      print('🎯 ID Tool scanned via navigation: $barcode');
+      print('ðŸŽ¯ ID Tool scanned via navigation: $barcode');
       
       setState(() {
         _idToolController.text = barcode;
@@ -2743,17 +2741,17 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
 
   // NEW: Method to handle barcode results from stream
   void _handleStreamBarcodeResult(String fieldKey, String barcode, String label) async {
-    print('🎯 CARTRIDGE [${widget.sectionId}]: Handling stream result for $fieldKey: $barcode');
-    print('🎯 CARTRIDGE [${widget.sectionId}]: Current scannedFields state: $scannedFields');
+    print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Handling stream result for $fieldKey: $barcode');
+    print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Current scannedFields state: $scannedFields');
     
     // Get the appropriate controller
     TextEditingController? controller = _getControllerForFieldKey(fieldKey);
     if (controller == null) {
-      print('❌ CARTRIDGE [${widget.sectionId}]: No controller found for field: $fieldKey');
+      print('âŒ CARTRIDGE [${widget.sectionId}]: No controller found for field: $fieldKey');
       return;
     }
     
-    print('🎯 CARTRIDGE [${widget.sectionId}]: Controller current value: "${controller.text}"');
+    print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Controller current value: "${controller.text}"');
     
     // Validate barcode if field already has content
     if (controller.text.isNotEmpty && controller.text != barcode) {
@@ -2764,13 +2762,13 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     // Update the field if it's empty
     if (controller.text.isEmpty) {
       controller.text = barcode;
-      print('🎯 CARTRIDGE [${widget.sectionId}]: Field updated with barcode: $barcode');
+      print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Field updated with barcode: $barcode');
     }
     
     // CRITICAL: Only one setState call with all updates
     if (mounted) {
       setState(() {
-        print('🎯 CARTRIDGE [${widget.sectionId}]: SETTING scannedFields[$fieldKey] = true');
+        print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: SETTING scannedFields[$fieldKey] = true');
         scannedFields[fieldKey] = true;
         
         // Update validation flags
@@ -2798,7 +2796,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           sealCodeReturnError = '';
         }
         
-        print('✅ CARTRIDGE [${widget.sectionId}]: $fieldKey validated with checkmark - scannedFields[$fieldKey] = ${scannedFields[fieldKey]}');
+        print('âœ… CARTRIDGE [${widget.sectionId}]: $fieldKey validated with checkmark - scannedFields[$fieldKey] = ${scannedFields[fieldKey]}');
       });
       
       // Force rebuild untuk memastikan checkmark muncul
@@ -3746,14 +3744,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   }
 
   void _loadReturnData() {
-    print('📊 _loadReturnData() called');
+    print('ðŸ“Š _loadReturnData() called');
     if (widget.returnData != null) {
-      print('📊 Loading return data...');
+      print('ðŸ“Š Loading return data...');
       setState(() {
         _isValidating = true;
       });
       
-      print('📊 Setting controller values...');
+      print('ðŸ“Š Setting controller values...');
       noCatridgeController.text = widget.returnData!.catridgeCode;
       noSealController.text = widget.returnData!.catridgeSeal;
       _resolvedDenomCode = _normalizeDenomCode(widget.returnData!.denomCode);
@@ -3761,9 +3759,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       // FIXED: Only clear catridgeFisik field if it's empty - preserve user input
       if (catridgeFisikController.text.isEmpty) {
         catridgeFisikController.text = '';
-        print('📊 catridgeFisik field was empty, keeping it empty');
+        print('ðŸ“Š catridgeFisik field was empty, keeping it empty');
       } else {
-        print('📊 catridgeFisik field has content, preserving: "${catridgeFisikController.text}"');
+        print('ðŸ“Š catridgeFisik field has content, preserving: "${catridgeFisikController.text}"');
       }
       
       // If bagCode is available, use it and set dropdown selection
@@ -3778,7 +3776,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         selectedSealCode = widget.returnData!.sealCodeReturn!.trim();
       }
       
-      print('📊 Controller values set: noCatridge="${noCatridgeController.text}", noSeal="${noSealController.text}", bagCode="${bagCodeController.text}", sealCode="${sealCodeReturnController.text}"');
+      print('ðŸ“Š Controller values set: noCatridge="${noCatridgeController.text}", noSeal="${noSealController.text}", bagCode="${bagCodeController.text}", sealCode="${sealCodeReturnController.text}"');
       _resolveDenomCode();
       
       // Reset validation state for pre-filled fields
@@ -3788,20 +3786,20 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       isBagCodeValid = bagCodeController.text.isNotEmpty;
       isSealCodeReturnValid = sealCodeReturnController.text.isNotEmpty;
       
-      print('📊 Validation flags set: isNoCatridgeValid=$isNoCatridgeValid, isNoSealValid=$isNoSealValid, isCatridgeFisikValid=$isCatridgeFisikValid, isBagCodeValid=$isBagCodeValid, isSealCodeReturnValid=$isSealCodeReturnValid');
+      print('ðŸ“Š Validation flags set: isNoCatridgeValid=$isNoCatridgeValid, isNoSealValid=$isNoSealValid, isCatridgeFisikValid=$isCatridgeFisikValid, isBagCodeValid=$isBagCodeValid, isSealCodeReturnValid=$isSealCodeReturnValid');
       
       // IMPORTANT: Reset all scanned fields flags because user needs to validate by scanning
       // BUT preserve catridgeFisik scan state if field has content
-      print('📊 BEFORE RESET: scannedFields = $scannedFields');
+      print('ðŸ“Š BEFORE RESET: scannedFields = $scannedFields');
       scannedFields.forEach((key, value) {
         if (key == 'catridgeFisik' && catridgeFisikController.text.isNotEmpty) {
           // Preserve catridgeFisik scan state if field has content
-          print('📊 Preserving catridgeFisik scan state: ${scannedFields[key]}');
+          print('ðŸ“Š Preserving catridgeFisik scan state: ${scannedFields[key]}');
         } else {
           scannedFields[key] = false;
         }
       });
-      print('📊 AFTER RESET: scannedFields = $scannedFields');
+      print('ðŸ“Š AFTER RESET: scannedFields = $scannedFields');
       
       print('Scan states reset after loading data:');
       print('Scanned fields: $scannedFields');
@@ -3811,9 +3809,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         _isValidating = false;
       });
       
-      print('📊 _loadReturnData() completed');
+      print('ðŸ“Š _loadReturnData() completed');
     } else {
-      print('📊 No return data to load');
+      print('ðŸ“Š No return data to load');
       setState(() {
         noCatridgeController.clear();
         noSealController.clear();
@@ -3897,7 +3895,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   // NEW: Streamlined barcode scanner for validation using direct callback approach
   Future<void> _openBarcodeScanner(String label, TextEditingController controller, String fieldKey) async {
     try {
-      print('🎯 OPENING SCANNER: $label for field $fieldKey in section $sectionId');
+      print('ðŸŽ¯ OPENING SCANNER: $label for field $fieldKey in section $sectionId');
       
       // Clean field label for display
       String cleanLabel = label.replaceAll(':', '').trim();
@@ -3916,7 +3914,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               final normalized = barcode.trim();
               if (normalized.isEmpty) return;
               scannedFromCallback = normalized;
-              print('🎯 SCANNER CALLBACK: $normalized for $fieldKey in section $sectionId');
+              print('ðŸŽ¯ SCANNER CALLBACK: $normalized for $fieldKey in section $sectionId');
 
               if (!mounted) return;
               setState(() {
@@ -3944,7 +3942,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           (scannedBarcode ?? scannedFromCallback ?? '').trim();
 
       if (effectiveScanned.isNotEmpty) {
-        print('🎯 SCANNER RESULT: $effectiveScanned for $fieldKey in section $sectionId');
+        print('ðŸŽ¯ SCANNER RESULT: $effectiveScanned for $fieldKey in section $sectionId');
         
         // Update the controller with scanned value
         setState(() {
@@ -3953,14 +3951,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           
           // IMPORTANT: Mark field as scanned
           scannedFields[fieldKey] = true;
-          print('🎯 SCANNER [${sectionId}]: SETTING scannedFields[$fieldKey] = true for scanned value: $effectiveScanned');
+          print('ðŸŽ¯ SCANNER [${sectionId}]: SETTING scannedFields[$fieldKey] = true for scanned value: $effectiveScanned');
           
           // Reset manual mode for Catridge Fisik when scanned (like prepare_mode)
           if (fieldKey == 'catridgeFisik') {
             _catridgeFisikManualMode = false;
             _catridgeFisikAlasanController.clear();
             _catridgeFisikRemarkController.clear();
-            print('🔄 RESET: Catridge Fisik manual mode reset after scan');
+            print('ðŸ”„ RESET: Catridge Fisik manual mode reset after scan');
           }
           _isApplyingScannerValue = false;
         });
@@ -3972,9 +3970,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           });
         }
         
-        print('🎯 FIELD UPDATED: $fieldKey = $effectiveScanned');
+        print('ðŸŽ¯ FIELD UPDATED: $fieldKey = $effectiveScanned');
       } else {
-        print('🎯 SCANNER CANCELLED: No barcode scanned for $fieldKey');
+        print('ðŸŽ¯ SCANNER CANCELLED: No barcode scanned for $fieldKey');
       }
       
     } catch (e) {
@@ -4096,7 +4094,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           // IMPORTANT: Mark bagCode as scanned when selected from dropdown
                           if (value != null && value.isNotEmpty) {
                             scannedFields['bagCode'] = true;
-                            print('🎯 DROPDOWN [${sectionId}]: SETTING scannedFields[bagCode] = true for value: $value');
+                            print('ðŸŽ¯ DROPDOWN [${sectionId}]: SETTING scannedFields[bagCode] = true for value: $value');
                           }
                         });
                         _validateBagCode();
@@ -4119,7 +4117,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           // IMPORTANT: Mark sealCode as scanned when selected from dropdown
                           if (value != null && value.isNotEmpty) {
                             scannedFields['sealCode'] = true;
-                            print('🎯 DROPDOWN [${sectionId}]: SETTING scannedFields[sealCode] = true for value: $value');
+                            print('ðŸŽ¯ DROPDOWN [${sectionId}]: SETTING scannedFields[sealCode] = true for value: $value');
                           }
                         });
                         _validateSealCodeReturn();
@@ -4699,7 +4697,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   void _simulateSuccessfulScan(String fieldKey, String label) async {
     if (mounted) {
       setState(() {
-        print('🧪 [$sectionId] SIMULATING scan validation for $fieldKey');
+        print('ðŸ§ª [$sectionId] SIMULATING scan validation for $fieldKey');
         scannedFields[fieldKey] = true;
         
         // Set field-specific validation flags

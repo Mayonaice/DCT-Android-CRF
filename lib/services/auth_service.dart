@@ -799,6 +799,7 @@ class AuthService {
       
       switch (userRole.toUpperCase()) {
         case 'CRF_KONSOL':
+        case 'CRF_KASIR':
           return [
             'prepare_mode',
             'return_mode',

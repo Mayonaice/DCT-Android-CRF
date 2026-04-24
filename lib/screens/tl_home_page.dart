@@ -12,6 +12,7 @@ import '../widgets/tl_header_widget.dart';
 import '../screens/tl_approval_summary_screen.dart';
 import '../screens/tl_prepare_confirmation_page.dart';
 import '../screens/tl_return_confirmation_page.dart';
+import '../utils/orientation_lock.dart';
 import 'dart:math' as math;
 
 class TLHomePage extends StatefulWidget {
@@ -84,12 +85,7 @@ class _TLHomePageState extends State<TLHomePage> {
   @override
   void initState() {
     super.initState();
-    // Force portrait orientation for CRF_TL
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    print('DEBUG: TLHomePage initialized - portrait mode enforced');
+    OrientationLock.portrait();
     _loadUserData();
   }
 
@@ -741,11 +737,7 @@ class _TLHomePageState extends State<TLHomePage> {
 
   // Open QR scanner directly without intermediate screen
   Future<void> _openQRScanner() async {
-    // Set to portrait mode before scanning
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    await OrientationLock.portrait();
     
     // Use the QR scanner widget directly
     final String? qrResult = await Navigator.push<String>(
@@ -762,11 +754,7 @@ class _TLHomePageState extends State<TLHomePage> {
       ),
     );
     
-    // Reset orientation to portrait for this screen
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    await OrientationLock.portrait();
     
     // Process QR result if available
     if (qrResult != null && qrResult.isNotEmpty) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/konsol_api_service.dart';
@@ -15,7 +17,7 @@ class KonsolModePage extends StatefulWidget {
   State<KonsolModePage> createState() => _KonsolModePageState();
 }
 
-class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
+class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, WidgetsBindingObserver {
   int selectedTabIndex = 0;
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
@@ -40,14 +42,15 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
   final ScrollController _detailHeaderScrollController = ScrollController();
   final ScrollController _detailBodyScrollController = ScrollController();
   bool _isSyncingDetailScroll = false;
+  Timer? _orientationLockTimer;
+  bool _orientationEnforceScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
 
     _detailHeaderScrollController.addListener(() {
       if (_isSyncingDetailScroll) return;
@@ -70,6 +73,40 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
     });
 
     _loadUserData();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await OrientationLock.landscape();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   // Load user data from login
@@ -205,6 +242,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     _tableHorizontalScrollController.dispose();
     _detailHeaderScrollController.dispose();
     _detailBodyScrollController.dispose();
@@ -213,6 +252,7 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin {
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;

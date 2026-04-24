@@ -1,6 +1,8 @@
 import 'dart:ui' as ui;
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/konsol_api_service.dart';
@@ -18,7 +20,7 @@ class KonsolDataPenguranganPage extends StatefulWidget {
   State<KonsolDataPenguranganPage> createState() => _KonsolDataPenguranganPageState();
 }
 
-class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> with AutoLogoutMixin {
+class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> with AutoLogoutMixin, WidgetsBindingObserver {
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
   String searchQuery = '';
@@ -34,15 +36,50 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
   List<PenguranganData> _penguranganDataList = [];
   bool _isLoading = false;
   String _errorMessage = '';
+  Timer? _orientationLockTimer;
+  bool _orientationEnforceScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     _loadUserData();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await OrientationLock.landscape();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   // Load user data from login
@@ -171,6 +208,8 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     super.dispose();
   }
   
@@ -199,6 +238,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;

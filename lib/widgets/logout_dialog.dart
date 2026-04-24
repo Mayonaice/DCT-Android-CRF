@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../screens/login_page.dart';
+import '../utils/orientation_lock.dart';
 
 class LogoutDialog {
   static void showLogoutConfirmation(BuildContext context) {
@@ -160,11 +161,7 @@ class LogoutDialog {
         Navigator.pop(context);
       }
       
-      // Reset orientation to portrait for login screen
-      await SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
+      await OrientationLock.landscape();
       
       // Navigate to login page
       if (context.mounted) {

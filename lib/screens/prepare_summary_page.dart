@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
 import 'dart:async';
 
 import '../models/prepare_model.dart';
@@ -52,8 +53,8 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
     WidgetsBinding.instance.addObserver(this);
     _enforceLandscapeOrientation();
     _startOrientationLockWatchdog();
-    debugPrint('🚀 [PREPARE_SUMMARY] InitState called');
-    debugPrint('🔧 [PREPARE_SUMMARY] Environment Info:');
+    debugPrint('ðŸš€ [PREPARE_SUMMARY] InitState called');
+    debugPrint('ðŸ”§ [PREPARE_SUMMARY] Environment Info:');
     debugPrint('   - Debug mode: ${kDebugMode}');
     debugPrint('   - Platform: ${defaultTargetPlatform.name}');
     debugPrint('   - Timestamp: ${DateTime.now().toIso8601String()}');
@@ -61,22 +62,19 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
 
 
     
-    debugPrint('📊 [PREPARE_SUMMARY] Widget data received:');
+    debugPrint('ðŸ“Š [PREPARE_SUMMARY] Widget data received:');
     debugPrint('   - Prepare data: ${widget.prepareData != null ? "Available" : "Null"}');
     debugPrint('   - Catridge items: ${widget.catridgeData.length}');
     debugPrint('   - Divert items: ${widget.divertData.length}');
     debugPrint('   - Pocket data: ${widget.pocketData != null ? "Available" : "Null"}');
     
-    debugPrint('✅ [PREPARE_SUMMARY] Services initialized');
+    debugPrint('âœ… [PREPARE_SUMMARY] Services initialized');
     _loadUserData();
   }
 
   Future<void> _enforceLandscapeOrientation() async {
     if (!mounted) return;
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    await OrientationLock.landscape();
   }
 
   @override
@@ -110,10 +108,10 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
 
   Future<void> _loadUserData() async {
     try {
-      debugPrint('📱 [LOAD_USER_DATA] Starting user data loading...');
+      debugPrint('ðŸ“± [LOAD_USER_DATA] Starting user data loading...');
       final userData = await _authService.getUserData();
       
-      debugPrint('👤 [LOAD_USER_DATA] User data loaded:');
+      debugPrint('ðŸ‘¤ [LOAD_USER_DATA] User data loaded:');
       debugPrint('   - Raw data keys: ${userData?.keys.toList()}');
       debugPrint('   - userName field: ${userData?['userName']}');
       debugPrint('   - username field: ${userData?['username']}');
@@ -133,37 +131,37 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
           _branchName = branchName;
         });
         
-        debugPrint('✅ [LOAD_USER_DATA] User data loaded successfully, UI updated');
+        debugPrint('âœ… [LOAD_USER_DATA] User data loaded successfully, UI updated');
       } else {
-        debugPrint('⚠️ [LOAD_USER_DATA] User data is null');
+        debugPrint('âš ï¸ [LOAD_USER_DATA] User data is null');
       }
     } catch (e) {
-      debugPrint('❌ [LOAD_USER_DATA] Error loading user data: ${e.toString()}');
+      debugPrint('âŒ [LOAD_USER_DATA] Error loading user data: ${e.toString()}');
       print('Error loading user data: $e');
     }
   }
 
   Future<void> _fetchSummaryData() async {
-    debugPrint('🔄 [FETCH_SUMMARY] Refreshing summary data...');
+    debugPrint('ðŸ”„ [FETCH_SUMMARY] Refreshing summary data...');
     // Refresh summary data if needed
     await _loadUserData();
     // Add any additional data refresh logic here
-    debugPrint('✅ [FETCH_SUMMARY] Summary data refresh completed');
+    debugPrint('âœ… [FETCH_SUMMARY] Summary data refresh completed');
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _orientationLockTimer?.cancel();
-    debugPrint('🗑️ [DISPOSE] Disposing PrepareSummaryPage resources');
+    debugPrint('ðŸ—‘ï¸ [DISPOSE] Disposing PrepareSummaryPage resources');
     _tlNikController.dispose();
     _tlPasswordController.dispose();
-    debugPrint('✅ [DISPOSE] Controllers disposed successfully');
+    debugPrint('âœ… [DISPOSE] Controllers disposed successfully');
     super.dispose();
   }
 
   List<PrepareCatridgeQRData> _prepareCatridgeQRData() {
-    debugPrint('🔧 [QR_DATA] Preparing catridge QR data for PREPARE...');
+    debugPrint('ðŸ”§ [QR_DATA] Preparing catridge QR data for PREPARE...');
     List<PrepareCatridgeQRData> qrDataList = [];
     
     for (var catridge in widget.catridgeData) {
@@ -191,12 +189,12 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       debugPrint('   - Added catridge: ${catridge.noCatridge}');
     }
     
-    debugPrint('✅ [QR_DATA] Prepared ${qrDataList.length} catridge QR data items for PREPARE');
+    debugPrint('âœ… [QR_DATA] Prepared ${qrDataList.length} catridge QR data items for PREPARE');
     return qrDataList;
   }
 
   PrepareDetailsQRData _prepareDetailsQRData() {
-    debugPrint('🔧 [QR_DETAILS] Preparing details QR data for PREPARE...');
+    debugPrint('ðŸ”§ [QR_DETAILS] Preparing details QR data for PREPARE...');
     
     final details = PrepareDetailsQRData(
       wsid: widget.prepareData?.atmCode ?? '',
@@ -206,40 +204,40 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       jumlahKaset: widget.prepareData?.jmlKaset?.toString() ?? '0',
     );
     
-    debugPrint('✅ [QR_DETAILS] Prepared details: WSID=${details.wsid}, Bank=${details.bank}, Lokasi=${details.lokasi}');
+    debugPrint('âœ… [QR_DETAILS] Prepared details: WSID=${details.wsid}, Bank=${details.bank}, Lokasi=${details.lokasi}');
     return details;
   }
 
   Future<void> _validateTLAndSubmit() async {
-    debugPrint('🔘 [VALIDATE_TL] Submit button pressed!');
-    debugPrint('📝 [VALIDATE_TL] Checking TL credentials...');
+    debugPrint('ðŸ”˜ [VALIDATE_TL] Submit button pressed!');
+    debugPrint('ðŸ“ [VALIDATE_TL] Checking TL credentials...');
     debugPrint('   - NIK length: ${_tlNikController.text.length}');
     debugPrint('   - Password length: ${_tlPasswordController.text.length}');
     
     if (_tlNikController.text.isEmpty || _tlPasswordController.text.isEmpty) {
-      debugPrint('❌ [VALIDATE_TL] Validation failed: Empty NIK or Password');
+      debugPrint('âŒ [VALIDATE_TL] Validation failed: Empty NIK or Password');
       await _showErrorDialog('NIK dan Password TL harus diisi');
       return;
     }
     
-    debugPrint('🔄 [VALIDATE_TL] Setting submitting state to true');
-    debugPrint('📊 [STATE_MANAGEMENT] Current widget state before update:');
+    debugPrint('ðŸ”„ [VALIDATE_TL] Setting submitting state to true');
+    debugPrint('ðŸ“Š [STATE_MANAGEMENT] Current widget state before update:');
     debugPrint('   - _isSubmitting: $_isSubmitting');
     debugPrint('   - _userName: $_userName');
     debugPrint('   - _branchName: $_branchName');
     debugPrint('   - _userData keys: ${_userData?.keys.toList()}');
     
     setState(() { _isSubmitting = true; });
-    debugPrint('📊 [STATE_MANAGEMENT] State after update: _isSubmitting = $_isSubmitting');
+    debugPrint('ðŸ“Š [STATE_MANAGEMENT] State after update: _isSubmitting = $_isSubmitting');
     
     try {
       // Validate TL credentials
-      debugPrint('🔐 [VALIDATE_TL] Calling validateTLSupervisor API...');
-      debugPrint('🌐 [VALIDATE_TL_API] Endpoint: POST /validateTLSupervisor');
-      debugPrint('📤 [VALIDATE_TL_API] Request Parameters:');
+      debugPrint('ðŸ” [VALIDATE_TL] Calling validateTLSupervisor API...');
+      debugPrint('ðŸŒ [VALIDATE_TL_API] Endpoint: POST /validateTLSupervisor');
+      debugPrint('ðŸ“¤ [VALIDATE_TL_API] Request Parameters:');
       debugPrint('   - nik: ${_tlNikController.text}');
       debugPrint('   - password: [HIDDEN]');
-      debugPrint('⏰ [VALIDATE_TL_API] Request timestamp: ${DateTime.now().toIso8601String()}');
+      debugPrint('â° [VALIDATE_TL_API] Request timestamp: ${DateTime.now().toIso8601String()}');
       
       final startTime = DateTime.now();
       final tlResponse = await _apiService.validateTLSupervisor(
@@ -249,47 +247,47 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime);
       
-      debugPrint('📥 [VALIDATE_TL_API] Response:');
+      debugPrint('ðŸ“¥ [VALIDATE_TL_API] Response:');
       debugPrint('   - success: ${tlResponse.success}');
       debugPrint('   - message: ${tlResponse.message}');
-      debugPrint('⏰ [VALIDATE_TL_API] Response timestamp: ${endTime.toIso8601String()}');
-      debugPrint('⏱️ [VALIDATE_TL_API] Duration: ${duration.inMilliseconds}ms');
+      debugPrint('â° [VALIDATE_TL_API] Response timestamp: ${endTime.toIso8601String()}');
+      debugPrint('â±ï¸ [VALIDATE_TL_API] Duration: ${duration.inMilliseconds}ms');
       
       if (tlResponse.success) {
-        debugPrint('✅ [VALIDATE_TL] TL validation successful, proceeding to submit data');
+        debugPrint('âœ… [VALIDATE_TL] TL validation successful, proceeding to submit data');
         // Submit prepare data
         await _submitPrepareData();
       } else {
-        debugPrint('❌ [VALIDATE_TL] TL validation failed: ${tlResponse.message}');
+        debugPrint('âŒ [VALIDATE_TL] TL validation failed: ${tlResponse.message}');
         await _showErrorDialog(tlResponse.message ?? 'Validasi TL gagal');
       }
     } catch (e) {
-      debugPrint('💥 [VALIDATE_TL] Exception during TL validation: ${e.toString()}');
-      debugPrint('📍 [VALIDATE_TL] Stack trace: ${StackTrace.current}');
+      debugPrint('ðŸ’¥ [VALIDATE_TL] Exception during TL validation: ${e.toString()}');
+      debugPrint('ðŸ“ [VALIDATE_TL] Stack trace: ${StackTrace.current}');
       await _showErrorDialog('Error validasi TL: ${e.toString()}');
     } finally {
-      debugPrint('🔄 [VALIDATE_TL] Setting submitting state to false');
-      debugPrint('📊 [STATE_MANAGEMENT] Resetting state: _isSubmitting from $_isSubmitting to false');
+      debugPrint('ðŸ”„ [VALIDATE_TL] Setting submitting state to false');
+      debugPrint('ðŸ“Š [STATE_MANAGEMENT] Resetting state: _isSubmitting from $_isSubmitting to false');
       setState(() { _isSubmitting = false; });
-      debugPrint('✅ [STATE_MANAGEMENT] State reset completed: _isSubmitting = $_isSubmitting');
+      debugPrint('âœ… [STATE_MANAGEMENT] State reset completed: _isSubmitting = $_isSubmitting');
     }
   }
 
   Future<void> _submitPrepareData() async {
     final processStartTime = DateTime.now();
     try {
-      debugPrint('🚀 [PREPARE_SUMMARY] Starting submit prepare data process');
-      debugPrint('⏰ [PREPARE_SUMMARY] Process start time: ${processStartTime.toIso8601String()}');
-      debugPrint('🌐 [PREPARE_SUMMARY] Network check: Attempting connectivity verification...');
-      debugPrint('📱 [PREPARE_SUMMARY] Device info: Platform ${defaultTargetPlatform.name}, Debug: ${kDebugMode}');
+      debugPrint('ðŸš€ [PREPARE_SUMMARY] Starting submit prepare data process');
+      debugPrint('â° [PREPARE_SUMMARY] Process start time: ${processStartTime.toIso8601String()}');
+      debugPrint('ðŸŒ [PREPARE_SUMMARY] Network check: Attempting connectivity verification...');
+      debugPrint('ðŸ“± [PREPARE_SUMMARY] Device info: Platform ${defaultTargetPlatform.name}, Debug: ${kDebugMode}');
       
       // Get user data
-      debugPrint('📱 [PREPARE_SUMMARY] Getting user data from AuthService...');
+      debugPrint('ðŸ“± [PREPARE_SUMMARY] Getting user data from AuthService...');
       final userData = await _authService.getUserData();
       final userId = userData?['userId']?.toString() ?? userData?['userID']?.toString() ?? '';
       final userName = userData?['userName']?.toString() ?? userData?['username']?.toString() ?? '';
       
-      debugPrint('👤 [PREPARE_SUMMARY] User Data Retrieved:');
+      debugPrint('ðŸ‘¤ [PREPARE_SUMMARY] User Data Retrieved:');
       debugPrint('   - userId: $userId');
       debugPrint('   - userName: $userName');
       debugPrint('   - Full userData keys: ${userData?.keys.toList()}');
@@ -306,20 +304,20 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
 
       final tableCode = widget.prepareData?.tableCode ?? '';
       
-      debugPrint('📋 [PREPARE_SUMMARY] Prepare Data Info:');
+      debugPrint('ðŸ“‹ [PREPARE_SUMMARY] Prepare Data Info:');
       debugPrint('   - planningId: $planningId');
       debugPrint('   - atmCode: $atmCode');
       debugPrint('   - cashierCode: $cashierCode');
       debugPrint('   - tableCode: $tableCode');
       
       // Debug data counts and details
-      debugPrint('📊 [PREPARE_SUMMARY] Data Counts:');
+      debugPrint('ðŸ“Š [PREPARE_SUMMARY] Data Counts:');
       debugPrint('   - Catridge items: ${widget.catridgeData.length}');
       debugPrint('   - Divert items: ${widget.divertData.length}');
       debugPrint('   - Pocket data: ${widget.pocketData != null ? "Available" : "None"}');
       
       // Debug detailed catridge data
-      debugPrint('💰 [PREPARE_SUMMARY] Catridge Data Details:');
+      debugPrint('ðŸ’° [PREPARE_SUMMARY] Catridge Data Details:');
       for (int i = 0; i < widget.catridgeData.length; i++) {
         final item = widget.catridgeData[i];
         debugPrint('   Catridge ${i + 1}:');
@@ -334,7 +332,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       }
       
       // Debug detailed divert data
-      debugPrint('🔄 [PREPARE_SUMMARY] Divert Data Details:');
+      debugPrint('ðŸ”„ [PREPARE_SUMMARY] Divert Data Details:');
       for (int i = 0; i < widget.divertData.length; i++) {
         final item = widget.divertData[i];
         debugPrint('   Divert ${i + 1}:');
@@ -349,7 +347,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       
       // Debug pocket data
       if (widget.pocketData != null) {
-        debugPrint('👝 [PREPARE_SUMMARY] Pocket Data Details:');
+        debugPrint('ðŸ‘ [PREPARE_SUMMARY] Pocket Data Details:');
         debugPrint('     - bagCode: ${widget.pocketData!['bagCode']}');
         debugPrint('     - sealCode: ${widget.pocketData!['sealCode']}');
         debugPrint('     - sealReturn: ${widget.pocketData!['sealReturn']}');
@@ -360,14 +358,14 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       }
       
       // Update planning status - STEP 2 (moved to first before inserts)
-      debugPrint('🔄 [PREPARE_SUMMARY] Calling updatePlanning API...');
-      debugPrint('🌐 [UPDATE_PLANNING] Endpoint: POST /updatePlanning');
-      debugPrint('📤 [UPDATE_PLANNING] Request Parameters:');
+      debugPrint('ðŸ”„ [PREPARE_SUMMARY] Calling updatePlanning API...');
+      debugPrint('ðŸŒ [UPDATE_PLANNING] Endpoint: POST /updatePlanning');
+      debugPrint('ðŸ“¤ [UPDATE_PLANNING] Request Parameters:');
       debugPrint('   - idTool: $planningId');
       debugPrint('   - cashierCode: $cashierCode');
       debugPrint('   - spvTLCode: $userId');
       debugPrint('   - tableCode: $tableCode');
-      debugPrint('⏰ [UPDATE_PLANNING] Request timestamp: ${DateTime.now().toIso8601String()}');
+      debugPrint('â° [UPDATE_PLANNING] Request timestamp: ${DateTime.now().toIso8601String()}');
       
       final startTime = DateTime.now();
       final updateResponse = await _apiService.updatePlanning(
@@ -380,54 +378,54 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       final endTime = DateTime.now();
       final duration = endTime.difference(startTime);
       
-      debugPrint('📥 [UPDATE_PLANNING] Response:');
+      debugPrint('ðŸ“¥ [UPDATE_PLANNING] Response:');
       debugPrint('   - success: ${updateResponse.success}');
       debugPrint('   - message: ${updateResponse.message}');
-      debugPrint('⏰ [UPDATE_PLANNING] Response timestamp: ${endTime.toIso8601String()}');
-      debugPrint('⏱️ [UPDATE_PLANNING] Duration: ${duration.inMilliseconds}ms');
+      debugPrint('â° [UPDATE_PLANNING] Response timestamp: ${endTime.toIso8601String()}');
+      debugPrint('â±ï¸ [UPDATE_PLANNING] Duration: ${duration.inMilliseconds}ms');
       
       if (!updateResponse.success) {
-        debugPrint('❌ [UPDATE_PLANNING] Failed: ${updateResponse.message}');
+        debugPrint('âŒ [UPDATE_PLANNING] Failed: ${updateResponse.message}');
         throw Exception(updateResponse.message);
       }
       
-      debugPrint('✅ [UPDATE_PLANNING] Success!');
+      debugPrint('âœ… [UPDATE_PLANNING] Success!');
       final execResponse = await _apiService.insertAtmCatridgeByIdTool(idTool: planningId);
       if (!execResponse.success) {
         throw Exception(execResponse.message);
       }
-      debugPrint('✅ [EXECUTE_CATRIDGE] ${execResponse.message}');
+      debugPrint('âœ… [EXECUTE_CATRIDGE] ${execResponse.message}');
       
-      debugPrint('🎉 [PREPARE_SUMMARY] Planning updated successfully');
+      debugPrint('ðŸŽ‰ [PREPARE_SUMMARY] Planning updated successfully');
       
       final processEndTime = DateTime.now();
       final totalDuration = processEndTime.difference(processStartTime);
       
-      debugPrint('📊 [PREPARE_SUMMARY] Process Summary:');
+      debugPrint('ðŸ“Š [PREPARE_SUMMARY] Process Summary:');
       debugPrint('   - Total API calls made: 1');
-      debugPrint('⏰ [PREPARE_SUMMARY] Process end time: ${processEndTime.toIso8601String()}');
-      debugPrint('⏱️ [PREPARE_SUMMARY] Total process duration: ${totalDuration.inMilliseconds}ms (${totalDuration.inSeconds}s)');
+      debugPrint('â° [PREPARE_SUMMARY] Process end time: ${processEndTime.toIso8601String()}');
+      debugPrint('â±ï¸ [PREPARE_SUMMARY] Total process duration: ${totalDuration.inMilliseconds}ms (${totalDuration.inSeconds}s)');
       
       await _showSuccessDialog(updateResponse.message);
       
       // Navigate back to previous screens
-      debugPrint('🔄 [NAVIGATION] Navigating back to first screen...');
+      debugPrint('ðŸ”„ [NAVIGATION] Navigating back to first screen...');
       Navigator.of(context).popUntil((route) => route.isFirst);
-      debugPrint('✅ [NAVIGATION] Navigation completed');
+      debugPrint('âœ… [NAVIGATION] Navigation completed');
     } catch (e) {
       final processEndTime = DateTime.now();
       final totalDuration = processEndTime.difference(processStartTime);
       
-      debugPrint('💥 [PREPARE_SUMMARY] Error in submit process: ${e.toString()}');
-      debugPrint('📍 [PREPARE_SUMMARY] Stack trace: ${StackTrace.current}');
-      debugPrint('⏰ [PREPARE_SUMMARY] Error occurred at: ${processEndTime.toIso8601String()}');
-      debugPrint('⏱️ [PREPARE_SUMMARY] Process duration before error: ${totalDuration.inMilliseconds}ms (${totalDuration.inSeconds}s)');
+      debugPrint('ðŸ’¥ [PREPARE_SUMMARY] Error in submit process: ${e.toString()}');
+      debugPrint('ðŸ“ [PREPARE_SUMMARY] Stack trace: ${StackTrace.current}');
+      debugPrint('â° [PREPARE_SUMMARY] Error occurred at: ${processEndTime.toIso8601String()}');
+      debugPrint('â±ï¸ [PREPARE_SUMMARY] Process duration before error: ${totalDuration.inMilliseconds}ms (${totalDuration.inSeconds}s)');
       await _showErrorDialog(e.toString());
     }
   }
   
   Future<void> _insertCatridgeData(List<dynamic> data, String type, int planningId, String atmCode, String userId) async {
-    debugPrint('🔄 [INSERT_CATRIDGE_DATA] Starting batch insertion:');
+    debugPrint('ðŸ”„ [INSERT_CATRIDGE_DATA] Starting batch insertion:');
     debugPrint('   - Items count: ${data.length}');
     debugPrint('   - Type: $type');
     debugPrint('   - Planning ID: $planningId');
@@ -437,7 +435,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
     for (int i = 0; i < data.length; i++) {
       final item = data[i];
       
-      debugPrint('📦 [INSERT_CATRIDGE_DATA] Processing item ${i + 1}/${data.length}:');
+      debugPrint('ðŸ“¦ [INSERT_CATRIDGE_DATA] Processing item ${i + 1}/${data.length}:');
       
       // Handle different data types for debug logging
       if (item is DetailCatridgeItem) {
@@ -453,7 +451,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       await _insertCatridge(item, type, planningId, atmCode, userId);
     }
     
-    debugPrint('🎉 [INSERT_CATRIDGE_DATA] All items processed successfully!');
+    debugPrint('ðŸŽ‰ [INSERT_CATRIDGE_DATA] All items processed successfully!');
   }
   
   Future<void> _insertCatridge(dynamic item, String type, int planningId, String atmCode, String userId) async {
@@ -508,9 +506,9 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       scanSealStatusRemark = item['scanSealStatusRemark']?.toString() ?? '';
     }
     
-    debugPrint('🔧 [INSERT_CATRIDGE] Preparing API call with parameters:');
-     debugPrint('🌐 [INSERT_CATRIDGE_API] Endpoint: POST /insertAtmCatridge');
-     debugPrint('📤 [INSERT_CATRIDGE_API] Request Parameters:');
+    debugPrint('ðŸ”§ [INSERT_CATRIDGE] Preparing API call with parameters:');
+     debugPrint('ðŸŒ [INSERT_CATRIDGE_API] Endpoint: POST /insertAtmCatridge');
+     debugPrint('ðŸ“¤ [INSERT_CATRIDGE_API] Request Parameters:');
      debugPrint('   - idTool: $planningId');
      debugPrint('   - bagCode: $bagCode');
      debugPrint('   - catridgeCode: $catridgeCode');
@@ -527,11 +525,11 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
      debugPrint('   - difCatAlasan: $noAlasan');
      debugPrint('   - difCatRemark: $noRemark');
      debugPrint('   - typeCatridgeTrx: $type');
-     debugPrint('⏰ [INSERT_CATRIDGE_API] Request timestamp: ${DateTime.now().toIso8601String()}');
+     debugPrint('â° [INSERT_CATRIDGE_API] Request timestamp: ${DateTime.now().toIso8601String()}');
     
     while (retryCount < maxRetries) {
       try {
-         debugPrint('🔄 [INSERT_CATRIDGE] API call attempt ${retryCount + 1}/$maxRetries');
+         debugPrint('ðŸ”„ [INSERT_CATRIDGE] API call attempt ${retryCount + 1}/$maxRetries');
          
          final startTime = DateTime.now();
          final response = await _apiService.insertAtmCatridge(
@@ -555,35 +553,35 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
          final endTime = DateTime.now();
          final duration = endTime.difference(startTime);
          
-         debugPrint('📥 [INSERT_CATRIDGE] API Response:');
+         debugPrint('ðŸ“¥ [INSERT_CATRIDGE] API Response:');
          debugPrint('   - success: ${response.success}');
          debugPrint('   - message: ${response.message}');
-         debugPrint('⏰ [INSERT_CATRIDGE] Response timestamp: ${endTime.toIso8601String()}');
-         debugPrint('⏱️ [INSERT_CATRIDGE] Duration: ${duration.inMilliseconds}ms');
+         debugPrint('â° [INSERT_CATRIDGE] Response timestamp: ${endTime.toIso8601String()}');
+         debugPrint('â±ï¸ [INSERT_CATRIDGE] Duration: ${duration.inMilliseconds}ms');
         
         if (response.success) {
-          debugPrint('✅ [INSERT_CATRIDGE] Insert successful!');
+          debugPrint('âœ… [INSERT_CATRIDGE] Insert successful!');
           break; // Success, exit retry loop
         } else {
-          debugPrint('❌ [INSERT_CATRIDGE] Insert failed: ${response.message}');
+          debugPrint('âŒ [INSERT_CATRIDGE] Insert failed: ${response.message}');
           throw Exception(response.message ?? response.message);
         }
       } catch (e) {
         retryCount++;
-        debugPrint('💥 [INSERT_CATRIDGE] Exception on attempt $retryCount: ${e.toString()}');
+        debugPrint('ðŸ’¥ [INSERT_CATRIDGE] Exception on attempt $retryCount: ${e.toString()}');
         if (retryCount >= maxRetries) {
-          debugPrint('🚫 [INSERT_CATRIDGE] Max retries reached, throwing exception');
+          debugPrint('ðŸš« [INSERT_CATRIDGE] Max retries reached, throwing exception');
           throw Exception('${e.toString()}');
         }
         // Wait before retry
-        debugPrint('⏳ [INSERT_CATRIDGE] Waiting 1s before retry...');
+        debugPrint('â³ [INSERT_CATRIDGE] Waiting 1s before retry...');
         await Future.delayed(Duration(seconds: 1));
       }
     }
   }
 
   Future<void> _showErrorDialog(String message) async {
-    debugPrint('❌ [DIALOG] Showing error dialog: $message');
+    debugPrint('âŒ [DIALOG] Showing error dialog: $message');
     return CustomModals.showFailedModal(
       context: context,
       message: message,
@@ -591,7 +589,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
   }
 
   Future<void> _showSuccessDialog(String message) async {
-    debugPrint('🎉 [DIALOG] Showing success dialog: $message');
+    debugPrint('ðŸŽ‰ [DIALOG] Showing success dialog: $message');
     return CustomModals.showSuccessModal(
       context: context,
       message: message,
@@ -974,12 +972,12 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
   Widget build(BuildContext context) {
     _scheduleLandscapeEnforcement();
     final buildStartTime = DateTime.now();
-    debugPrint('🎨 [BUILD] Building PrepareSummaryPage UI');
-    debugPrint('⏰ [BUILD] Build start time: ${buildStartTime.toIso8601String()}');
+    debugPrint('ðŸŽ¨ [BUILD] Building PrepareSummaryPage UI');
+    debugPrint('â° [BUILD] Build start time: ${buildStartTime.toIso8601String()}');
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 600;
     
-    debugPrint('📱 [BUILD] Screen info:');
+    debugPrint('ðŸ“± [BUILD] Screen info:');
     debugPrint('   - Screen size: ${screenSize.width}x${screenSize.height}');
     debugPrint('   - Device pixel ratio: ${MediaQuery.of(context).devicePixelRatio}');
     debugPrint('   - Text scale factor: ${MediaQuery.of(context).textScaleFactor}');
@@ -1003,8 +1001,8 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
     
     final buildEndTime = DateTime.now();
     final buildDuration = buildEndTime.difference(buildStartTime);
-    debugPrint('⏱️ [BUILD] Build completed in ${buildDuration.inMilliseconds}ms');
-    debugPrint('✅ [BUILD] UI rendering finished at ${buildEndTime.toIso8601String()}');
+    debugPrint('â±ï¸ [BUILD] Build completed in ${buildDuration.inMilliseconds}ms');
+    debugPrint('âœ… [BUILD] UI rendering finished at ${buildEndTime.toIso8601String()}');
     
     return scaffold;
   }
@@ -1612,7 +1610,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       }
     } else {
       // Empty state when no data is available
-      denomText = '—';
+      denomText = 'â€”';
       imagePath = null;
     }
     

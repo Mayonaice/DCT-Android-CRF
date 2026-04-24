@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../widgets/custom_modals.dart';
 import '../screens/login_page.dart';
+import '../utils/orientation_lock.dart';
 
 class TLProfileScreen extends StatefulWidget {
   const TLProfileScreen({Key? key}) : super(key: key);
@@ -24,11 +25,7 @@ class _TLProfileScreenState extends State<TLProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Force portrait orientation for CRF_TL
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    OrientationLock.portrait();
     _loadUserData();
   }
 

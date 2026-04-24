@@ -5,6 +5,7 @@ import '../utils/constants.dart';
 import '../widgets/error_dialogs.dart';
 import '../widgets/custom_modals.dart';
 import '../mixins/auto_logout_mixin.dart';
+import '../utils/orientation_lock.dart';
 
 class ReturnValidationScreen extends StatefulWidget {
   const ReturnValidationScreen({Key? key}) : super(key: key);
@@ -28,7 +29,7 @@ class _ReturnValidationScreenState extends State<ReturnValidationScreen> with Au
   @override
   void initState() {
     super.initState();
-    // Pre-fill branch code from user data if available
+    OrientationLock.landscape();
     AuthService().getUserData().then((userData) {
       if (userData != null && userData['branchCode'] != null) {
         setState(() {

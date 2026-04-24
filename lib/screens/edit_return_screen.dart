@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import '../models/return_data_model.dart';
 import '../models/update_qty_catridge_request.dart';
@@ -18,7 +20,7 @@ class EditReturnScreen extends StatefulWidget {
   State<EditReturnScreen> createState() => _EditReturnScreenState();
 }
 
-class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixin {
+class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixin, WidgetsBindingObserver {
   // Controllers for text fields
   final TextEditingController _a1Controller = TextEditingController();
   final TextEditingController _a2Controller = TextEditingController();
@@ -42,15 +44,16 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
   String _errorMessage = '';
   String _successMessage = '';
   String _userNik = '';
+  String _branchName = '';
+  Timer? _orientationLockTimer;
+  bool _orientationEnforceScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    // Set landscape orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     
     // Initialize controllers with data
     _a1Controller.text = '${widget.returnData.a1 ?? 0}';
@@ -68,6 +71,40 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     // Load user data
     _loadUserData();
   }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await OrientationLock.landscape();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
+  }
   
   // Load user data from shared preferences
   Future<void> _loadUserData() async {
@@ -83,28 +120,36 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                     userData['userId'] ?? 
                     userData['UserNIK'] ?? 
                     userData['userNIK'] ?? '';
+          _branchName = userData['branchName'] ??
+                    userData['BranchName'] ??
+                    userData['branch'] ??
+                    userData['Branch'] ??
+                    userData['groupName'] ??
+                    userData['GroupName'] ?? '';
         });
-        debugPrint('🔍 User NIK loaded: $_userNik');
-        debugPrint('🔍 User noMeja: ${userData['noMeja']}');
-        debugPrint('🔍 Full user data: ${userData.toString()}');
+        debugPrint('ðŸ” User NIK loaded: $_userNik');
+        debugPrint('ðŸ” User noMeja: ${userData['noMeja']}');
+        debugPrint('ðŸ” Full user data: ${userData.toString()}');
         
         // Check if NIK is empty
         if (_userNik.isEmpty) {
-          debugPrint('⚠️ WARNING: User NIK is empty! Checking all user data keys:');
+          debugPrint('âš ï¸ WARNING: User NIK is empty! Checking all user data keys:');
           for (var key in userData.keys) {
-            debugPrint('🔍 Key: $key = ${userData[key]}');
+            debugPrint('ðŸ” Key: $key = ${userData[key]}');
           }
         }
       } else {
-        debugPrint('⚠️ User data is null!');
+        debugPrint('âš ï¸ User data is null!');
       }
     } catch (e) {
-      debugPrint('❌ Error loading user data: $e');
+      debugPrint('âŒ Error loading user data: $e');
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     // Dispose controllers
     _a1Controller.dispose();
     _a2Controller.dispose();
@@ -245,19 +290,19 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
         final userData = await _authService.getUserData();
         if (userData != null) {
           tableCode = userData['noMeja'] ?? '';
-          debugPrint('🔍 Table code loaded: $tableCode');
+          debugPrint('ðŸ” Table code loaded: $tableCode');
           
           if (tableCode.isEmpty) {
-            debugPrint('⚠️ WARNING: Table code is empty! Checking all user data keys:');
+            debugPrint('âš ï¸ WARNING: Table code is empty! Checking all user data keys:');
             for (var key in userData.keys) {
-              debugPrint('🔍 Key: $key = ${userData[key]}');
+              debugPrint('ðŸ” Key: $key = ${userData[key]}');
             }
           }
         } else {
-          debugPrint('⚠️ WARNING: User data is null when loading table code!');
+          debugPrint('âš ï¸ WARNING: User data is null when loading table code!');
         }
       } catch (e) {
-        debugPrint('❌ Error loading table code: $e');
+        debugPrint('âŒ Error loading table code: $e');
       }
       
       // Create request object
@@ -344,6 +389,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 768;
     
@@ -478,13 +524,12 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
           
           const Spacer(),
           
-          // Location info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'JAKARTA-CIDENG',
+                _branchName,
                 style: TextStyle(
                   fontSize: isTablet ? 18 : 16,
                   fontWeight: FontWeight.w700,
@@ -492,13 +537,24 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                   letterSpacing: 0.5,
                 ),
               ),
-              Text(
-                'Meja : 010101',
-                style: TextStyle(
-                  fontSize: isTablet ? 16 : 14,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF6B7280),
-                ),
+              FutureBuilder<Map<String, dynamic>?>(
+                future: _authService.getUserData(),
+                builder: (context, snapshot) {
+                  String meja = '';
+                  if (snapshot.hasData && snapshot.data != null) {
+                    meja = snapshot.data!['noMeja'] ??
+                           snapshot.data!['NoMeja'] ??
+                           '';
+                  }
+                  return Text(
+                    meja.isEmpty ? '' : 'Meja : $meja',
+                    style: TextStyle(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF6B7280),
+                    ),
+                  );
+                },
               ),
             ],
           ),

@@ -22,6 +22,7 @@ import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'services/device_service.dart';
+import 'utils/orientation_lock.dart';
 
 // Flutter 3.13.8 stable approach - full feature restore
 
@@ -186,13 +187,7 @@ void main() {
       // Enable fullscreen mode
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       
-      // Allow all orientations for tablets and mobile
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ]);
+      OrientationLock.unlock();
     }
     
     // Flutter 3.13.8 handles text input properly - no manual initialization needed

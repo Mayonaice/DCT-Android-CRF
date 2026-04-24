@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import '../services/konsol_api_service.dart';
 import '../services/auth_service.dart';
@@ -17,7 +19,7 @@ class KonsolDataClosingFormScreen extends StatefulWidget {
   State<KonsolDataClosingFormScreen> createState() => _KonsolDataClosingFormScreenState();
 }
 
-class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScreen> with AutoLogoutMixin {
+class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScreen> with AutoLogoutMixin, WidgetsBindingObserver {
   final KonsolApiService _apiService = KonsolApiService();
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
@@ -42,19 +44,56 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
   int totalA50 = 0;
   int totalA75 = 0;
   int totalA100 = 0;
+  Timer? _orientationLockTimer;
+  bool _orientationEnforceScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     _loadBanks();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await OrientationLock.landscape();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     super.dispose();
   }
 
@@ -258,6 +297,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;

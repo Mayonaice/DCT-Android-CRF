@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/konsol_api_service.dart';
@@ -14,7 +16,7 @@ class KonsolDataClosingPage extends StatefulWidget {
   State<KonsolDataClosingPage> createState() => _KonsolDataClosingPageState();
 }
 
-class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
+class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with WidgetsBindingObserver {
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
   String searchQuery = '';
@@ -28,15 +30,50 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
   bool _isLoadingClosing = false;
   String? _closingLoadError;
   List<ClosingAndroidListItem> _closingItems = [];
+  Timer? _orientationLockTimer;
+  bool _orientationEnforceScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     _loadUserData();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await OrientationLock.landscape();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   // Load user data from login
@@ -122,11 +159,14 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;

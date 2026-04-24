@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
+import 'dart:async';
 import 'package:intl/intl.dart';
 import '../services/auth_service.dart';
 import '../services/return_api_service.dart';
@@ -17,7 +19,7 @@ class KonsolDataReturnPage extends StatefulWidget {
   State<KonsolDataReturnPage> createState() => _KonsolDataReturnPageState();
 }
 
-class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLogoutMixin {
+class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLogoutMixin, WidgetsBindingObserver {
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
   String searchQuery = '';
@@ -40,16 +42,51 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
   
   // Scroll controller for horizontal alignment
   final ScrollController _horizontalScrollController = ScrollController();
+  Timer? _orientationLockTimer;
+  bool _orientationEnforceScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    WidgetsBinding.instance.addObserver(this);
+    _enforceLandscapeOrientation();
+    _startOrientationLockWatchdog();
     _loadUserData();
     _loadReturnData();
+  }
+
+  Future<void> _enforceLandscapeOrientation() async {
+    if (!mounted) return;
+    await OrientationLock.landscape();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _enforceLandscapeOrientation();
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    _enforceLandscapeOrientation();
+  }
+
+  void _scheduleLandscapeEnforcement() {
+    if (_orientationEnforceScheduled) return;
+    _orientationEnforceScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _orientationEnforceScheduled = false;
+      _enforceLandscapeOrientation();
+    });
+  }
+
+  void _startOrientationLockWatchdog() {
+    _orientationLockTimer?.cancel();
+    _orientationLockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _enforceLandscapeOrientation();
+    });
   }
 
   // Load user data from login
@@ -63,7 +100,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
           _branchCode = userData['groupId'] ?? userData['branchCode'] ?? '1'; // Menggunakan groupId
         });
-        debugPrint('🔍 User data loaded - Branch Code: $_branchCode, UserName: $_userName, UserID: $_userId');
+        debugPrint('ðŸ” User data loaded - Branch Code: $_branchCode, UserName: $_userName, UserID: $_userId');
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
@@ -88,7 +125,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
     
     try {
       // Selalu gunakan branch code untuk filter data
-      debugPrint('🔍 Fetching return data with BranchCode: $_branchCode');
+      debugPrint('ðŸ” Fetching return data with BranchCode: $_branchCode');
       final returnData = await safeApiCall(() => _returnApiService.getReturnList(
         branchCode: _branchCode,
         typeReturn: typeReturn
@@ -100,7 +137,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
           _isLoading = false;
         });
         
-        debugPrint('🔍 Loaded ${returnData.length} return data items');
+        debugPrint('ðŸ” Loaded ${returnData.length} return data items');
         
         // Filter data based on current date range
         _filterAndUpdateData();
@@ -171,12 +208,15 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _orientationLockTimer?.cancel();
     _horizontalScrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    _scheduleLandscapeEnforcement();
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;

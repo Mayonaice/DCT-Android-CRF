@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
 import 'package:intl/intl.dart';
 import '../models/prepare_model.dart';
 import '../services/api_service.dart';
@@ -373,10 +374,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
 
   Future<void> _enforceLandscapeOrientation() async {
     if (!mounted) return;
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    await OrientationLock.landscape();
   }
 
   @override
@@ -478,7 +476,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                 );
               }
               
-              print('🔄 DIVERT MANUAL: Updated item index $divertIndex with default value $currentValue for section $sectionIndex');
+              print('ðŸ”„ DIVERT MANUAL: Updated item index $divertIndex with default value $currentValue for section $sectionIndex');
             } else {
               // Just update the specific field
               int updatedValue = _detailCatridgeItems[i].value;
@@ -511,7 +509,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                 );
               }
               
-              print('🔄 DIVERT MANUAL: Updated $fieldType for item index $divertIndex in section $sectionIndex, value: $updatedValue');
+              print('ðŸ”„ DIVERT MANUAL: Updated $fieldType for item index $divertIndex in section $sectionIndex, value: $updatedValue');
             }
             break;
           }
@@ -1054,7 +1052,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
           _userData = userData;
         });
-        debugPrint('🔍 User data loaded - UserName: $_userName, UserID: $_userId');
+        debugPrint('ðŸ” User data loaded - UserName: $_userName, UserID: $_userId');
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
@@ -1221,7 +1219,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               
               // Skip if API call is already in progress for this field and value
               if (_divertApiCallInProgress[apiKey] == true) {
-                print('🔍 DIVERT LOOKUP: Skipping duplicate API call for $apiKey');
+                print('ðŸ” DIVERT LOOKUP: Skipping duplicate API call for $apiKey');
                 return;
               }
               
@@ -1970,8 +1968,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                 : 0;
             int actualValue = qtyFromApi > 0 ? qtyFromApi : denomValue;
 
-            String denomText = denomAmount > 0 ? _formatCurrency(denomAmount) : '—';
-            String formattedTotal = '—';
+            String denomText = denomAmount > 0 ? _formatCurrency(denomAmount) : 'â€”';
+            String formattedTotal = 'â€”';
             if (denomAmount > 0 && actualValue > 0) {
               formattedTotal = _formatCurrency(denomAmount * actualValue);
             }
@@ -2064,7 +2062,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           scanSealStatus: currentItem.scanSealStatus,
           scanSealStatusRemark: currentItem.scanSealStatusRemark,
         );
-        print('🔄 CATRIDGE FIELD: Updated existing item at index $existingIndex with $fieldName: $value');
+        print('ðŸ”„ CATRIDGE FIELD: Updated existing item at index $existingIndex with $fieldName: $value');
       } else {
         // Create new item if not exists
         String noCatridge = '';
@@ -2095,7 +2093,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         
         _detailCatridgeItems.add(newItem);
         _detailCatridgeItems.sort((a, b) => a.index.compareTo(b.index));
-        print('🔄 CATRIDGE FIELD: Created new item for catridge $catridgeIndex with $fieldName: $value');
+        print('ðŸ”„ CATRIDGE FIELD: Created new item for catridge $catridgeIndex with $fieldName: $value');
       }
     });
   }
@@ -2110,7 +2108,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     bool showResultModal = true,
   }) async {
     if ((sealCode?.isEmpty ?? true) && (sealCodeReturn?.isEmpty ?? true)) {
-      debugPrint('❌ Cannot validate seal code: Both seal codes are empty');
+      debugPrint('âŒ Cannot validate seal code: Both seal codes are empty');
       return;
     }
 
@@ -2179,11 +2177,11 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         setState(() {
           _isLoading = false;
         });
-        debugPrint('❌ Cannot validate seal code: ID CRF is empty');
+        debugPrint('âŒ Cannot validate seal code: ID CRF is empty');
         return;
       }
       
-      debugPrint('🔍 Validating seal code: branchCode=$branchCode, idTool=$idTool, sealCode=$sealCode, sealCodeReturn=$sealCodeReturn');
+      debugPrint('ðŸ” Validating seal code: branchCode=$branchCode, idTool=$idTool, sealCode=$sealCode, sealCodeReturn=$sealCodeReturn');
       
       // Call the API
       final response = await _apiService.validateSealCode(
@@ -2198,7 +2196,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       });
       
       if (response.success) {
-        debugPrint('✅ Seal code validation successful: ${response.message}');
+        debugPrint('âœ… Seal code validation successful: ${response.message}');
         if (showResultModal) {
           _showSuccessModal(
             response.message.isNotEmpty ? response.message : 'Seal code berhasil divalidasi',
@@ -2207,7 +2205,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           debugPrint('Seal code valid (scan): ${response.message}');
         }
       } else {
-        debugPrint('❌ Seal code validation failed: ${response.message}');
+        debugPrint('âŒ Seal code validation failed: ${response.message}');
         
         // Determine error message
         String errorMessage = response.message.isNotEmpty ? response.message : 'Gagal';
@@ -2258,7 +2256,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         _isLoading = false;
       });
       
-      debugPrint('❌ Error validating seal code: $e');
+      debugPrint('âŒ Error validating seal code: $e');
       
       // Determine specific error message based on exception type
       String errorMessage;
@@ -2430,7 +2428,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         if ((clearAll || fieldType == 'sealCodeReturn' || fieldType == 'seal_code_return') && _catridgeControllers[sectionIndex].length > 4) {
           _catridgeControllers[sectionIndex][4].clear();
         }
-        print('🔄 CLEAR FIELDS: Catridge section ${sectionIndex + 1} - ${fieldType ?? "All"} fields cleared');
+        print('ðŸ”„ CLEAR FIELDS: Catridge section ${sectionIndex + 1} - ${fieldType ?? "All"} fields cleared');
       });
     }
   }
@@ -2448,7 +2446,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         if ((clearAll || fieldType == 'sealCodeReturn' || fieldType == 'seal_code_return') && _divertControllers[sectionIndex].length > 4) {
           _divertControllers[sectionIndex][4].clear();
         }
-        print('🔄 CLEAR FIELDS: Divert section ${sectionIndex + 1} - ${fieldType ?? "All"} fields cleared');
+        print('ðŸ”„ CLEAR FIELDS: Divert section ${sectionIndex + 1} - ${fieldType ?? "All"} fields cleared');
       });
     }
   }
@@ -2465,7 +2463,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       if ((clearAll || fieldType == 'sealCodeReturn' || fieldType == 'seal_code_return') && _pocketControllers.length > 4) {
         _pocketControllers[4].clear();
       }
-      print('🔄 CLEAR FIELDS: Pocket section - ${fieldType ?? "All"} fields cleared');
+      print('ðŸ”„ CLEAR FIELDS: Pocket section - ${fieldType ?? "All"} fields cleared');
     });
   }
   
@@ -2481,7 +2479,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       // Remove from _detailCatridgeItems (divert items have index 100+)
       int itemIndex = 100 + sectionIndex;
       _detailCatridgeItems.removeWhere((item) => item.index == itemIndex);
-      print('🗑️ REMOVE DETAIL: Removed divert detail item for section ${sectionIndex + 1}');
+      print('ðŸ—‘ï¸ REMOVE DETAIL: Removed divert detail item for section ${sectionIndex + 1}');
     });
   }
   
@@ -2491,7 +2489,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       _pocketDetailItem = null;
       
       _detailCatridgeItems.removeWhere((item) => item.index >= 200);
-      print('🗑️ REMOVE DETAIL: Removed pocket detail item');
+      print('ðŸ—‘ï¸ REMOVE DETAIL: Removed pocket detail item');
     });
   }
 
@@ -3207,11 +3205,11 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     bool showResultModal = true,
   }) async {
     if (catridgeCode.isEmpty || !mounted) {
-      print('🔍 CATRIDGE LOOKUP: Skipped - catridgeCode empty or widget not mounted (index: $catridgeIndex)');
+      print('ðŸ” CATRIDGE LOOKUP: Skipped - catridgeCode empty or widget not mounted (index: $catridgeIndex)');
       return;
     }
     
-    print('🔍 CATRIDGE LOOKUP: Starting lookup for catridge: $catridgeCode (index: $catridgeIndex)');
+    print('ðŸ” CATRIDGE LOOKUP: Starting lookup for catridge: $catridgeCode (index: $catridgeIndex)');
     
     try {
       print('=== STEP 1: LOOKUP CATRIDGE ===');
@@ -3257,7 +3255,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       });
       
       // API call to get catridge details with comprehensive validation
-      print('🔍 CATRIDGE LOOKUP: Calling API getCatridgeDetails...');
+      print('ðŸ” CATRIDGE LOOKUP: Calling API getCatridgeDetails...');
       final response = await _apiService.getCatridgeDetails(
         branchCode, 
         catridgeCode, 
@@ -3271,12 +3269,12 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         _isLoading = false;
       });
       
-      print('🔍 CATRIDGE LOOKUP: API Response - success: ${response.success}, message: ${response.message}');
-      print('🔍 CATRIDGE LOOKUP: Response data type: ${response.data?.runtimeType}, length: ${response.data is List ? (response.data as List).length : 'N/A'}');
+      print('ðŸ” CATRIDGE LOOKUP: API Response - success: ${response.success}, message: ${response.message}');
+      print('ðŸ” CATRIDGE LOOKUP: Response data type: ${response.data?.runtimeType}, length: ${response.data is List ? (response.data as List).length : 'N/A'}');
       print('Catridge lookup response: ${response.success}, message: ${response.message}');
       
       if (response.success && response.data != null && response.data is List && response.data.length > 0 && mounted) {
-        print('🔍 CATRIDGE LOOKUP: Processing response with ${response.data.length} catridges');
+        print('ðŸ” CATRIDGE LOOKUP: Processing response with ${response.data.length} catridges');
         print('Found ${response.data.length} catridges');
         
         // Enhanced data validation
@@ -3291,12 +3289,12 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           throw Exception('First item is not a Map<String, dynamic>, got: ${firstItem.runtimeType}');
         }
         
-        print('🔍 CATRIDGE LOOKUP: First item keys: ${firstItem.keys.toList()}');
+        print('ðŸ” CATRIDGE LOOKUP: First item keys: ${firstItem.keys.toList()}');
         print('First catridge data: $firstItem');
         
         // Safe parsing with enhanced error handling
         final catridgeData = CatridgeData.fromJson(firstItem);
-        print('🔍 CATRIDGE LOOKUP: Parsed CatridgeData - code: ${catridgeData.code}, standValue: ${catridgeData.standValue}, type: ${catridgeData.typeCatridge}');
+        print('ðŸ” CATRIDGE LOOKUP: Parsed CatridgeData - code: ${catridgeData.code}, standValue: ${catridgeData.standValue}, type: ${catridgeData.typeCatridge}');
         print('Parsed catridge: Code=${catridgeData.code}, StandValue=${catridgeData.standValue}');
         
         // Validate that this is actually a Catridge type
@@ -3325,10 +3323,10 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           actualValue = (_prepareData?.standValue ?? catridgeData.standValue.round());
         }
 
-        String denomText = isCdm ? 'Rp 0' : (denomAmount > 0 ? _formatCurrency(denomAmount) : '—');
+        String denomText = isCdm ? 'Rp 0' : (denomAmount > 0 ? _formatCurrency(denomAmount) : 'â€”');
         String formattedTotal = isCdm
             ? 'Rp 0'
-            : ((denomAmount > 0 && actualValue > 0) ? _formatCurrency(denomAmount * actualValue) : '—');
+            : ((denomAmount > 0 && actualValue > 0) ? _formatCurrency(denomAmount * actualValue) : 'â€”');
         
         // Auto-populate seal if available from prepare data
         String autoSeal = '';
@@ -3384,7 +3382,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
             _catridgeControllers[catridgeIndex][0].text = catridgeData.code;
             
             // Manual mode reset is now handled in scanner callback
-            print('✅ SUCCESS: Catridge data populated for catridge $catridgeIndex');
+            print('âœ… SUCCESS: Catridge data populated for catridge $catridgeIndex');
           }
           
           // Check if item already exists for this index
@@ -3466,8 +3464,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         }
       }
     } catch (e, stackTrace) {
-      print('🔍 CATRIDGE LOOKUP: Exception caught - $e');
-      print('🔍 CATRIDGE LOOKUP: Stack trace: $stackTrace');
+      print('ðŸ” CATRIDGE LOOKUP: Exception caught - $e');
+      print('ðŸ” CATRIDGE LOOKUP: Stack trace: $stackTrace');
       
       setState(() {
         _isLoading = false;
@@ -3487,7 +3485,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         errorMessage = 'Terjadi kesalahan: $e';
       }
       
-      print('🔍 CATRIDGE LOOKUP: Final error message: $errorMessage');
+      print('ðŸ” CATRIDGE LOOKUP: Final error message: $errorMessage');
       print('Error looking up catridge: $e');
       // Don't create error detail item - just show error message
       // REMOVED: _createErrorDetailItem(catridgeIndex, catridgeCode, errorMessage);
@@ -3608,7 +3606,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         // Validation successful - update with validated seal code
         setState(() {
           // Manual mode reset is now handled in scanner callback
-          print('✅ SUCCESS: Seal validation completed for catridge $catridgeIndex');
+          print('âœ… SUCCESS: Seal validation completed for catridge $catridgeIndex');
           
           // Update seal controller with validated code
           if (_catridgeControllers.length > catridgeIndex && _catridgeControllers[catridgeIndex].length > 1) {
@@ -3702,8 +3700,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         }
       }
     } catch (e, stackTrace) {
-      print('🔒 SEAL VALIDATION: Exception caught - $e');
-      print('🔒 SEAL VALIDATION: Stack trace: $stackTrace');
+      print('ðŸ”’ SEAL VALIDATION: Exception caught - $e');
+      print('ðŸ”’ SEAL VALIDATION: Stack trace: $stackTrace');
       
       setState(() {
         _isLoading = false;
@@ -3721,7 +3719,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         errorMessage = 'Kesalahan sistem: ${e.toString()}';
       }
       
-      print('🔒 SEAL VALIDATION: Final error message: $errorMessage');
+      print('ðŸ”’ SEAL VALIDATION: Final error message: $errorMessage');
       print('Error validating seal: $e');
       
       // Update detail item with network/system error
@@ -3811,7 +3809,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         if (resetNoCatridge) resetFields.add('No. Catridge');
         if (resetSealCatridge) resetFields.add('Seal Catridge');
         
-        print('🔄 RESET FIELDS: Catridge section ${catridgeIndex + 1} - ${resetFields.join(' and ')} fields cleared');
+        print('ðŸ”„ RESET FIELDS: Catridge section ${catridgeIndex + 1} - ${resetFields.join(' and ')} fields cleared');
       });
     }
   }
@@ -3833,7 +3831,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         if (resetNoCatridge) resetFields.add('No. Catridge');
         if (resetSealCatridge) resetFields.add('Seal Catridge');
         
-        print('🔄 RESET FIELDS: Divert section ${sectionIndex + 1} - ${resetFields.join(' and ')} fields cleared');
+        print('ðŸ”„ RESET FIELDS: Divert section ${sectionIndex + 1} - ${resetFields.join(' and ')} fields cleared');
       });
     }
   }
@@ -3855,7 +3853,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         if (resetNoCatridge) resetFields.add('No. Catridge');
         if (resetSealCatridge) resetFields.add('Seal Catridge');
         
-        print('🔄 RESET FIELDS: Pocket section - ${resetFields.join(' and ')} fields cleared');
+        print('ðŸ”„ RESET FIELDS: Pocket section - ${resetFields.join(' and ')} fields cleared');
       });
     }
   }
@@ -4042,13 +4040,13 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
   
   // Check if all detail catridge items are valid and complete
   bool _areAllCatridgeItemsValid() {
-    print('🔍 VALIDATION: Checking ${_detailCatridgeItems.length} catridge items');
+    print('ðŸ” VALIDATION: Checking ${_detailCatridgeItems.length} catridge items');
     final bool skipAllValidation = (_prepareData?.isNoBag ?? false) && (_prepareData?.isEmpty ?? false);
     if (skipAllValidation) {
       return true;
     }
     if (_detailCatridgeItems.isEmpty) {
-      print('🔍 VALIDATION: No catridge items found');
+      print('ðŸ” VALIDATION: No catridge items found');
       return false;
     }
     
@@ -4056,12 +4054,12 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     
     for (int i = 0; i < _detailCatridgeItems.length; i++) {
       var item = _detailCatridgeItems[i];
-      print('🔍 VALIDATION: Item $i - index: ${item.index}, noCatridge: "${item.noCatridge}", sealCatridge: "${item.sealCatridge}", value: ${item.value}');
+      print('ðŸ” VALIDATION: Item $i - index: ${item.index}, noCatridge: "${item.noCatridge}", sealCatridge: "${item.sealCatridge}", value: ${item.value}');
       
       // Check if item has error
       if (item.total.contains('Error') || item.total.contains('tidak ditemukan') ||
           item.sealCatridge.contains('Error') || item.sealCatridge.contains('tidak valid')) {
-        print('🔍 VALIDATION: Item has error: ${item.noCatridge}');
+        print('ðŸ” VALIDATION: Item has error: ${item.noCatridge}');
         return false;
       }
       
@@ -4079,16 +4077,16 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
       
       if (!skipBagSealValidation && (item.noCatridge.isEmpty || item.sealCatridge.isEmpty || !valueValid)) {
-        print('🔍 VALIDATION: Item is incomplete - noCatridge empty: ${item.noCatridge.isEmpty}, sealCatridge empty: ${item.sealCatridge.isEmpty}, value invalid: ${!valueValid} (isMain: $isMainCatridge, value: ${item.value})');
+        print('ðŸ” VALIDATION: Item is incomplete - noCatridge empty: ${item.noCatridge.isEmpty}, sealCatridge empty: ${item.sealCatridge.isEmpty}, value invalid: ${!valueValid} (isMain: $isMainCatridge, value: ${item.value})');
         return false;
       } else if (skipBagSealValidation && !valueValid) {
         // When bypassing bag/seal validation due to isNoBag, still check value validity
-        print('🔍 VALIDATION: Item value invalid (isNoBag bypass mode) - value invalid: ${!valueValid} (isMain: $isMainCatridge, value: ${item.value})');
+        print('ðŸ” VALIDATION: Item value invalid (isNoBag bypass mode) - value invalid: ${!valueValid} (isMain: $isMainCatridge, value: ${item.value})');
         return false;
       }
     }
     
-    print('🔍 VALIDATION: All catridge items are valid');
+    print('ðŸ” VALIDATION: All catridge items are valid');
     return true;
   }
 
@@ -5047,7 +5045,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     if (successMessages.isNotEmpty) {
       message += 'Berhasil disimpan (${successMessages.length}):\n';
       for (String msg in successMessages) {
-        message += '✓ $msg\n';
+        message += 'âœ“ $msg\n';
       }
       message += '\n';
     }
@@ -5055,7 +5053,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     if (errorMessages.isNotEmpty) {
       message += 'Gagal disimpan (${errorMessages.length}):\n';
       for (String msg in errorMessages) {
-        message += '✗ $msg\n';
+        message += 'âœ— $msg\n';
       }
     }
     
@@ -5077,11 +5075,11 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     // DEBUG: Print current token to verify it's correctly stored
     try {
       final token = await _authService.getToken();
-      debugPrint('🔴 DEBUG: Current token before fetch: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
+      debugPrint('ðŸ”´ DEBUG: Current token before fetch: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
       
       // If token is null, try to log the user out and redirect to login page
       if (token == null || token.isEmpty) {
-        debugPrint('🔴 DEBUG: Token is null or empty, forcing logout');
+        debugPrint('ðŸ”´ DEBUG: Token is null or empty, forcing logout');
         
         setState(() {
           _isLoading = false;
@@ -5104,10 +5102,10 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
       
       // Validate token before proceeding
-      debugPrint('🔴 DEBUG: Validating token before fetch...');
+      debugPrint('ðŸ”´ DEBUG: Validating token before fetch...');
       final isTokenValid = await _apiService.checkTokenValidity();
       if (!isTokenValid) {
-        debugPrint('🔴 DEBUG: Token validation failed, forcing logout');
+        debugPrint('ðŸ”´ DEBUG: Token validation failed, forcing logout');
         
         setState(() {
           _isLoading = false;
@@ -5129,9 +5127,9 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         return;
       }
       
-      debugPrint('🔴 DEBUG: Token validation successful, proceeding with fetch');
+      debugPrint('ðŸ”´ DEBUG: Token validation successful, proceeding with fetch');
     } catch (e) {
-      debugPrint('🔴 DEBUG: Error getting token: $e');
+      debugPrint('ðŸ”´ DEBUG: Error getting token: $e');
     }
     
     final idText = _idCRFController.text.trim();
@@ -5926,9 +5924,9 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
 
     String denomText = (hasValidPrepare && denomAmount > 0)
         ? _formatCurrency(denomAmount)
-        : '—';
+        : 'â€”';
 
-    String formattedTotal = '—';
+    String formattedTotal = 'â€”';
     if (hasValidPrepare && denomAmount > 0 && actualValue > 0) {
       formattedTotal = _formatCurrency(denomAmount * actualValue);
     }
@@ -6199,7 +6197,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                           Text(
                             actualValue > 0
                               ? actualValue.toString()
-                              : '—',
+                              : 'â€”',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 13 : 15,
                             ),
@@ -6298,7 +6296,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
   // Helper method to calculate dynamic font size based on value length
   double _calculateDynamicFontSize(String formattedValue, bool isSmallScreen) {
     // Remove 'Rp ' and count characters
-    String cleanValue = formattedValue.replaceAll('Rp ', '').replaceAll('—', '');
+    String cleanValue = formattedValue.replaceAll('Rp ', '').replaceAll('â€”', '');
     int length = cleanValue.length;
     
     // Base font sizes
@@ -6508,9 +6506,9 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
   
   Widget _buildDetailCatridgeSection(bool isSmallScreen) {
     // Debug logging to check what's in _detailCatridgeItems
-    print('🐛 DEBUG: _detailCatridgeItems count: ${_detailCatridgeItems.length}');
+    print('ðŸ› DEBUG: _detailCatridgeItems count: ${_detailCatridgeItems.length}');
     for (var item in _detailCatridgeItems) {
-      print('🐛 DEBUG: Item index ${item.index}, noCatridge: ${item.noCatridge}, type: ${item.index >= 200 ? "Pocket" : item.index >= 100 ? "Divert" : "Main"}');
+      print('ðŸ› DEBUG: Item index ${item.index}, noCatridge: ${item.noCatridge}, type: ${item.index >= 200 ? "Pocket" : item.index >= 100 ? "Divert" : "Main"}');
     }
     
     return Container(
@@ -6910,7 +6908,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               suffixIcon: isPassword 
                 ? const Icon(Icons.visibility, color: Colors.grey) 
                 : const Icon(Icons.person_outline, color: Colors.grey),
-              hintText: isPassword ? '••••••••••' : '',
+              hintText: isPassword ? 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' : '',
               hintStyle: TextStyle(
                 color: Colors.grey.shade400,
                 fontSize: isSmallScreen ? 14 : 16,
@@ -6925,7 +6923,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
   
   Widget _buildGrandTotalInlineSection(bool isSmallScreen) {
     final totalAmount = _calculateGrandTotal();
-    final formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : '—';
+    final formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : 'â€”';
     final isDataReady = _prepareData != null;
     
     return Column(
@@ -7234,7 +7232,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
     }
     
-    String formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : '—';
+    String formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : 'â€”';
     double dynamicFontSize = _calculateDynamicFontSize(formattedTotal, isSmallScreen);
     
     return Column(
@@ -7633,7 +7631,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               
               // Skip if API call is already in progress for this field and value
               if (_divertApiCallInProgress[apiKey] == true) {
-                print('🔍 DIVERT LOOKUP: Skipping duplicate API call for $apiKey');
+                print('ðŸ” DIVERT LOOKUP: Skipping duplicate API call for $apiKey');
                 return;
               }
               
@@ -7928,7 +7926,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
     } else {
       // Empty state when no data is available
-      denomText = '—';
+      denomText = 'â€”';
       imagePath = null;
     }
     if (jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
@@ -8153,7 +8151,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                                   totalValue += _divertDetailItems[i]!.value;
                                 }
                               }
-                              return totalValue > 0 ? totalValue.toString() : '—';
+                              return totalValue > 0 ? totalValue.toString() : 'â€”';
                             }(),
                             style: TextStyle(
                               fontSize: isSmallScreen ? 13 : 15,
@@ -8212,7 +8210,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                               for (int i = 0; i < 3; i++) {
                                 if (_divertDetailItems[i]?.total != null && 
                                     _divertDetailItems[i]!.total.isNotEmpty && 
-                                    _divertDetailItems[i]!.total != '—') {
+                                    _divertDetailItems[i]!.total != 'â€”') {
                                   
                                   // Extract numeric value from total string
                                   String totalStr = _divertDetailItems[i]!.total;
@@ -8306,7 +8304,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
     } else {
       // Empty state when no data is available
-      denomText = '—';
+      denomText = 'â€”';
       imagePath = null;
     }
     if (jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
@@ -8524,7 +8522,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                             ),
                           ),
                           Text(
-                            _pocketDetailItem?.value.toString() ?? '—',
+                            _pocketDetailItem?.value.toString() ?? 'â€”',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 13 : 15,
                             ),
@@ -8574,7 +8572,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                           ),
                           SizedBox(height: isSmallScreen ? 5 : 8),
                           Text(
-                            _pocketDetailItem?.total ?? '—',
+                            _pocketDetailItem?.total ?? 'â€”',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 15 : 17,
                               fontWeight: FontWeight.bold,
@@ -8610,7 +8608,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     bool showResultModal = true,
   }) async {
     if (catridgeCode.isEmpty || !mounted) {
-      print('🔍 DIVERT LOOKUP: Skipped - catridgeCode empty or widget not mounted');
+      print('ðŸ” DIVERT LOOKUP: Skipped - catridgeCode empty or widget not mounted');
       return;
     }
     
@@ -8618,18 +8616,18 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     
     // Check if API call is already in progress for this field and value
     if (_divertApiCallInProgress[apiKey] == true) {
-      print('🔍 DIVERT LOOKUP: API call already in progress for $apiKey');
+      print('ðŸ” DIVERT LOOKUP: API call already in progress for $apiKey');
       return;
     }
     
     // Set flag to indicate API call is in progress
     _divertApiCallInProgress[apiKey] = true;
     
-    print('🔍 DIVERT LOOKUP: Starting lookup for catridge: $catridgeCode, sectionIndex: $sectionIndex');
+    print('ðŸ” DIVERT LOOKUP: Starting lookup for catridge: $catridgeCode, sectionIndex: $sectionIndex');
     
     try {
       final branchCode = _resolveBranchCodeFromLogin();
-      print('🔍 DIVERT LOOKUP: Using branchCode: $branchCode');
+      print('ðŸ” DIVERT LOOKUP: Using branchCode: $branchCode');
       
       // Get list of existing catridge codes with enhanced logging
       List<String> existingCatridges = [];
@@ -8641,9 +8639,9 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       if (_pocketDetailItem?.noCatridge.isNotEmpty == true) {
         existingCatridges.add(_pocketDetailItem!.noCatridge);
       }
-      print('🔍 DIVERT LOOKUP: Existing catridges: $existingCatridges');
+      print('ðŸ” DIVERT LOOKUP: Existing catridges: $existingCatridges');
       
-      print('🔍 DIVERT LOOKUP: Calling API getCatridgeDetails...');
+      print('ðŸ” DIVERT LOOKUP: Calling API getCatridgeDetails...');
       final response = await _apiService.getCatridgeDetails(
         branchCode, 
         catridgeCode,
@@ -8653,13 +8651,13 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         idTool: _idCRFController.text.trim(), // Pass ID CRF as IdTool parameter
       );
       
-      print('🔍 DIVERT LOOKUP: API Response - success: ${response.success}, message: ${response.message}');
-      print('🔍 DIVERT LOOKUP: Response data type: ${response.data?.runtimeType}, length: ${response.data is List ? (response.data as List).length : 'N/A'}');
+      print('ðŸ” DIVERT LOOKUP: API Response - success: ${response.success}, message: ${response.message}');
+      print('ðŸ” DIVERT LOOKUP: Response data type: ${response.data?.runtimeType}, length: ${response.data is List ? (response.data as List).length : 'N/A'}');
       
       // Enhanced validation with detailed logging
       if (response.success && response.data != null && response.data is List && (response.data as List).isNotEmpty && mounted) {
         final dataList = response.data as List;
-        print('🔍 DIVERT LOOKUP: Processing first item from ${dataList.length} items');
+        print('ðŸ” DIVERT LOOKUP: Processing first item from ${dataList.length} items');
         
         // Enhanced data validation
         final firstItem = dataList[0];
@@ -8671,11 +8669,11 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           throw Exception('First item is not a Map<String, dynamic>, got: ${firstItem.runtimeType}');
         }
         
-        print('🔍 DIVERT LOOKUP: First item keys: ${firstItem.keys.toList()}');
+        print('ðŸ” DIVERT LOOKUP: First item keys: ${firstItem.keys.toList()}');
         
         // Safe parsing with enhanced error handling
         final catridgeData = CatridgeData.fromJson(firstItem);
-        print('🔍 DIVERT LOOKUP: Parsed CatridgeData - code: ${catridgeData.code}, standValue: ${catridgeData.standValue}, type: ${catridgeData.typeCatridge}');
+        print('ðŸ” DIVERT LOOKUP: Parsed CatridgeData - code: ${catridgeData.code}, standValue: ${catridgeData.standValue}, type: ${catridgeData.typeCatridge}');
         
         // Validate that this is actually a Divert type
         if (catridgeData.typeCatridge.toUpperCase() != 'D') {
@@ -8686,7 +8684,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         int denomAmount = (_prepareData?.jnsMesin.toUpperCase() ?? '') == 'CDM'
             ? 0
             : (_prepareData?.tipeDenom == 'A100' ? 100000 : 50000);
-        print('🔍 DIVERT LOOKUP: Using denomAmount: $denomAmount (tipeDenom: ${_prepareData?.tipeDenom})');
+        print('ðŸ” DIVERT LOOKUP: Using denomAmount: $denomAmount (tipeDenom: ${_prepareData?.tipeDenom})');
         
         // Safe standValue handling
         if (catridgeData.standValue.isNaN || catridgeData.standValue.isInfinite) {
@@ -8701,8 +8699,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         int divertValue = 0;
         String divertTotal = 'Rp 0';
         
-        print('🔍 DIVERT LOOKUP: Calculated - standValueInt: $standValueInt, totalNominal: $totalNominal, formatted: $formattedTotal');
-        print('🔍 DIVERT LOOKUP: Divert value set to 0 to not affect grand total');
+        print('ðŸ” DIVERT LOOKUP: Calculated - standValueInt: $standValueInt, totalNominal: $totalNominal, formatted: $formattedTotal');
+        print('ðŸ” DIVERT LOOKUP: Divert value set to 0 to not affect grand total');
         
         setState(() {
           // Store data for specific section
@@ -8744,7 +8742,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
             sealReturn: existingSealReturn,
           );
           _detailCatridgeItems.add(divertDetailForList);
-          print('🔍 DIVERT LOOKUP: Added divert data to _detailCatridgeItems with index $divertIndex for section $sectionIndex');
+          print('ðŸ” DIVERT LOOKUP: Added divert data to _detailCatridgeItems with index $divertIndex for section $sectionIndex');
           
           // GENIUS LOGIC: Also update any existing items in _detailCatridgeItems that might have been created by _updateDetailDivertItemField
           // This ensures that user input is preserved even if they entered data before scanning the cartridge
@@ -8762,7 +8760,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                 sealCode: _detailCatridgeItems[i].sealCode.isNotEmpty ? _detailCatridgeItems[i].sealCode : existingSealCode,
                 sealReturn: _detailCatridgeItems[i].sealReturn.isNotEmpty ? _detailCatridgeItems[i].sealReturn : existingSealReturn,
               );
-              print('🔍 DIVERT GENIUS: Updated existing item at index $i with preserved user input');
+              print('ðŸ” DIVERT GENIUS: Updated existing item at index $i with preserved user input');
               break;
             }
           }
@@ -8782,7 +8780,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           debugPrint('Divert lookup success (scan) section=$sectionIndex code=${catridgeData.code}');
         }
       } else {
-        print('🔍 DIVERT LOOKUP: Failed - clearing data and showing error');
+        print('ðŸ” DIVERT LOOKUP: Failed - clearing data and showing error');
         setState(() {
           _divertCatridgeData[sectionIndex] = null;
           
@@ -8790,7 +8788,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           if (_divertDetailItems[sectionIndex] != null) {
             int divertIndex = 100 + sectionIndex;
             _detailCatridgeItems.removeWhere((item) => item.index == divertIndex);
-            print('🔍 DIVERT LOOKUP: Removed divert data from _detailCatridgeItems for section $sectionIndex');
+            print('ðŸ” DIVERT LOOKUP: Removed divert data from _detailCatridgeItems for section $sectionIndex');
           }
           
           _divertDetailItems[sectionIndex] = null;
@@ -8808,8 +8806,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         }
       }
     } catch (e, stackTrace) {
-      print('🔍 DIVERT LOOKUP: Exception caught: $e');
-      print('🔍 DIVERT LOOKUP: Stack trace: $stackTrace');
+      print('ðŸ” DIVERT LOOKUP: Exception caught: $e');
+      print('ðŸ” DIVERT LOOKUP: Stack trace: $stackTrace');
       
       setState(() {
         _divertCatridgeData[sectionIndex] = null;
@@ -8818,7 +8816,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         if (_divertDetailItems[sectionIndex] != null) {
           int divertIndex = 100 + sectionIndex;
           _detailCatridgeItems.removeWhere((item) => item.index == divertIndex);
-          print('🔍 DIVERT LOOKUP: Removed divert data from _detailCatridgeItems due to exception for section $sectionIndex');
+          print('ðŸ” DIVERT LOOKUP: Removed divert data from _detailCatridgeItems due to exception for section $sectionIndex');
         }
         
         _divertDetailItems[sectionIndex] = null;
@@ -8837,7 +8835,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       // Always reset the API call flag when the method completes
       String apiKey = 'divert_${sectionIndex}_${catridgeCode}';
       _divertApiCallInProgress[apiKey] = false;
-      print('🔍 DIVERT LOOKUP: API call completed for $apiKey');
+      print('ðŸ” DIVERT LOOKUP: API call completed for $apiKey');
     }
   }
 
@@ -8848,7 +8846,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     bool showResultModal = true,
   }) async {
     if (sealCode.isEmpty || !mounted) {
-      print('🔒 DIVERT SEAL: Skipped - sealCode empty or widget not mounted (section: $sectionIndex)');
+      print('ðŸ”’ DIVERT SEAL: Skipped - sealCode empty or widget not mounted (section: $sectionIndex)');
       return;
     }
     
@@ -8857,21 +8855,21 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     
     // Check if seal validation is already in progress for this field and value
     if (_divertSealValidationInProgress[validationKey] == true) {
-      print('🔒 DIVERT SEAL: Validation already in progress for section $sectionIndex with seal: $sealCode');
+      print('ðŸ”’ DIVERT SEAL: Validation already in progress for section $sectionIndex with seal: $sealCode');
       return;
     }
     
     // Set flag to indicate validation is in progress
     _divertSealValidationInProgress[validationKey] = true;
     
-    print('🔒 DIVERT SEAL: Starting validation for seal: $sealCode (section: $sectionIndex)');
+    print('ðŸ”’ DIVERT SEAL: Starting validation for seal: $sealCode (section: $sectionIndex)');
     
     try {
-      print('🔒 DIVERT SEAL: Calling API validateSeal...');
+      print('ðŸ”’ DIVERT SEAL: Calling API validateSeal...');
       final response = await _apiService.validateSeal(sealCode);
       
-      print('🔒 DIVERT SEAL: API Response - success: ${response.success}, message: ${response.message}');
-      print('🔒 DIVERT SEAL: Response data: ${response.data}');
+      print('ðŸ”’ DIVERT SEAL: API Response - success: ${response.success}, message: ${response.message}');
+      print('ðŸ”’ DIVERT SEAL: Response data: ${response.data}');
       
       // Extract validation status from response data (consistent with Catridge implementation)
       String validationStatus = '';
@@ -8910,7 +8908,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
             }
           }
         } catch (e) {
-          print('🔒 DIVERT SEAL: Error parsing validation data: $e');
+          print('ðŸ”’ DIVERT SEAL: Error parsing validation data: $e');
         }
       }
       
@@ -8925,7 +8923,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
       
       if (response.success && validationStatus.toUpperCase() == 'SUCCESS' && mounted) {
-        print('🔒 DIVERT SEAL: Validation successful - updating state');
+        print('ðŸ”’ DIVERT SEAL: Validation successful - updating state');
         
         setState(() {
           if (_divertDetailItems[sectionIndex] != null) {
@@ -8940,7 +8938,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               sealCode: _divertDetailItems[sectionIndex]!.sealCode,
               sealReturn: _divertDetailItems[sectionIndex]!.sealReturn,
             );
-            print('🔒 DIVERT SEAL: Updated divert item for section $sectionIndex with validated seal: $validatedSealCode, value reset to 0');
+            print('ðŸ”’ DIVERT SEAL: Updated divert item for section $sectionIndex with validated seal: $validatedSealCode, value reset to 0');
           } else {
             // Create new DetailCatridgeItem if not exists
             String noCatridge = sectionIndex < _divertControllers.length ? _divertControllers[sectionIndex][0].text.trim() : '';
@@ -8959,7 +8957,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               sealCode: sealCode,
               sealReturn: sealReturn,
             );
-            print('🔒 DIVERT SEAL: Created new divert item for section $sectionIndex with validated seal: $validatedSealCode');
+            print('ðŸ”’ DIVERT SEAL: Created new divert item for section $sectionIndex with validated seal: $validatedSealCode');
           }
             
             // Also update the corresponding item in _detailCatridgeItems
@@ -8978,7 +8976,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                   sealCode: _detailCatridgeItems[i].sealCode,
                   sealReturn: _detailCatridgeItems[i].sealReturn,
                 );
-                print('🔒 DIVERT SEAL: Updated corresponding item in _detailCatridgeItems with validated seal for section $sectionIndex, value reset to 0');
+                print('ðŸ”’ DIVERT SEAL: Updated corresponding item in _detailCatridgeItems with validated seal for section $sectionIndex, value reset to 0');
                 foundInDetailCatridge = true;
                 break;
               }
@@ -9003,12 +9001,12 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                 sealReturn: sealReturn,
               );
               _detailCatridgeItems.add(newDetailItem);
-              print('🔒 DIVERT SEAL: Created new item in _detailCatridgeItems for divert section $sectionIndex with validated seal: $validatedSealCode');
+              print('ðŸ”’ DIVERT SEAL: Created new item in _detailCatridgeItems for divert section $sectionIndex with validated seal: $validatedSealCode');
             }
           
           // Tidak reset manual mode setelah validasi berhasil
           // Manual mode hanya direset setelah berhasil scan, bukan setelah berhasil validasi
-          print('🔒 DIVERT SEAL: Manual mode tetap dipertahankan setelah validasi berhasil');
+          print('ðŸ”’ DIVERT SEAL: Manual mode tetap dipertahankan setelah validasi berhasil');
           // Catatan: Reset manual mode akan dilakukan di _onScanSuccess
         });
         
@@ -9021,8 +9019,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           debugPrint('Divert seal validation success (scan) section=$sectionIndex');
         }
       } else {
-        print('🔒 DIVERT SEAL: Validation failed - showing error modal');
-        print('🔒 DIVERT SEAL: Failure details - validationStatus: $validationStatus');
+        print('ðŸ”’ DIVERT SEAL: Validation failed - showing error modal');
+        print('ðŸ”’ DIVERT SEAL: Failure details - validationStatus: $validationStatus');
         
         _resetDivertAndSealFields(sectionIndex, resetNoCatridge: false, resetSealCatridge: true);
         if (showResultModal) {
@@ -9035,8 +9033,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         }
       }
     } catch (e, stackTrace) {
-      print('🔒 DIVERT SEAL: Exception occurred - $e');
-      print('🔒 DIVERT SEAL: Stack trace: $stackTrace');
+      print('ðŸ”’ DIVERT SEAL: Exception occurred - $e');
+      print('ðŸ”’ DIVERT SEAL: Stack trace: $stackTrace');
       
       _resetDivertAndSealFields(sectionIndex, resetNoCatridge: false, resetSealCatridge: true);
       if (showResultModal) {
@@ -9051,7 +9049,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       // Reset the validation flag
       String validationKey = 'divert_${sectionIndex}_seal_$sealCode';
       _divertSealValidationInProgress[validationKey] = false;
-      print('🔒 DIVERT SEAL: Validation completed for section $sectionIndex with seal: $sealCode');
+      print('ðŸ”’ DIVERT SEAL: Validation completed for section $sectionIndex with seal: $sealCode');
     }
   }
 
@@ -9061,7 +9059,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     bool showResultModal = true,
   }) async {
     if (catridgeCode.isEmpty || !mounted) {
-      print('🔍 POCKET LOOKUP: Skipped - catridgeCode empty or widget not mounted');
+      print('ðŸ” POCKET LOOKUP: Skipped - catridgeCode empty or widget not mounted');
       return;
     }
     
@@ -9070,18 +9068,18 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     
     // Check if API call is already in progress for this field and value
     if (_pocketApiCallInProgress[apiKey] == true) {
-      print('🔍 POCKET LOOKUP: API call already in progress for catridge: $catridgeCode');
+      print('ðŸ” POCKET LOOKUP: API call already in progress for catridge: $catridgeCode');
       return;
     }
     
     // Set flag to indicate API call is in progress
     _pocketApiCallInProgress[apiKey] = true;
     
-    print('🔍 POCKET LOOKUP: Starting lookup for catridge: $catridgeCode');
+    print('ðŸ” POCKET LOOKUP: Starting lookup for catridge: $catridgeCode');
     
     try {
       final branchCode = _resolveBranchCodeFromLogin();
-      print('🔍 POCKET LOOKUP: Using branchCode: $branchCode');
+      print('ðŸ” POCKET LOOKUP: Using branchCode: $branchCode');
       
       // Get list of existing catridge codes with enhanced logging
       List<String> existingCatridges = [];
@@ -9096,9 +9094,9 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           existingCatridges.add(_divertDetailItems[i]!.noCatridge);
         }
       }
-      print('🔍 POCKET LOOKUP: Existing catridges: $existingCatridges');
+      print('ðŸ” POCKET LOOKUP: Existing catridges: $existingCatridges');
       
-      print('🔍 POCKET LOOKUP: Calling API getCatridgeDetails...');
+      print('ðŸ” POCKET LOOKUP: Calling API getCatridgeDetails...');
       final response = await _apiService.getCatridgeDetails(
         branchCode, 
         catridgeCode,
@@ -9108,13 +9106,13 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         idTool: _idCRFController.text.trim(), // Pass ID CRF as IdTool parameter
       );
       
-      print('🔍 POCKET LOOKUP: API Response - success: ${response.success}, message: ${response.message}');
-      print('🔍 POCKET LOOKUP: Response data type: ${response.data?.runtimeType}, length: ${response.data is List ? (response.data as List).length : 'N/A'}');
+      print('ðŸ” POCKET LOOKUP: API Response - success: ${response.success}, message: ${response.message}');
+      print('ðŸ” POCKET LOOKUP: Response data type: ${response.data?.runtimeType}, length: ${response.data is List ? (response.data as List).length : 'N/A'}');
       
       // Enhanced validation with detailed logging
       if (response.success && response.data != null && response.data is List && (response.data as List).isNotEmpty && mounted) {
         final dataList = response.data as List;
-        print('🔍 POCKET LOOKUP: Processing first item from ${dataList.length} items');
+        print('ðŸ” POCKET LOOKUP: Processing first item from ${dataList.length} items');
         
         // Enhanced data validation
         final firstItem = dataList[0];
@@ -9126,11 +9124,11 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           throw Exception('First item is not a Map<String, dynamic>, got: ${firstItem.runtimeType}');
         }
         
-        print('🔍 POCKET LOOKUP: First item keys: ${firstItem.keys.toList()}');
+        print('ðŸ” POCKET LOOKUP: First item keys: ${firstItem.keys.toList()}');
         
         // Safe parsing with enhanced error handling
         final catridgeData = CatridgeData.fromJson(firstItem);
-        print('🔍 POCKET LOOKUP: Parsed CatridgeData - code: ${catridgeData.code}, standValue: ${catridgeData.standValue}, type: ${catridgeData.typeCatridge}');
+        print('ðŸ” POCKET LOOKUP: Parsed CatridgeData - code: ${catridgeData.code}, standValue: ${catridgeData.standValue}, type: ${catridgeData.typeCatridge}');
         
         // Validate that this is actually a Pocket type
         if (catridgeData.typeCatridge.toUpperCase() != 'P') {
@@ -9140,7 +9138,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         // Calculate total with enhanced logging
         final bool isCdm = (_prepareData?.jnsMesin.toUpperCase() ?? '') == 'CDM';
         int denomAmount = isCdm ? 0 : (_prepareData?.tipeDenom == 'A100' ? 100000 : 50000);
-        print('🔍 POCKET LOOKUP: Using denomAmount: $denomAmount (tipeDenom: ${_prepareData?.tipeDenom})');
+        print('ðŸ” POCKET LOOKUP: Using denomAmount: $denomAmount (tipeDenom: ${_prepareData?.tipeDenom})');
         
         // Safe standValue handling
         if (catridgeData.standValue.isNaN || catridgeData.standValue.isInfinite) {
@@ -9151,7 +9149,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         int totalNominal = denomAmount * standValueInt;
         String formattedTotal = isCdm ? 'Rp 0' : _formatCurrency(totalNominal);
         
-        print('🔍 POCKET LOOKUP: Calculated - standValueInt: $standValueInt, totalNominal: $totalNominal, formatted: $formattedTotal');
+        print('ðŸ” POCKET LOOKUP: Calculated - standValueInt: $standValueInt, totalNominal: $totalNominal, formatted: $formattedTotal');
         
         setState(() {
           _pocketCatridgeData = catridgeData;
@@ -9176,7 +9174,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           _detailCatridgeItems.removeWhere((item) => item.index >= 200);
           _detailCatridgeItems.add(_pocketDetailItem!);
           _detailCatridgeItems.sort((a, b) => a.index.compareTo(b.index));
-          print('🔍 POCKET LOOKUP: Added/updated pocket data to _detailCatridgeItems with index 200');
+          print('ðŸ” POCKET LOOKUP: Added/updated pocket data to _detailCatridgeItems with index 200');
           
           // REMOVED: Reset manual mode after API call
           // Manual mode should only be reset after successful scan, not after API call
@@ -9191,8 +9189,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           debugPrint('Pocket lookup success (scan): ${catridgeData.code}');
         }
       } else {
-        print('🔍 POCKET LOOKUP: Failed - clearing data and showing error');
-        print('🔍 POCKET LOOKUP: Failure details - success: ${response.success}, data: ${response.data}, message: ${response.message}');
+        print('ðŸ” POCKET LOOKUP: Failed - clearing data and showing error');
+        print('ðŸ” POCKET LOOKUP: Failure details - success: ${response.success}, data: ${response.data}, message: ${response.message}');
         
         setState(() {
           _pocketCatridgeData = null;
@@ -9200,7 +9198,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           // Remove existing pocket data from _detailCatridgeItems if any
           if (_pocketDetailItem != null) {
             _detailCatridgeItems.removeWhere((item) => item.index >= 200);
-            print('🔍 POCKET LOOKUP: Removed pocket data from _detailCatridgeItems');
+            print('ðŸ” POCKET LOOKUP: Removed pocket data from _detailCatridgeItems');
           }
           
           _pocketDetailItem = null;
@@ -9222,8 +9220,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         }
       }
     } catch (e, stackTrace) {
-      print('🔍 POCKET LOOKUP: Exception occurred - $e');
-      print('🔍 POCKET LOOKUP: Stack trace: $stackTrace');
+      print('ðŸ” POCKET LOOKUP: Exception occurred - $e');
+      print('ðŸ” POCKET LOOKUP: Stack trace: $stackTrace');
       
       if (mounted) {
         setState(() {
@@ -9232,7 +9230,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           // Remove existing pocket data from _detailCatridgeItems if any
           if (_pocketDetailItem != null) {
             _detailCatridgeItems.removeWhere((item) => item.index >= 200);
-            print('🔍 POCKET LOOKUP: Removed pocket data from _detailCatridgeItems due to exception');
+            print('ðŸ” POCKET LOOKUP: Removed pocket data from _detailCatridgeItems due to exception');
           }
           
           _pocketDetailItem = null;
@@ -9264,7 +9262,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       // Always reset the API call flag, regardless of success or error
       String apiKey = 'pocket_0_$catridgeCode';
       _pocketApiCallInProgress[apiKey] = false;
-      print('🔍 POCKET LOOKUP: API call completed for catridge: $catridgeCode');
+      print('ðŸ” POCKET LOOKUP: API call completed for catridge: $catridgeCode');
     }
   }
 
@@ -9273,7 +9271,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     bool showResultModal = true,
   }) async {
     if (sealCode.isEmpty || !mounted) {
-      print('🔒 POCKET SEAL: Skipped - sealCode empty or widget not mounted');
+      print('ðŸ”’ POCKET SEAL: Skipped - sealCode empty or widget not mounted');
       return;
     }
     
@@ -9282,21 +9280,21 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
     
     // Check if seal validation is already in progress for this field and value
     if (_pocketSealValidationInProgress[validationKey] == true) {
-      print('🔒 POCKET SEAL: Validation already in progress for seal: $sealCode');
+      print('ðŸ”’ POCKET SEAL: Validation already in progress for seal: $sealCode');
       return;
     }
     
     // Set flag to indicate seal validation is in progress
     _pocketSealValidationInProgress[validationKey] = true;
     
-    print('🔒 POCKET SEAL: Starting validation for seal: $sealCode');
+    print('ðŸ”’ POCKET SEAL: Starting validation for seal: $sealCode');
     
     try {
-      print('🔒 POCKET SEAL: Calling API validateSeal...');
+      print('ðŸ”’ POCKET SEAL: Calling API validateSeal...');
       final response = await _apiService.validateSeal(sealCode);
       
-      print('🔒 POCKET SEAL: API Response - success: ${response.success}, message: ${response.message}');
-      print('🔒 POCKET SEAL: Response data: ${response.data}');
+      print('ðŸ”’ POCKET SEAL: API Response - success: ${response.success}, message: ${response.message}');
+      print('ðŸ”’ POCKET SEAL: Response data: ${response.data}');
       
       // Extract validation status from response data (consistent with Catridge implementation)
       String validationStatus = '';
@@ -9335,7 +9333,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
             }
           }
         } catch (e) {
-          print('🔒 POCKET SEAL: Error parsing validation data: $e');
+          print('ðŸ”’ POCKET SEAL: Error parsing validation data: $e');
         }
       }
       
@@ -9350,7 +9348,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
       
       if (response.success && validationStatus.toUpperCase() == 'SUCCESS' && mounted) {
-        print('🔒 POCKET SEAL: Validation successful - updating state');
+        print('ðŸ”’ POCKET SEAL: Validation successful - updating state');
         
         setState(() {
           if (_pocketDetailItem != null) {
@@ -9365,7 +9363,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               sealCode: _pocketDetailItem!.sealCode,
               sealReturn: _pocketDetailItem!.sealReturn,
             );
-            print('🔒 POCKET SEAL: Updated pocket item with validated seal: $validatedSealCode');
+            print('ðŸ”’ POCKET SEAL: Updated pocket item with validated seal: $validatedSealCode');
           } else {
             // Create new DetailCatridgeItem if not exists
             String noCatridge = _pocketControllers.isNotEmpty ? _pocketControllers[0].text.trim() : '';
@@ -9384,17 +9382,17 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               sealCode: sealCode,
               sealReturn: sealReturn,
             );
-            print('🔒 POCKET SEAL: Created new pocket item with validated seal: $validatedSealCode');
+            print('ðŸ”’ POCKET SEAL: Created new pocket item with validated seal: $validatedSealCode');
           }
 
             _detailCatridgeItems.removeWhere((item) => item.index >= 200);
             _detailCatridgeItems.add(_pocketDetailItem!);
             _detailCatridgeItems.sort((a, b) => a.index.compareTo(b.index));
-            print('🔒 POCKET SEAL: Added/updated pocket item in _detailCatridgeItems with validated seal: $validatedSealCode');
+            print('ðŸ”’ POCKET SEAL: Added/updated pocket item in _detailCatridgeItems with validated seal: $validatedSealCode');
           
           // Tidak reset manual mode setelah validasi berhasil
           // Manual mode hanya direset setelah berhasil scan, bukan setelah berhasil validasi
-          print('🔒 POCKET SEAL: Manual mode tetap dipertahankan setelah validasi berhasil');
+          print('ðŸ”’ POCKET SEAL: Manual mode tetap dipertahankan setelah validasi berhasil');
           // Catatan: Reset manual mode akan dilakukan di _onScanSuccess
         });
         
@@ -9407,8 +9405,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           debugPrint('Pocket seal validation success (scan)');
         }
       } else {
-        print('🔒 POCKET SEAL: Validation failed - showing error modal');
-        print('🔒 POCKET SEAL: Failure details - validationStatus: $validationStatus');
+        print('ðŸ”’ POCKET SEAL: Validation failed - showing error modal');
+        print('ðŸ”’ POCKET SEAL: Failure details - validationStatus: $validationStatus');
         
         if (showResultModal) {
           CustomModals.showFailedModal(
@@ -9420,8 +9418,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
         }
       }
     } catch (e, stackTrace) {
-      print('🔒 POCKET SEAL: Exception occurred - $e');
-      print('🔒 POCKET SEAL: Stack trace: $stackTrace');
+      print('ðŸ”’ POCKET SEAL: Exception occurred - $e');
+      print('ðŸ”’ POCKET SEAL: Stack trace: $stackTrace');
       
       if (showResultModal) {
         CustomModals.showFailedModal(
@@ -9435,7 +9433,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       // Always reset the seal validation flag, regardless of success or error
       String validationKey = 'pocket_0_seal_$sealCode';
       _pocketSealValidationInProgress[validationKey] = false;
-      print('🔒 POCKET SEAL: Validation completed for seal: $sealCode');
+      print('ðŸ”’ POCKET SEAL: Validation completed for seal: $sealCode');
     }
   }
 

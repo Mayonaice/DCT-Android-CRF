@@ -6,6 +6,7 @@ import '../services/auth_service.dart';
 import '../services/device_service.dart';
 import '../widgets/custom_modals.dart';
 import '../widgets/barcode_scanner_widget.dart';
+import '../utils/orientation_lock.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -79,9 +80,10 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (userRole == 'CRF_TL') {
+        await OrientationLock.portrait();
         Navigator.of(context).pushReplacementNamed('/tl_home');
       } else {
-        // Keep landscape as per manifest
+        await OrientationLock.landscape();
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),
@@ -445,8 +447,10 @@ class _LoginPageState extends State<LoginPage> {
                 userRole = (userData['roleID'] ?? userData['RoleID'] ?? userData['role'] ?? userData['Role'] ?? userData['userRole'] ?? userData['UserRole'] ?? userData['position'] ?? userData['Position'] ?? '').toString().toUpperCase();
               }
               if (userRole == 'CRF_TL') {
+                await OrientationLock.portrait();
                 Navigator.of(context).pushReplacementNamed('/tl_home');
               } else {
+                await OrientationLock.landscape();
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const HomePage()),

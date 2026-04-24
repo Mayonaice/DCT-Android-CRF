@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
 import 'dart:async';
 import '../models/return_model.dart';
 import '../models/prepare_model.dart';
@@ -83,10 +84,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
 
   Future<void> _enforceLandscapeOrientation() async {
     if (!mounted) return;
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    await OrientationLock.landscape();
   }
 
   @override

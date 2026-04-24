@@ -4,6 +4,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 import '../widgets/custom_modals.dart';
 import '../services/device_service.dart';
+import '../utils/orientation_lock.dart';
  
 
 class TLDeviceInfoScreen extends StatefulWidget {
@@ -25,12 +26,7 @@ class _TLDeviceInfoScreenState extends State<TLDeviceInfoScreen> {
   @override
   void initState() {
     super.initState();
-    // Force portrait orientation for CRF_TL
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    
+    OrientationLock.portrait();
     _loadDeviceInfo();
   }
 

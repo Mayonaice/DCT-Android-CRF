@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../utils/orientation_lock.dart';
 import 'dart:async';
 // import 'package:device_info_plus/device_info_plus.dart'; // REMOVED - namespace conflict
 import 'dart:io';
@@ -38,10 +39,7 @@ class _DeviceInfoScreenState extends State<DeviceInfoScreen> with WidgetsBinding
 
   Future<void> _enforceLandscapeOrientation() async {
     if (!mounted) return;
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    await OrientationLock.landscape();
   }
 
   @override
@@ -85,7 +83,7 @@ class _DeviceInfoScreenState extends State<DeviceInfoScreen> with WidgetsBinding
     try {
       // Get comprehensive device information using DeviceService
       final deviceInfo = await DeviceService.getDeviceInfo();
-      print('🔍 Retrieved device info: $deviceInfo');
+      print('ðŸ” Retrieved device info: $deviceInfo');
       
       // Check if the ID is persistent
       final prefs = await SharedPreferences.getInstance();

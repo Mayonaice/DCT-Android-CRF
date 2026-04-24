@@ -7,6 +7,7 @@ import '../models/prepare_model.dart';
 import '../widgets/face_recognition_widget.dart';
 import '../widgets/custom_modals.dart';
 import '../services/api_service.dart';
+import '../utils/orientation_lock.dart';
 
 class TLApprovalSummaryScreen extends StatefulWidget {
   final Map<String, dynamic> qrData;
@@ -38,12 +39,7 @@ class _TLApprovalSummaryScreenState extends State<TLApprovalSummaryScreen> {
   @override
   void initState() {
     super.initState();
-    // 
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    
+    OrientationLock.portrait();
     _parseQRData();
   }
 
@@ -542,12 +538,7 @@ class _TLApprovalSummaryScreenState extends State<TLApprovalSummaryScreen> {
 
   @override
   void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    OrientationLock.portrait();
     super.dispose();
   }
 }

@@ -12,6 +12,7 @@ import '../widgets/custom_modals.dart';
 import '../widgets/tl_qr_scanner_widget.dart';
 import './tl_prepare_confirmation_page.dart';
 import './tl_return_confirmation_page.dart';
+import '../utils/orientation_lock.dart';
 import 'dart:async';
 
 class TLQRScannerScreen extends StatefulWidget {
@@ -46,11 +47,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
   @override
   void initState() {
     super.initState();
-    // Force portrait orientation for CRF_TL
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    OrientationLock.portrait();
     
     // Cek kredensial TL yang tersimpan
     _checkSavedCredentials();
@@ -1363,11 +1360,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       String? qrResult;
       
       if (scanMethod == 'scanner') {
-        // Set to portrait mode before scanning
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-        ]);
+        await OrientationLock.portrait();
         
         // Mulai timer untuk timeout scanner (45 detik untuk QR kompleks)
         _scannerTimeoutTimer?.cancel();
@@ -1414,11 +1407,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         _scannerTimeoutTimer?.cancel();
         print('🔍 [TL_SCREEN] Returned from scanner. QR Result: ${qrResult != null ? "Found (${qrResult!.length} chars)" : "NULL"}');
         
-        // Reset orientation to portrait for this screen
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-        ]);
+        await OrientationLock.portrait();
       } else if (scanMethod == 'alternative') {
         // Jika platform web, tampilkan pesan error
         if (kIsWeb) {
@@ -1429,11 +1418,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
           return;
         }
         
-        // Set to portrait mode before scanning
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-        ]);
+        await OrientationLock.portrait();
         
         // Mulai timer untuk timeout scanner (35 detik untuk alternative scanner)
         _scannerTimeoutTimer?.cancel();
@@ -1476,11 +1461,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
         // Cancel timeout timer when returning from scanner
         _scannerTimeoutTimer?.cancel();
         
-        // Reset orientation to portrait for this screen
-        await SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-          DeviceOrientation.portraitDown,
-        ]);
+        await OrientationLock.portrait();
       } else if (scanMethod == 'manual') {
         // Show manual input dialog
         qrResult = await _showManualInputDialog();

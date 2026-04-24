@@ -12,6 +12,7 @@ class ReturnApiService {
   
   // API timeout duration
   static const Duration _timeout = Duration(seconds: 15);
+  static const Duration _approvalTimeout = Duration(seconds: 300);
 
   // Singleton pattern
   static final ReturnApiService _instance = ReturnApiService._internal();
@@ -132,7 +133,7 @@ class ReturnApiService {
             'NIK': nik,
             'Password': password,
           }),
-        ).timeout(_timeout),
+        ).timeout(_approvalTimeout),
         'validateTLSupervisor',
       );
       
@@ -194,7 +195,7 @@ class ReturnApiService {
           Uri.parse(url),
           headers: apiHeaders,
           body: json.encode(request.toJson()),
-        ).timeout(_timeout),
+        ).timeout(_approvalTimeout),
         'updateQtyCatridge',
       );
       
