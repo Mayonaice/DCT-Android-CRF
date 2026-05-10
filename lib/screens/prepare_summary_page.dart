@@ -1610,7 +1610,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
       }
     } else {
       // Empty state when no data is available
-      denomText = 'â€”';
+      denomText = '—';
       imagePath = null;
     }
     
@@ -1861,6 +1861,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
                  totalNominal: widget.totalNominal,
                  prepareCatridgeData: _prepareCatridgeQRData(),
                  prepareDetails: _prepareDetailsQRData(),
+                 dateStart: widget.dateStart,
                ),
             ],
           ),

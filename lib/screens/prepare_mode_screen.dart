@@ -1968,8 +1968,8 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                 : 0;
             int actualValue = qtyFromApi > 0 ? qtyFromApi : denomValue;
 
-            String denomText = denomAmount > 0 ? _formatCurrency(denomAmount) : 'â€”';
-            String formattedTotal = 'â€”';
+            String denomText = denomAmount > 0 ? _formatCurrency(denomAmount) : '—';
+            String formattedTotal = '—';
             if (denomAmount > 0 && actualValue > 0) {
               formattedTotal = _formatCurrency(denomAmount * actualValue);
             }
@@ -3323,10 +3323,10 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
           actualValue = (_prepareData?.standValue ?? catridgeData.standValue.round());
         }
 
-        String denomText = isCdm ? 'Rp 0' : (denomAmount > 0 ? _formatCurrency(denomAmount) : 'â€”');
+        String denomText = isCdm ? 'Rp 0' : (denomAmount > 0 ? _formatCurrency(denomAmount) : '—');
         String formattedTotal = isCdm
             ? 'Rp 0'
-            : ((denomAmount > 0 && actualValue > 0) ? _formatCurrency(denomAmount * actualValue) : 'â€”');
+            : ((denomAmount > 0 && actualValue > 0) ? _formatCurrency(denomAmount * actualValue) : '—');
         
         // Auto-populate seal if available from prepare data
         String autoSeal = '';
@@ -5924,9 +5924,9 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
 
     String denomText = (hasValidPrepare && denomAmount > 0)
         ? _formatCurrency(denomAmount)
-        : 'â€”';
+        : '—';
 
-    String formattedTotal = 'â€”';
+    String formattedTotal = '—';
     if (hasValidPrepare && denomAmount > 0 && actualValue > 0) {
       formattedTotal = _formatCurrency(denomAmount * actualValue);
     }
@@ -6197,7 +6197,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                           Text(
                             actualValue > 0
                               ? actualValue.toString()
-                              : 'â€”',
+                              : '—',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 13 : 15,
                             ),
@@ -6296,7 +6296,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
   // Helper method to calculate dynamic font size based on value length
   double _calculateDynamicFontSize(String formattedValue, bool isSmallScreen) {
     // Remove 'Rp ' and count characters
-    String cleanValue = formattedValue.replaceAll('Rp ', '').replaceAll('â€”', '');
+    String cleanValue = formattedValue.replaceAll('Rp ', '').replaceAll('—', '');
     int length = cleanValue.length;
     
     // Base font sizes
@@ -6792,6 +6792,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               idTool: _prepareData?.id.toString() ?? _idCRFController.text,
               prepareCatridgeData: _prepareCatridgeQRData(),
               prepareDetails: _prepareDetailsQRData(),
+              dateStart: _capturedDateStart,
               isManual: (
                 (_catridgeManualMode.any((e) => e)) ||
                 (_divertNoManualMode.any((e) => e)) ||
@@ -6908,7 +6909,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
               suffixIcon: isPassword 
                 ? const Icon(Icons.visibility, color: Colors.grey) 
                 : const Icon(Icons.person_outline, color: Colors.grey),
-              hintText: isPassword ? 'â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢' : '',
+              hintText: isPassword ? '••••••••••' : '',
               hintStyle: TextStyle(
                 color: Colors.grey.shade400,
                 fontSize: isSmallScreen ? 14 : 16,
@@ -6923,7 +6924,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
   
   Widget _buildGrandTotalInlineSection(bool isSmallScreen) {
     final totalAmount = _calculateGrandTotal();
-    final formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : 'â€”';
+    final formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : '—';
     final isDataReady = _prepareData != null;
     
     return Column(
@@ -7232,7 +7233,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
     }
     
-    String formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : 'â€”';
+    String formattedTotal = totalAmount > 0 ? _formatCurrency(totalAmount) : '—';
     double dynamicFontSize = _calculateDynamicFontSize(formattedTotal, isSmallScreen);
     
     return Column(
@@ -7926,7 +7927,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
     } else {
       // Empty state when no data is available
-      denomText = 'â€”';
+      denomText = '—';
       imagePath = null;
     }
     if (jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
@@ -8151,7 +8152,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                                   totalValue += _divertDetailItems[i]!.value;
                                 }
                               }
-                              return totalValue > 0 ? totalValue.toString() : 'â€”';
+                              return totalValue > 0 ? totalValue.toString() : '—';
                             }(),
                             style: TextStyle(
                               fontSize: isSmallScreen ? 13 : 15,
@@ -8210,7 +8211,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                               for (int i = 0; i < 3; i++) {
                                 if (_divertDetailItems[i]?.total != null && 
                                     _divertDetailItems[i]!.total.isNotEmpty && 
-                                    _divertDetailItems[i]!.total != 'â€”') {
+                                    _divertDetailItems[i]!.total != '—') {
                                   
                                   // Extract numeric value from total string
                                   String totalStr = _divertDetailItems[i]!.total;
@@ -8304,7 +8305,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
       }
     } else {
       // Empty state when no data is available
-      denomText = 'â€”';
+      denomText = '—';
       imagePath = null;
     }
     if (jnsMesin != null && jnsMesin.toUpperCase() == 'CDM') {
@@ -8522,7 +8523,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                             ),
                           ),
                           Text(
-                            _pocketDetailItem?.value.toString() ?? 'â€”',
+                            _pocketDetailItem?.value.toString() ?? '—',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 13 : 15,
                             ),
@@ -8572,7 +8573,7 @@ class _PrepareModePageState extends State<PrepareModePage> with WidgetsBindingOb
                           ),
                           SizedBox(height: isSmallScreen ? 5 : 8),
                           Text(
-                            _pocketDetailItem?.total ?? 'â€”',
+                            _pocketDetailItem?.total ?? '—',
                             style: TextStyle(
                               fontSize: isSmallScreen ? 15 : 17,
                               fontWeight: FontWeight.bold,

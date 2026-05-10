@@ -231,10 +231,12 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
           context: context,
           message: 'Data berhasil disimpan!',
           onPressed: () {
-            Navigator.pop(context); // Close modal
-            Navigator.of(context).pop(true); // Return true to indicate success
+            Navigator.of(context).pop();
           },
         );
+
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
       } else {
         setState(() {
           _errorMessage = response.message;
@@ -268,13 +270,15 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Container(
-        width: isTablet ? screenWidth * 0.8 : screenWidth * 0.9,
-        height: isTablet ? screenHeight * 0.8 : screenHeight * 0.9,
-        padding: EdgeInsets.all(isTablet ? 24 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: Stack(
+        children: [
+          Container(
+            width: isTablet ? screenWidth * 0.8 : screenWidth * 0.9,
+            height: isTablet ? screenHeight * 0.8 : screenHeight * 0.9,
+            padding: EdgeInsets.all(isTablet ? 24 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // Header with close button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -466,43 +470,42 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
             ),
             
             // Submit button
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _submitForm,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 24 : 16,
-                    vertical: isTablet ? 16 : 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                ),
-                icon: _isLoading
-                    ? Container(
-                        width: 24,
-                        height: 24,
-                        padding: const EdgeInsets.all(2.0),
-                        child: const CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 3,
-                        ),
-                      )
-                    : const Icon(Icons.check, color: Colors.white),
-                label: Text(
-                  'Submit',
-                  style: TextStyle(
-                    fontSize: isTablet ? 16 : 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 24 : 16,
+                        vertical: isTablet ? 16 : 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    icon: const Icon(Icons.check, color: Colors.white),
+                    label: Text(
+                      'Submit',
+                      style: TextStyle(
+                        fontSize: isTablet ? 16 : 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
+          ),
+          if (_isLoading) ...[
+            const ModalBarrier(
+              dismissible: false,
+              color: Color(0x66000000),
+            ),
+            const Center(child: CircularProgressIndicator()),
           ],
-        ),
+        ],
       ),
     );
   }

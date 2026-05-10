@@ -169,6 +169,117 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
     return value;
   }
 
+  static const List<String> _dateStartKeys = [
+    'dateStart',
+    'DateStart',
+    'datestart',
+    'date_start',
+    'dateStartReturn',
+    'DateStartReturn',
+    'dateStartReturnFromQr',
+    'dateStartReturnQR',
+    'dateSTReturn',
+    'DateSTReturn',
+    'timeSTReturn',
+    'TimeSTReturn',
+    'tglPrepare',
+    'TglPrepare',
+    'dateReplenish',
+    'DateReplenish',
+  ];
+
+  dynamic _getValueCaseInsensitive(Map<dynamic, dynamic> source, String key) {
+    final keyLower = key.toLowerCase();
+    for (final entry in source.entries) {
+      if (entry.key.toString().toLowerCase() == keyLower) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  String? _normalizeDateStartValue(dynamic rawValue) {
+    if (rawValue == null) return null;
+
+    final raw = rawValue.toString().trim();
+    if (raw.isEmpty || raw.toLowerCase() == 'null') return null;
+
+    if (RegExp(r'^\d{13}$').hasMatch(raw)) {
+      final millis = int.tryParse(raw);
+      if (millis != null) {
+        return DateTime.fromMillisecondsSinceEpoch(millis).toIso8601String();
+      }
+    }
+
+    if (RegExp(r'^\d{10}$').hasMatch(raw)) {
+      final seconds = int.tryParse(raw);
+      if (seconds != null) {
+        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000).toIso8601String();
+      }
+    }
+
+    final dotNetMatch = RegExp(r'^/Date\((\d+)\)/$').firstMatch(raw);
+    if (dotNetMatch != null) {
+      final millis = int.tryParse(dotNetMatch.group(1) ?? '');
+      if (millis != null) {
+        return DateTime.fromMillisecondsSinceEpoch(millis).toIso8601String();
+      }
+    }
+
+    try {
+      return DateTime.parse(raw).toIso8601String();
+    } catch (_) {}
+
+    final altMatch = RegExp(
+      r'^(\d{2})[-/](\d{2})[-/](\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$',
+    ).firstMatch(raw);
+    if (altMatch != null) {
+      final day = int.parse(altMatch.group(1)!);
+      final month = int.parse(altMatch.group(2)!);
+      final year = int.parse(altMatch.group(3)!);
+      final hour = int.tryParse(altMatch.group(4) ?? '0') ?? 0;
+      final minute = int.tryParse(altMatch.group(5) ?? '0') ?? 0;
+      final second = int.tryParse(altMatch.group(6) ?? '0') ?? 0;
+      return DateTime(year, month, day, hour, minute, second).toIso8601String();
+    }
+
+    return raw;
+  }
+
+  String? _extractDateStartFromPayload(dynamic payload, [int depth = 0]) {
+    if (payload == null || depth > 6) return null;
+
+    if (payload is Map) {
+      for (final key in _dateStartKeys) {
+        final value = _getValueCaseInsensitive(payload, key);
+        final normalized = _normalizeDateStartValue(value);
+        if (normalized != null && normalized.isNotEmpty) {
+          return normalized;
+        }
+      }
+
+      for (final nestedKey in ['details', 'prepareDetails', 'returnDetails', 'data', 'payload', 'meta']) {
+        final nested = _getValueCaseInsensitive(payload, nestedKey);
+        final found = _extractDateStartFromPayload(nested, depth + 1);
+        if (found != null && found.isNotEmpty) return found;
+      }
+
+      for (final value in payload.values) {
+        final found = _extractDateStartFromPayload(value, depth + 1);
+        if (found != null && found.isNotEmpty) return found;
+      }
+    }
+
+    if (payload is List) {
+      for (final item in payload.take(8)) {
+        final found = _extractDateStartFromPayload(item, depth + 1);
+        if (found != null && found.isNotEmpty) return found;
+      }
+    }
+
+    return null;
+  }
+
   Future<void> _processQRCode(String qrCode) async {
     if (_isProcessing) return;
 
@@ -352,6 +463,8 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
           final lokasi = decryptedData['lokasi']?.toString();
           final atmType = decryptedData['atmType']?.toString();
           final jumlahKaset = int.tryParse(decryptedData['jumlahKaset']?.toString() ?? '');
+          final qrDateStart = _extractDateStartFromPayload(decryptedData);
+          debugPrint('🔍 [QR_SIMPLIFIED] Resolved dateStart from QR: $qrDateStart');
           action = source.toUpperCase() == 'RETURN' ? 'RETURN' : 'PREPARE';
           idTool = qrIdTool;
           timestamp = int.tryParse(decryptedData['timestamp']?.toString() ?? '0') ?? 0;
@@ -372,11 +485,22 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
                   lokasiFromQr: lokasi,
                   atmTypeFromQr: atmType,
                   jumlahKasetFromQr: jumlahKaset,
+                  dateStartFromQr: qrDateStart,
                 ),
               ),
             );
           } else {
-            Navigator.of(context).push(MaterialPageRoute(builder: (_) => TLReturnConfirmationPage(idTool: idTool, cashierCode: cashierCode, tableCode: tableCode, totalNominal: totalNominal, totalLembar: totalLembar, jumlahKasetCatridge: jumlahKasetCatridge)));
+            Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => TLReturnConfirmationPage(
+                idTool: idTool,
+                cashierCode: cashierCode,
+                tableCode: tableCode,
+                totalNominal: totalNominal,
+                totalLembar: totalLembar,
+                jumlahKasetCatridge: jumlahKasetCatridge,
+                dateStartReturnFromQr: qrDateStart,
+              ),
+            ));
           }
           return;
         }
@@ -614,7 +738,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
     }
   }
 
-  Future<void> _approveAndProcessCatridges(String idTool, String tlNik, String tlName, String? tlspvPassword, List<PrepareCatridgeQRData> catridges) async {
+  Future<void> _approveAndProcessCatridges(String idTool, String tlNik, String tlName, String? tlspvPassword, List<PrepareCatridgeQRData> catridges, [String? dateStartFromQr]) async {
     try {
       print('Processing ${catridges.length} catridges for ID: $idTool by TL: $tlNik ($tlName)');
       
@@ -712,12 +836,17 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       // Step 3: Update Planning API - moved to last
       print('=== STEP 3: UPDATE PLANNING ===');
       print('Calling updatePlanning with: idTool=$idToolInt, cashierCode=$currentUser, spvTLCode=$cleanNik, tableCode=$tableCode');
+      final resolvedDateStart = _normalizeDateStartValue(dateStartFromQr);
+      if (resolvedDateStart == null || resolvedDateStart.isEmpty) {
+        throw Exception('DateStart dari QR tidak ditemukan. Silakan scan ulang QR Prepare.');
+      }
       
       final planningResponse = await _apiService.updatePlanning(
         idTool: idToolInt,
         cashierCode: currentUser,
         spvTLCode: cleanNik,
         tableCode: tableCode,
+        dateStart: resolvedDateStart,
         warehouseCode: warehouseCode,
       );
       
@@ -759,7 +888,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
     }
   }
 
-  Future<void> _approvePrepare(String idTool, String tlNik, String tlName, bool bypassNikValidation, String? tlspvPassword) async {
+  Future<void> _approvePrepare(String idTool, String tlNik, String tlName, bool bypassNikValidation, String? tlspvPassword, [String? dateStartFromQr]) async {
     try {
       print('Approving prepare for ID: $idTool by TL: $tlNik ($tlName), bypassValidation: $bypassNikValidation, hasPassword: ${tlspvPassword != null}');
       
@@ -822,12 +951,17 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       // Step 2: Update Planning API - sama seperti flow manual
       print('=== STEP 2: UPDATE PLANNING ===');
       print('Calling updatePlanning with: idTool=$idToolInt, cashierCode=$currentUser, spvTLCode=$cleanNik, tableCode=$tableCode');
+      final resolvedDateStart = _normalizeDateStartValue(dateStartFromQr);
+      if (resolvedDateStart == null || resolvedDateStart.isEmpty) {
+        throw Exception('DateStart dari QR tidak ditemukan. Silakan scan ulang QR Prepare.');
+      }
       
       final planningResponse = await _apiService.updatePlanning(
         idTool: idToolInt,
         cashierCode: currentUser,
         spvTLCode: cleanNik,
         tableCode: tableCode,
+        dateStart: resolvedDateStart,
         warehouseCode: warehouseCode,
       );
       
@@ -861,7 +995,7 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
     }
   }
 
-  Future<void> _approveReturn(String idTool, String tlNik, String tlName, bool bypassNikValidation, String? tlspvPassword) async {
+  Future<void> _approveReturn(String idTool, String tlNik, String tlName, bool bypassNikValidation, String? tlspvPassword, [String? dateStartFromQr]) async {
     try {
       print('Approving return for ID: $idTool by TL: $tlNik ($tlName), bypassValidation: $bypassNikValidation, hasPassword: ${tlspvPassword != null}');
       
@@ -917,11 +1051,15 @@ class _TLQRScannerScreenState extends State<TLQRScannerScreen> {
       
       // Step 2: Update Planning RTN - sama seperti flow manual
       print('=== STEP 2: UPDATE PLANNING RTN ===');
+      final resolvedDateStartReturn = _normalizeDateStartValue(dateStartFromQr);
+      if (resolvedDateStartReturn == null || resolvedDateStartReturn.isEmpty) {
+        throw Exception('DateStart Return dari QR tidak ditemukan. Silakan scan ulang QR Return.');
+      }
       final updateParams = {
         "idTool": cleanIdTool,
         "CashierReturnCode": currentUser,
         "TableReturnCode": tableCode,
-        "DateStartReturn": DateTime.now().toIso8601String(),
+        "DateStartReturn": resolvedDateStartReturn,
         "WarehouseCode": warehouseCode,
         "UserATMReturn": cleanNik,
         "SPVBARusak": cleanNik,

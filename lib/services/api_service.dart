@@ -1178,6 +1178,14 @@ class ApiService {
   }) async {
     try {
       final requestHeaders = await headers;
+      final normalizedDateStart = _normalizeDateTimeForRequest(dateStart);
+      if (normalizedDateStart == null || normalizedDateStart.isEmpty) {
+        return ApiResponse(
+          success: false,
+          message: 'DateStart wajib diisi dari QR',
+          status: 'error',
+        );
+      }
       
       // Make sure idTool is properly formatted as integer
       int idToolAsInt;
@@ -1197,7 +1205,7 @@ class ApiService {
         "CashierCode": cashierCode,
         "CashierCode2": "", // Kosongkan sesuai requirement
         "TableCode": tableCode,
-        "DateStart": dateStart ?? DateTime.now().toIso8601String(),
+        "DateStart": normalizedDateStart,
         "WarehouseCode": warehouseCode,
         "SpvTLCode": spvTLCode,
         "IsManual": "N"
@@ -1866,15 +1874,16 @@ class ApiService {
       final requestHeaders = await headers;
       
       // Format date parameters properly
-      if (parameters.containsKey('DateStartReturn') && parameters['DateStartReturn'] is String) {
-        // Make sure it's in a format the API can understand
-        final dateStr = parameters['DateStartReturn'];
-        try {
-          final date = DateTime.parse(dateStr);
-          parameters['DateStartReturn'] = date.toIso8601String();
-        } catch (e) {
-          // Keep original if parsing fails
+      if (parameters.containsKey('DateStartReturn')) {
+        final normalizedDateStartReturn = _normalizeDateTimeForRequest(parameters['DateStartReturn']?.toString());
+        if (normalizedDateStartReturn == null || normalizedDateStartReturn.isEmpty) {
+          return ApiResponse(
+            success: false,
+            message: 'DateStartReturn wajib diisi dari QR',
+            status: 'error',
+          );
         }
+        parameters['DateStartReturn'] = normalizedDateStartReturn;
       }
       
       // Ensure idTool is numeric
@@ -1940,6 +1949,44 @@ class ApiService {
         status: 'error'
       );
     }
+  }
+
+  String? _normalizeDateTimeForRequest(String? raw) {
+    if (raw == null) return null;
+    final value = raw.trim();
+    if (value.isEmpty || value.toLowerCase() == 'null') return null;
+
+    if (RegExp(r'^\d{13}$').hasMatch(value)) {
+      final millis = int.tryParse(value);
+      if (millis != null) {
+        return DateTime.fromMillisecondsSinceEpoch(millis).toIso8601String();
+      }
+    }
+
+    if (RegExp(r'^\d{10}$').hasMatch(value)) {
+      final seconds = int.tryParse(value);
+      if (seconds != null) {
+        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000).toIso8601String();
+      }
+    }
+
+    final direct = DateTime.tryParse(value);
+    if (direct != null) return direct.toIso8601String();
+
+    final alt = RegExp(
+      r'^(\d{2})[-/](\d{2})[-/](\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$',
+    ).firstMatch(value);
+    if (alt != null) {
+      final day = int.parse(alt.group(1)!);
+      final month = int.parse(alt.group(2)!);
+      final year = int.parse(alt.group(3)!);
+      final hour = int.tryParse(alt.group(4) ?? '0') ?? 0;
+      final minute = int.tryParse(alt.group(5) ?? '0') ?? 0;
+      final second = int.tryParse(alt.group(6) ?? '0') ?? 0;
+      return DateTime(year, month, day, hour, minute, second).toIso8601String();
+    }
+
+    return null;
   }
 
   // Validate Return Catridge using RTN_SP_ReturnCatridge

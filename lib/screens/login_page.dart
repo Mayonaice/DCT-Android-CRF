@@ -39,6 +39,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
+    OrientationLock.unlock();
     
     // Debug logging untuk web
     debugPrint('🎯 LOGIN_PAGE.DART INITIATED');
@@ -81,9 +82,13 @@ class _LoginPageState extends State<LoginPage> {
 
       if (userRole == 'CRF_TL') {
         await OrientationLock.portrait();
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (!mounted) return;
         Navigator.of(context).pushReplacementNamed('/tl_home');
       } else {
         await OrientationLock.landscape();
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),
@@ -448,9 +453,13 @@ class _LoginPageState extends State<LoginPage> {
               }
               if (userRole == 'CRF_TL') {
                 await OrientationLock.portrait();
+                await Future.delayed(const Duration(milliseconds: 350));
+                if (!mounted) return;
                 Navigator.of(context).pushReplacementNamed('/tl_home');
               } else {
                 await OrientationLock.landscape();
+                await Future.delayed(const Duration(milliseconds: 350));
+                if (!mounted) return;
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(builder: (context) => const HomePage()),
@@ -631,6 +640,7 @@ class _LoginPageState extends State<LoginPage> {
                                 enableSuggestions: kIsWeb, // Enable suggestions on web for better UX
                                 autocorrect: false, // Keep disabled for both
                                 enableInteractiveSelection: true, // FORCE: Always enable for all platforms
+                                inputFormatters: [LengthLimitingTextInputFormatter(30)],
                                 decoration: InputDecoration(
                                   hintText: 'Enter your User ID, Email or Phone Number',
                                   border: OutlineInputBorder(
@@ -668,6 +678,7 @@ class _LoginPageState extends State<LoginPage> {
                                 autocorrect: false, // Keep disabled for both
                                 enableInteractiveSelection: true, // FORCE: Always enable for all platforms
                                 obscureText: !_isPasswordVisible,
+                                inputFormatters: [LengthLimitingTextInputFormatter(30)],
                                 decoration: InputDecoration(
                                   hintText: 'Enter your password',
                                   border: OutlineInputBorder(
@@ -721,6 +732,11 @@ class _LoginPageState extends State<LoginPage> {
                                 enableSuggestions: kIsWeb, // Enable suggestions on web for better UX
                                 autocorrect: false, // Keep disabled for both  
                                 enableInteractiveSelection: true, // FORCE: Always enable for all platforms
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(10),
+                                ],
                                 decoration: InputDecoration(
                                   hintText: 'Enter table number',
                                   border: OutlineInputBorder(
@@ -734,7 +750,6 @@ class _LoginPageState extends State<LoginPage> {
                                     child: const Icon(Icons.qr_code_scanner),
                                   ),
                                 ),
-                                keyboardType: TextInputType.number,
                                 textInputAction: TextInputAction.done,
                                 onEditingComplete: () => FocusScope.of(context).unfocus(),
                                 validator: (value) {
@@ -988,23 +1003,19 @@ class _LoginPageState extends State<LoginPage> {
             title: 'Scan No. Meja',
             onBarcodeDetected: (String barcode) {
               print('Table number barcode detected: $barcode');
+              final sanitizedBarcode = barcode.replaceAll(RegExp(r'[^0-9]'), '');
               
               // Fill the field with scanned barcode
               setState(() {
-                _noMejaController.text = barcode;
+                _noMejaController.text = sanitizedBarcode.length > 10
+                    ? sanitizedBarcode.substring(0, 10)
+                    : sanitizedBarcode;
               });
             },
           ),
         ),
       );
       
-      // Show success message after scanner closes
-      if (result != null && result.isNotEmpty) {
-        CustomModals.showSuccessModal(
-          context: context,
-          message: 'No. Meja berhasil diisi: $result',
-        );
-      }
     } catch (e) {
       print('Error opening barcode scanner: $e');
       CustomModals.showFailedModal(
@@ -1023,6 +1034,7 @@ class _LoginPageState extends State<LoginPage> {
           TextFormField(
             controller: _usernameController,
             focusNode: _usernameFocusNode,
+            inputFormatters: [LengthLimitingTextInputFormatter(30)],
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6.0),
@@ -1047,6 +1059,7 @@ class _LoginPageState extends State<LoginPage> {
             controller: _passwordController,
             focusNode: _passwordFocusNode,
             obscureText: !_isPasswordVisible,
+            inputFormatters: [LengthLimitingTextInputFormatter(30)],
             decoration: InputDecoration(
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6.0),
@@ -1083,6 +1096,11 @@ class _LoginPageState extends State<LoginPage> {
               Expanded(
                  child: TextFormField(
                    controller: _noMejaController,
+                   keyboardType: TextInputType.number,
+                   inputFormatters: [
+                     FilteringTextInputFormatter.digitsOnly,
+                     LengthLimitingTextInputFormatter(10),
+                   ],
                    decoration: InputDecoration(
                      border: OutlineInputBorder(
                        borderRadius: BorderRadius.circular(6.0),

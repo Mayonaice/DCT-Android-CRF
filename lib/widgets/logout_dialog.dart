@@ -161,7 +161,7 @@ class LogoutDialog {
         Navigator.pop(context);
       }
       
-      await OrientationLock.landscape();
+      await OrientationLock.unlock();
       
       // Navigate to login page
       if (context.mounted) {

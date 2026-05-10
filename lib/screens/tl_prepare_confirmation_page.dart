@@ -52,6 +52,7 @@ class TLPrepareConfirmationPage extends StatefulWidget {
   final String? lokasiFromQr;
   final String? atmTypeFromQr;
   final int? jumlahKasetFromQr;
+  final String? dateStartFromQr;
   const TLPrepareConfirmationPage({
     Key? key,
     required this.idTool,
@@ -63,6 +64,7 @@ class TLPrepareConfirmationPage extends StatefulWidget {
     this.lokasiFromQr,
     this.atmTypeFromQr,
     this.jumlahKasetFromQr,
+    this.dateStartFromQr,
   }) : super(key: key);
   @override
   State<TLPrepareConfirmationPage> createState() => _TLPrepareConfirmationPageState();
@@ -73,6 +75,7 @@ class _TLPrepareConfirmationPageState extends State<TLPrepareConfirmationPage> {
   final AuthService _auth = AuthService();
   PrepareConfirmationData? _data;
   int? _jumlahKaset;
+  String? _dateStartFromData;
   bool _loading = true;
   bool _submitting = false;
 
@@ -97,6 +100,7 @@ class _TLPrepareConfirmationPageState extends State<TLPrepareConfirmationPage> {
         final prepareResp = await _api.getATMPrepareReplenish(idTool);
         if (prepareResp.success && prepareResp.data != null) {
           jumlahKaset = prepareResp.data!.jmlKaset;
+          _dateStartFromData = prepareResp.data!.dateStart?.toIso8601String();
         }
       } catch (_) {}
       setState(() {
@@ -119,7 +123,21 @@ class _TLPrepareConfirmationPageState extends State<TLPrepareConfirmationPage> {
     try {
       final user = await _auth.getUserData();
       final spv = user != null ? (user['nik']?.toString() ?? user['userId']?.toString() ?? user['userID']?.toString() ?? '') : '';
-      final upd = await _api.updatePlanning(idTool: int.tryParse(widget.idTool) ?? 0, cashierCode: widget.cashierCode, spvTLCode: spv, tableCode: widget.tableCode);
+      final resolvedDateStart = _pickNonEmpty(widget.dateStartFromQr, _dateStartFromData);
+      if (resolvedDateStart.isEmpty) {
+        await CustomModals.showFailedModal(
+          context: context,
+          message: 'DateStart dari QR tidak ditemukan. Silakan scan ulang QR Prepare.',
+        );
+        return;
+      }
+      final upd = await _api.updatePlanning(
+        idTool: int.tryParse(widget.idTool) ?? 0,
+        cashierCode: widget.cashierCode,
+        spvTLCode: spv,
+        tableCode: widget.tableCode,
+        dateStart: resolvedDateStart,
+      );
       if (upd.success) {
         final exec = await _api.insertAtmCatridgeByIdTool(idTool: int.tryParse(widget.idTool) ?? 0);
         if (exec.success) {

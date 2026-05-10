@@ -211,12 +211,15 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
   
   // Validate TL Supervisor credentials
   Future<void> _validateTLSupervisor(String nik, String password) async {
+    final cleanNik = nik.trim();
+    final cleanPassword = password.trim();
+
     // Check token expiry sebelum API call
     final isTokenValid = await checkTokenBeforeApiCall();
     if (!isTokenValid) return;
     
     try {
-      final response = await safeApiCall(() => _returnApiService.validateTLSupervisor(nik, password));
+      final response = await safeApiCall(() => _returnApiService.validateTLSupervisor(cleanNik, cleanPassword));
       
       // Log the full response for debugging
       debugPrint('TL Supervisor validation response: $response');
@@ -226,7 +229,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
         Navigator.of(context).pop();
         
         // Submit data with validated TL Supervisor
-        _submitData(nik);
+        _submitData(cleanNik);
       } else {
         // Extract specific error message from the response
         String errorMessage = response?['message'] ?? 'Validasi gagal';
@@ -341,10 +344,12 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
           context: context,
           message: _successMessage,
           onPressed: () {
-            Navigator.pop(context); // Close modal
-            Navigator.of(context).pop(true); // Return true to indicate success
+            Navigator.of(context).pop();
           },
         );
+
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
       } else {
         // Extract specific error message
         String errorMessage = response['message'] ?? 'Gagal menyimpan data';
@@ -396,76 +401,87 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            _buildHeader(isTablet),
-            if (_errorMessage.isNotEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 16,
-                ),
-                color: Colors.red.shade50,
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.red),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(color: Colors.red.shade700),
+            Column(
+              children: [
+                _buildHeader(isTablet),
+                if (_errorMessage.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 16,
+                    ),
+                    color: Colors.red.shade50,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage,
+                            style: TextStyle(color: Colors.red.shade700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_successMessage.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 16,
+                    ),
+                    color: Colors.green.shade50,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.check_circle_outline, color: Colors.green),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _successMessage,
+                            style: TextStyle(color: Colors.green.shade700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    behavior: HitTestBehavior.translucent,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        isTablet ? 16.0 : 12.0,
+                        isTablet ? 16.0 : 12.0,
+                        isTablet ? 16.0 : 12.0,
+                        (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildTitleSection(isTablet),
+                          SizedBox(height: isTablet ? 16 : 12),
+                          _buildInfoSection(isTablet),
+                          SizedBox(height: isTablet ? 24 : 16),
+                          _buildEditSection(isTablet),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            if (_successMessage.isNotEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 16,
-                ),
-                color: Colors.green.shade50,
-                child: Row(
-                  children: [
-                    const Icon(Icons.check_circle_outline, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _successMessage,
-                        style: TextStyle(color: Colors.green.shade700),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            Expanded(
-              child: GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
-                behavior: HitTestBehavior.translucent,
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    isTablet ? 16.0 : 12.0,
-                    isTablet ? 16.0 : 12.0,
-                    isTablet ? 16.0 : 12.0,
-                    (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTitleSection(isTablet),
-                      SizedBox(height: isTablet ? 16 : 12),
-                      _buildInfoSection(isTablet),
-                      SizedBox(height: isTablet ? 24 : 16),
-                      _buildEditSection(isTablet),
-                    ],
                   ),
                 ),
-              ),
+                _buildFooter(isTablet),
+              ],
             ),
-            _buildFooter(isTablet),
+            if (_isSubmitting) ...[
+              const ModalBarrier(
+                dismissible: false,
+                color: Color(0x66000000),
+              ),
+              const Center(child: CircularProgressIndicator()),
+            ],
           ],
         ),
       ),

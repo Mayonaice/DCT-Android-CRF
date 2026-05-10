@@ -824,6 +824,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                     totalLembar: totals['totalLembar'],
                     totalNominal: totals['totalNominal'],
                     jumlahKasetCatridge: jumlahKasetCatridge,
+                    dateStart: widget.dateStartReturn,
                   );
                 }),
               ],

@@ -854,6 +854,7 @@ class _LogActivityPageState extends State<LogActivityPage>
           Expanded(
             child: TabBarView(
               controller: _tabController,
+              physics: const NeverScrollableScrollPhysics(),
               children: [
                 _buildHistoryList(_filteredPrepareData, _isLoadingPrepare),
                 _buildHistoryList(_filteredReturnData, _isLoadingReturn),

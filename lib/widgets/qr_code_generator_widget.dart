@@ -18,6 +18,7 @@ class QRCodeGeneratorWidget extends StatefulWidget {
   final int? totalNominal;
   final int? totalLembar;
   final int? jumlahKasetCatridge;
+  final String? dateStart; // Captured timestamp dari kasir saat ID CRF valid
 
   const QRCodeGeneratorWidget({
     Key? key,
@@ -32,6 +33,7 @@ class QRCodeGeneratorWidget extends StatefulWidget {
     this.totalNominal,
     this.totalLembar,
     this.jumlahKasetCatridge,
+    this.dateStart,
   }) : super(key: key);
 
   @override
@@ -135,6 +137,9 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
     }
     if (widget.jumlahKasetCatridge != null) {
       qrDataMap['jumlahKasetCatridge'] = widget.jumlahKasetCatridge;
+    }
+    if (widget.dateStart != null && widget.dateStart!.isNotEmpty) {
+      qrDataMap['dateStart'] = widget.dateStart;
     }
     if (widget.action == 'PREPARE' && widget.prepareDetails != null) {
       qrDataMap['wsid'] = widget.prepareDetails!.wsid;

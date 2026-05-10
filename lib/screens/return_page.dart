@@ -4203,6 +4203,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       child: TextField(
                         controller: entry.value,
                         keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(5),
+                        ],
                         enabled: enabled,
                         decoration: InputDecoration(
                           labelText: entry.key,

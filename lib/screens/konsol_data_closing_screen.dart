@@ -76,7 +76,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
     });
   }
 
-  // Load user data from login
+  // Load user data from login 
   Future<void> _loadUserData() async {
     try {
       final userData = await _authService.getUserData();
@@ -175,30 +175,41 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
       backgroundColor: const Color(0xFFF8F9FA),
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            _buildHeader(isTablet),
-            _buildNavigationTabs(isTablet),
-            Expanded(
-              child: GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
-                behavior: HitTestBehavior.translucent,
-                child: Padding(
-                  padding: EdgeInsets.all(isTablet ? 16.0 : 12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildFilterSection(isTablet),
-                      SizedBox(height: isTablet ? 16 : 12),
-                      _buildDataTable(isTablet, screenHeight),
-                      SizedBox(height: isTablet ? 16 : 12),
-                      _buildBottomSection(isTablet),
-                    ],
+            Column(
+              children: [
+                _buildHeader(isTablet),
+                _buildNavigationTabs(isTablet),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    behavior: HitTestBehavior.translucent,
+                    child: Padding(
+                      padding: EdgeInsets.all(isTablet ? 16.0 : 12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFilterSection(isTablet),
+                          SizedBox(height: isTablet ? 16 : 12),
+                          _buildDataTable(isTablet, screenHeight),
+                          SizedBox(height: isTablet ? 16 : 12),
+                          _buildBottomSection(isTablet),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                _buildFooter(isTablet),
+              ],
             ),
-            _buildFooter(isTablet),
+            if (_isLoadingClosing) ...[
+              const ModalBarrier(
+                dismissible: false,
+                color: Color(0x66000000),
+              ),
+              const Center(child: CircularProgressIndicator()),
+            ],
           ],
         ),
       ),
@@ -847,9 +858,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
             
             // Empty table body
             Expanded(
-              child: _isLoadingClosing
-                  ? const Center(child: CircularProgressIndicator())
-                  : _closingLoadError != null
+              child: _closingLoadError != null
                       ? Center(
                           child: Text(
                             _closingLoadError!,
@@ -940,8 +949,11 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
         children: [
           // Add Data button
           GestureDetector(
-            onTap: () {
-              Navigator.pushNamed(context, '/konsol_data_closing_form');
+            onTap: () async {
+              final result = await Navigator.pushNamed(context, '/konsol_data_closing_form');
+              if (result == true) {
+                await _loadClosingData();
+              }
             },
             child: Container(
               padding: EdgeInsets.symmetric(

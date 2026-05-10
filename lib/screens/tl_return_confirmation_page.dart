@@ -13,6 +13,7 @@ class TLReturnConfirmationPage extends StatefulWidget {
   final int? totalNominal;
   final int? totalLembar;
   final int? jumlahKasetCatridge;
+  final String? dateStartReturnFromQr;
   const TLReturnConfirmationPage({
     Key? key,
     required this.idTool,
@@ -21,6 +22,7 @@ class TLReturnConfirmationPage extends StatefulWidget {
     this.totalNominal,
     this.totalLembar,
     this.jumlahKasetCatridge,
+    this.dateStartReturnFromQr,
   }) : super(key: key);
   @override
   State<TLReturnConfirmationPage> createState() => _TLReturnConfirmationPageState();
@@ -32,9 +34,16 @@ class _TLReturnConfirmationPageState extends State<TLReturnConfirmationPage> {
   PrepareConfirmationData? _data;
   ReturnHeaderResponse? _return;
   int? _jumlahKaset;
+  String? _dateStartReturnFromData;
   num _total = 0;
   bool _loading = true;
   bool _submitting = false;
+
+  String _pickNonEmpty(String? primary, String? fallback) {
+    final p = primary?.trim() ?? '';
+    if (p.isNotEmpty) return p;
+    return fallback?.trim() ?? '';
+  }
 
   @override
   void initState() {
@@ -116,6 +125,7 @@ class _TLReturnConfirmationPageState extends State<TLReturnConfirmationPage> {
         rtn = await _api.getReturnHeaderAndCatridge(widget.idTool, branchCode: branchCode);
         if (rtn.success) {
           jumlahKaset = rtn.data.where((e) => (e.typeCatridgeTrx?.toString().toUpperCase() ?? 'C') == 'C').length;
+          _dateStartReturnFromData = rtn.header?.timeSTReturn;
         }
       } catch (_) {}
       PrepareConfirmationData? data;
@@ -150,11 +160,19 @@ class _TLReturnConfirmationPageState extends State<TLReturnConfirmationPage> {
     try {
       final user = await _auth.getUserData();
       final spv = user != null ? (user['nik']?.toString() ?? user['userId']?.toString() ?? user['userID']?.toString() ?? '') : '';
+      final resolvedDateStartReturn = _pickNonEmpty(widget.dateStartReturnFromQr, _dateStartReturnFromData);
+      if (resolvedDateStartReturn.isEmpty) {
+        await CustomModals.showFailedModal(
+          context: context,
+          message: 'DateStart Return dari QR tidak ditemukan. Silakan scan ulang QR Return.',
+        );
+        return;
+      }
       final params = {
         "idTool": widget.idTool,
         "CashierReturnCode": widget.cashierCode,
         "TableReturnCode": widget.tableCode,
-        "DateStartReturn": DateTime.now().toIso8601String(),
+        "DateStartReturn": resolvedDateStartReturn,
         "WarehouseCode": user?['warehouseCode']?.toString() ?? 'Cideng',
         "UserATMReturn": spv,
         "SPVBARusak": spv,

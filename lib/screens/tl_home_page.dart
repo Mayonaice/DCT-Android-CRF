@@ -82,6 +82,107 @@ class _TLHomePageState extends State<TLHomePage> {
     return value;
   }
 
+  static const List<String> _dateStartKeys = [
+    'dateStart',
+    'DateStart',
+    'datestart',
+    'date_start',
+    'dateStartReturn',
+    'DateStartReturn',
+    'dateSTReturn',
+    'DateSTReturn',
+    'timeSTReturn',
+    'TimeSTReturn',
+    'tglPrepare',
+    'TglPrepare',
+    'dateReplenish',
+    'DateReplenish',
+  ];
+
+  dynamic _getValueCaseInsensitive(Map<dynamic, dynamic> source, String key) {
+    final keyLower = key.toLowerCase();
+    for (final entry in source.entries) {
+      if (entry.key.toString().toLowerCase() == keyLower) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  String? _normalizeDateStartValue(dynamic rawValue) {
+    if (rawValue == null) return null;
+
+    final raw = rawValue.toString().trim();
+    if (raw.isEmpty || raw.toLowerCase() == 'null') return null;
+
+    if (RegExp(r'^\d{13}$').hasMatch(raw)) {
+      final millis = int.tryParse(raw);
+      if (millis != null) {
+        return DateTime.fromMillisecondsSinceEpoch(millis).toIso8601String();
+      }
+    }
+
+    if (RegExp(r'^\d{10}$').hasMatch(raw)) {
+      final seconds = int.tryParse(raw);
+      if (seconds != null) {
+        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000).toIso8601String();
+      }
+    }
+
+    try {
+      return DateTime.parse(raw).toIso8601String();
+    } catch (_) {}
+
+    final altMatch = RegExp(
+      r'^(\d{2})[-/](\d{2})[-/](\d{4})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$',
+    ).firstMatch(raw);
+    if (altMatch != null) {
+      final day = int.parse(altMatch.group(1)!);
+      final month = int.parse(altMatch.group(2)!);
+      final year = int.parse(altMatch.group(3)!);
+      final hour = int.tryParse(altMatch.group(4) ?? '0') ?? 0;
+      final minute = int.tryParse(altMatch.group(5) ?? '0') ?? 0;
+      final second = int.tryParse(altMatch.group(6) ?? '0') ?? 0;
+      return DateTime(year, month, day, hour, minute, second).toIso8601String();
+    }
+
+    return raw;
+  }
+
+  String? _extractDateStartFromPayload(dynamic payload, [int depth = 0]) {
+    if (payload == null || depth > 6) return null;
+
+    if (payload is Map) {
+      for (final key in _dateStartKeys) {
+        final value = _getValueCaseInsensitive(payload, key);
+        final normalized = _normalizeDateStartValue(value);
+        if (normalized != null && normalized.isNotEmpty) {
+          return normalized;
+        }
+      }
+
+      for (final nestedKey in ['details', 'prepareDetails', 'returnDetails', 'data', 'payload', 'meta']) {
+        final nested = _getValueCaseInsensitive(payload, nestedKey);
+        final found = _extractDateStartFromPayload(nested, depth + 1);
+        if (found != null && found.isNotEmpty) return found;
+      }
+
+      for (final value in payload.values) {
+        final found = _extractDateStartFromPayload(value, depth + 1);
+        if (found != null && found.isNotEmpty) return found;
+      }
+    }
+
+    if (payload is List) {
+      for (final item in payload.take(8)) {
+        final found = _extractDateStartFromPayload(item, depth + 1);
+        if (found != null && found.isNotEmpty) return found;
+      }
+    }
+
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -803,6 +904,8 @@ class _TLHomePageState extends State<TLHomePage> {
         final lokasi = decryptedData['lokasi']?.toString();
         final atmType = decryptedData['atmType']?.toString();
         final jumlahKaset = int.tryParse(decryptedData['jumlahKaset']?.toString() ?? '');
+        final qrDateStart = _extractDateStartFromPayload(decryptedData);
+        debugPrint('🔍 [QR_PROCESS] Resolved dateStart from QR: $qrDateStart');
         final action = source.toUpperCase() == 'RETURN' ? 'RETURN' : 'PREPARE';
         if (action == 'PREPARE') {
           await Navigator.push(
@@ -818,6 +921,7 @@ class _TLHomePageState extends State<TLHomePage> {
                 lokasiFromQr: lokasi,
                 atmTypeFromQr: atmType,
                 jumlahKasetFromQr: jumlahKaset,
+                dateStartFromQr: qrDateStart,
               ),
             ),
           );
@@ -833,6 +937,7 @@ class _TLHomePageState extends State<TLHomePage> {
                 totalNominal: totalNominal,
                 totalLembar: totalLembar,
                 jumlahKasetCatridge: jumlahKasetCatridge,
+                dateStartReturnFromQr: qrDateStart,
               ),
             ),
           );

@@ -23,6 +23,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io' show Platform;
 import 'services/device_service.dart';
 import 'utils/orientation_lock.dart';
+import 'widgets/force_landscape_wrapper.dart';
 
 // Flutter 3.13.8 stable approach - full feature restore
 
@@ -236,6 +237,9 @@ class _CrfAppState extends State<CrfApp> {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
+      builder: (context, child) {
+        return ForceLandscapeWrapper(child: child ?? const SizedBox.shrink());
+      },
       home: _isInitialized 
           ? _getLoginWidget()
           : CrfSplashScreen( // Web uses regular login, mobile uses WebView

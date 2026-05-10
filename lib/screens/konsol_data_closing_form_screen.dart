@@ -266,10 +266,12 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
           context: context,
           message: 'Closing Konsolidasi sudah berhasil disimpan!',
           onPressed: () {
-            Navigator.pop(context); // Close modal
-            Navigator.pop(context, true); // Return to previous screen with success flag
+            Navigator.of(context).pop();
           },
         );
+
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
       } else {
         setState(() {
           errorMessage = response.message;
@@ -306,57 +308,67 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       backgroundColor: const Color(0xFFF8F9FA),
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            _buildHeader(isTablet),
-            Expanded(
-              child: GestureDetector(
-                onTap: () => FocusScope.of(context).unfocus(),
-                behavior: HitTestBehavior.translucent,
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.fromLTRB(
-                    isTablet ? 16.0 : 12.0,
-                    isTablet ? 16.0 : 12.0,
-                    isTablet ? 16.0 : 12.0,
-                    (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildFilterSection(isTablet),
-                      SizedBox(height: isTablet ? 16 : 12),
-                      if (isLoading) const Center(child: CircularProgressIndicator()),
-                      if (errorMessage.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          margin: const EdgeInsets.only(bottom: 16),
-                          color: Colors.red.shade100,
-                          child: Text(
-                            errorMessage,
-                            style: TextStyle(color: Colors.red.shade800),
-                          ),
-                        ),
-                      if (hasAppliedFilter && closingPreviewItems.isNotEmpty) _buildClosingForm(isTablet),
-                      if (hasAppliedFilter && closingPreviewItems.isEmpty)
-                        Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Text(
-                              'No data available for the selected filters',
-                              style: TextStyle(
-                                fontSize: isTablet ? 16 : 14,
-                                fontStyle: FontStyle.italic,
-                                color: Colors.grey.shade600,
+            Column(
+              children: [
+                _buildHeader(isTablet),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    behavior: HitTestBehavior.translucent,
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.fromLTRB(
+                        isTablet ? 16.0 : 12.0,
+                        isTablet ? 16.0 : 12.0,
+                        isTablet ? 16.0 : 12.0,
+                        (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildFilterSection(isTablet),
+                          SizedBox(height: isTablet ? 16 : 12),
+                          if (errorMessage.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              margin: const EdgeInsets.only(bottom: 16),
+                              color: Colors.red.shade100,
+                              child: Text(
+                                errorMessage,
+                                style: TextStyle(color: Colors.red.shade800),
                               ),
                             ),
-                          ),
-                        ),
-                    ],
+                          if (hasAppliedFilter && closingPreviewItems.isNotEmpty) _buildClosingForm(isTablet),
+                          if (hasAppliedFilter && closingPreviewItems.isEmpty)
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Text(
+                                  'No data available for the selected filters',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 16 : 14,
+                                    fontStyle: FontStyle.italic,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                _buildFooter(isTablet),
+              ],
             ),
-            _buildFooter(isTablet),
+            if (isLoading) ...[
+              const ModalBarrier(
+                dismissible: false,
+                color: Color(0x66000000),
+              ),
+              const Center(child: CircularProgressIndicator()),
+            ],
           ],
         ),
       ),
