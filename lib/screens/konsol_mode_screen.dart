@@ -17,7 +17,8 @@ class KonsolModePage extends StatefulWidget {
   State<KonsolModePage> createState() => _KonsolModePageState();
 }
 
-class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, WidgetsBindingObserver {
+class _KonsolModePageState extends State<KonsolModePage>
+    with AutoLogoutMixin, WidgetsBindingObserver {
   int selectedTabIndex = 0;
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
@@ -25,17 +26,17 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
   final AuthService _authService = AuthService();
   final KonsolApiService _konsolApiService = KonsolApiService();
   final ProfileService _profileService = ProfileService();
-  String _userName = ''; 
+  String _userName = '';
   String _branchName = '';
   String _branchCode = '';
   String _userId = '';
-  
+
   // List to store konsol data from API
   List<KonsolData> _konsolDataList = [];
   List<KonsolData> _filteredData = [];
   bool _isLoading = false;
   String _errorMessage = '';
-  
+
   // Selected konsol data
   KonsolData? _selectedKonsolData;
   final ScrollController _tableHorizontalScrollController = ScrollController();
@@ -118,52 +119,54 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
           _userName = userData['userName'] ?? userData['name'] ?? '';
           _userId = userData['userId'] ?? userData['userID'] ?? '';
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
-          _branchCode = userData['groupId'] ?? userData['branchCode'] ?? '1'; // Menggunakan groupId
+          _branchCode = userData['groupId'] ??
+              userData['branchCode'] ??
+              '1'; // Menggunakan groupId
         });
-        debugPrint('🔍 User data loaded - Branch Code: $_branchCode, UserName: $_userName, UserID: $_userId');
+        debugPrint(
+            '🔍 User data loaded - Branch Code: $_branchCode, UserName: $_userName, UserID: $_userId');
         _loadKonsolData(); // Load konsol data after user data is loaded
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
     }
   }
-  
+
   // Load konsol data from API
   Future<void> _loadKonsolData() async {
     // Check token expiry sebelum API call
     final isTokenValid = await checkTokenBeforeApiCall();
     if (!isTokenValid) return;
-    
+
     // Pastikan user data sudah dimuat terlebih dahulu
     if (_branchCode.isEmpty) {
       await _loadUserData();
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
       // Selalu gunakan branch code untuk filter data
       debugPrint('🔍 Fetching konsol data with BranchCode: $_branchCode');
-      final konsolData = await safeApiCall(() => _konsolApiService.getKonsolAndroidList(
-        branchCode: _branchCode
-      ));
-      
+      final konsolData = await safeApiCall(() =>
+          _konsolApiService.getKonsolAndroidList(branchCode: _branchCode));
+
       if (konsolData != null) {
         setState(() {
           _konsolDataList = konsolData;
           _isLoading = false;
         });
-        
+
         debugPrint('🔍 Loaded ${konsolData.length} konsol data items');
-        
+
         // Debug: Print all timeStart values
         for (var item in konsolData) {
           debugPrint('🔍 Item ${item.id}: timeStart=${item.timeStart}');
         }
-        
+
         // Filter data based on current date range
         _filterAndUpdateData();
       } else {
@@ -180,7 +183,7 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
       debugPrint('Error loading konsol data: $e');
     }
   }
-  
+
   // Filter konsol data based on date range
   void _filterAndUpdateData() {
     if (_konsolDataList.isEmpty) {
@@ -190,52 +193,60 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
       debugPrint('🔍 Filter: No data in _konsolDataList');
       return;
     }
-    
+
     debugPrint('🔍 Filter: Starting with ${_konsolDataList.length} items');
-    
+
     final filtered = _konsolDataList.where((data) {
       // Parse TimeStart date
       if (data.timeStart == null) {
         debugPrint('🔍 Filter: Item ${data.id} has null timeStart');
         return false; // Skip items with null timeStart
       }
-      
+
       DateTime? processDate;
       try {
         processDate = DateTime.parse(data.timeStart!);
-        debugPrint('🔍 Filter: Parsed date for item ${data.id}: ${processDate.toString()}');
+        debugPrint(
+            '🔍 Filter: Parsed date for item ${data.id}: ${processDate.toString()}');
       } catch (e) {
-        debugPrint('🔍 Filter: Failed to parse date for item ${data.id}: ${data.timeStart}');
+        debugPrint(
+            '🔍 Filter: Failed to parse date for item ${data.id}: ${data.timeStart}');
         return false; // Skip items with invalid dates
       }
-      
+
       // Check if date is within range
-      final inRange = (processDate.isAfter(fromDate.subtract(const Duration(days: 1))) || 
-                      processDate.isAtSameMomentAs(fromDate)) && 
-                      (processDate.isBefore(toDate.add(const Duration(days: 1))) || 
-                      processDate.isAtSameMomentAs(toDate));
-      
+      final inRange =
+          (processDate.isAfter(fromDate.subtract(const Duration(days: 1))) ||
+                  processDate.isAtSameMomentAs(fromDate)) &&
+              (processDate.isBefore(toDate.add(const Duration(days: 1))) ||
+                  processDate.isAtSameMomentAs(toDate));
+
       // Apply search filter if search query is not empty
-      final searchMatch = searchQuery.isEmpty || 
-                        (data.atmCode?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false) ||
-                        (data.id?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false) ||
-                        (data.name?.toLowerCase().contains(searchQuery.toLowerCase()) ?? false);
-      
+      final searchMatch = searchQuery.isEmpty ||
+          (data.atmCode?.toLowerCase().contains(searchQuery.toLowerCase()) ??
+              false) ||
+          (data.id?.toLowerCase().contains(searchQuery.toLowerCase()) ??
+              false) ||
+          (data.name?.toLowerCase().contains(searchQuery.toLowerCase()) ??
+              false);
+
       final result = inRange && searchMatch;
       if (!result) {
-        debugPrint('🔍 Filter: Item ${data.id} excluded. inRange=$inRange, searchMatch=$searchMatch');
+        debugPrint(
+            '🔍 Filter: Item ${data.id} excluded. inRange=$inRange, searchMatch=$searchMatch');
       } else {
-        debugPrint('🔍 Filter: Item ${data.id} included. inRange=$inRange, searchMatch=$searchMatch');
+        debugPrint(
+            '🔍 Filter: Item ${data.id} included. inRange=$inRange, searchMatch=$searchMatch');
       }
       return result;
     }).toList();
-    
+
     setState(() {
       _filteredData = filtered;
     });
-    
+
     debugPrint('🔍 Filter: Finished with ${_filteredData.length} items');
-    
+
     // No fallback - if filter doesn't match any items, show empty list
     debugPrint('🔍 Filter: Final filtered count: ${_filteredData.length}');
   }
@@ -256,7 +267,7 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       resizeToAvoidBottomInset: false,
@@ -274,7 +285,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                     isTablet ? 24.0 : 16.0,
                     isTablet ? 24.0 : 16.0,
                     isTablet ? 24.0 : 16.0,
-                    (isTablet ? 24.0 : 16.0) + MediaQuery.viewInsetsOf(context).bottom,
+                    (isTablet ? 24.0 : 16.0) +
+                        MediaQuery.viewInsetsOf(context).bottom,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,7 +348,7 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
             ),
           ),
           SizedBox(width: isTablet ? 20 : 16),
-          
+
           // Title
           Text(
             'Konsol Mode',
@@ -347,9 +359,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               letterSpacing: -0.5,
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Location info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -373,9 +385,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                   builder: (context, snapshot) {
                     String meja = '';
                     if (snapshot.hasData && snapshot.data != null) {
-                      meja = snapshot.data!['noMeja'] ?? 
-                            snapshot.data!['NoMeja'] ?? 
-                            '010101';
+                      meja = snapshot.data!['noMeja'] ??
+                          snapshot.data!['NoMeja'] ??
+                          '010101';
                     } else {
                       meja = '010101';
                     }
@@ -400,9 +412,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               ),
             ],
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // CRF_KONSOL button
           Container(
             padding: EdgeInsets.symmetric(
@@ -423,9 +435,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Refresh button
           GestureDetector(
             onTap: () {
@@ -445,9 +457,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // User info
           Row(
             children: [
@@ -473,8 +485,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                     builder: (context, snapshot) {
                       String nik = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                                              nik = snapshot.data!['userId'] ?? 
-                            snapshot.data!['userID'] ?? 
+                        nik = snapshot.data!['userId'] ??
+                            snapshot.data!['userID'] ??
                             '';
                       } else {
                         nik = _userId;
@@ -496,7 +508,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                 onTap: () async {
                   final confirmed = await CustomModals.showConfirmationModal(
                     context: context,
-                    message: "Apakah kamu yakin ingin pergi ke halaman profile?",
+                    message:
+                        "Apakah kamu yakin ingin pergi ke halaman profile?",
                     confirmText: "Ya",
                     cancelText: "Tidak",
                   );
@@ -521,7 +534,7 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                     child: FutureBuilder<ImageProvider>(
                       future: _profileService.getProfilePhoto(),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.done && 
+                        if (snapshot.connectionState == ConnectionState.done &&
                             snapshot.hasData) {
                           return Image(
                             image: snapshot.data!,
@@ -562,8 +575,13 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
   }
 
   Widget _buildNavigationTabs(bool isTablet) {
-    final tabs = ['Data Return', 'Data Konsol', 'Data Pengurangan', 'Data Closing'];
-    
+    final tabs = [
+      'Data Return',
+      'Data Konsol',
+      'Data Pengurangan',
+      'Data Closing'
+    ];
+
     return Container(
       height: isTablet ? 70 : 60,
       padding: EdgeInsets.symmetric(horizontal: isTablet ? 32.0 : 24.0),
@@ -584,7 +602,7 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
             ),
           ),
           SizedBox(width: isTablet ? 32 : 24),
-          
+
           // Data Return tab
           _buildNavTab(
             title: 'Data Return',
@@ -594,9 +612,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               Navigator.pushReplacementNamed(context, '/konsol_data_return');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Konsol tab (active)
           _buildNavTab(
             title: 'Data Konsol',
@@ -606,21 +624,22 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               // Already on this page
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Pengurangan tab
           _buildNavTab(
             title: 'Data Pengurangan',
             isActive: false,
             isTablet: isTablet,
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/konsol_data_pengurangan');
+              Navigator.pushReplacementNamed(
+                  context, '/konsol_data_pengurangan');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Closing tab
           _buildNavTab(
             title: 'Data Closing',
@@ -634,7 +653,7 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
       ),
     );
   }
-  
+
   Widget _buildNavTab({
     required String title,
     required bool isActive,
@@ -651,10 +670,12 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFE5E7EB) : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
-          border: isActive ? null : Border.all(
-            color: const Color(0xFFD1D5DB),
-            width: 1,
-          ),
+          border: isActive
+              ? null
+              : Border.all(
+                  color: const Color(0xFFD1D5DB),
+                  width: 1,
+                ),
         ),
         child: Text(
           title,
@@ -720,13 +741,10 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
-          
           _buildDateField(fromDate, isTablet, (date) {
             setState(() => fromDate = date);
           }),
-          
           SizedBox(width: isTablet ? 20 : 16),
-          
           Text(
             'To',
             style: TextStyle(
@@ -735,15 +753,11 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               color: Colors.black,
             ),
           ),
-          
           SizedBox(width: isTablet ? 20 : 16),
-          
           _buildDateField(toDate, isTablet, (date) {
             setState(() => toDate = date);
           }),
-          
           SizedBox(width: isTablet ? 20 : 16),
-          
           ElevatedButton.icon(
             onPressed: _loadKonsolData,
             icon: Icon(Icons.refresh, size: isTablet ? 20 : 18),
@@ -778,7 +792,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
     );
   }
 
-  Widget _buildDateField(DateTime date, bool isTablet, Function(DateTime) onChanged) {
+  Widget _buildDateField(
+      DateTime date, bool isTablet, Function(DateTime) onChanged) {
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -887,29 +902,32 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
       'Actual Replenish',
       'Tanggal Proses',
       'WSID',
-      'A1',
-      'A2',
-      'A5',
-      'A10',
-      'A20',
-      'A50',
-      'A75',
       'A100',
+      'A75',
+      'A50',
+      'A20',
+      'A10',
+      'A5',
+      'A2',
+      'A1',
       'QTY',
       'Value'
     ];
 
     // Calculate responsive column widths based on available width
     final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - (isTablet ? 32.0 : 24.0); // Account for padding
-    
+    final availableWidth =
+        screenWidth - (isTablet ? 32.0 : 24.0); // Account for padding
+
     // Calculate base column width
     final baseColumnWidth = availableWidth / columns.length;
-    
+
     // Adjust column widths proportionally
     Map<String, double> columnWidths = {};
     for (var column in columns) {
-      if (column == 'Tanggal Replenish' || column == 'Actual Replenish' || column == 'Tanggal Proses') {
+      if (column == 'Tanggal Replenish' ||
+          column == 'Actual Replenish' ||
+          column == 'Tanggal Proses') {
         columnWidths[column] = baseColumnWidth * 1.3;
       } else if (column == 'WSID' || column == 'ID Tool') {
         columnWidths[column] = baseColumnWidth * 1.2;
@@ -1004,7 +1022,8 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                                     itemCount: _filteredData.length,
                                     itemBuilder: (context, index) {
                                       final data = _filteredData[index];
-                                      final isSelected = _selectedKonsolData?.id == data.id;
+                                      final isSelected =
+                                          _selectedKonsolData?.id == data.id;
 
                                       return GestureDetector(
                                         onTap: () {
@@ -1013,7 +1032,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                                           });
                                         },
                                         child: Container(
-                                          color: isSelected ? Colors.blue.withOpacity(0.1) : null,
+                                          color: isSelected
+                                              ? Colors.blue.withOpacity(0.1)
+                                              : null,
                                           child: Row(
                                             children: columns.map((column) {
                                               String value = '';
@@ -1022,10 +1043,15 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                                                   value = data.id ?? '-';
                                                   break;
                                                 case 'Tanggal Replenish':
-                                                  if (data.dateReplenish != null) {
+                                                  if (data.dateReplenish !=
+                                                      null) {
                                                     try {
-                                                      final date = DateTime.parse(data.dateReplenish!);
-                                                      value = DateFormat('dd MMM yyyy').format(date);
+                                                      final date =
+                                                          DateTime.parse(data
+                                                              .dateReplenish!);
+                                                      value = DateFormat(
+                                                              'dd MMM yyyy')
+                                                          .format(date);
                                                     } catch (e) {
                                                       value = 'Invalid';
                                                     }
@@ -1034,10 +1060,15 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                                                   }
                                                   break;
                                                 case 'Actual Replenish':
-                                                  if (data.actualDateReplenish != null) {
+                                                  if (data.actualDateReplenish !=
+                                                      null) {
                                                     try {
-                                                      final date = DateTime.parse(data.actualDateReplenish!);
-                                                      value = DateFormat('dd MMM yyyy').format(date);
+                                                      final date =
+                                                          DateTime.parse(data
+                                                              .actualDateReplenish!);
+                                                      value = DateFormat(
+                                                              'dd MMM yyyy')
+                                                          .format(date);
                                                     } catch (e) {
                                                       value = 'Invalid';
                                                     }
@@ -1048,8 +1079,12 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                                                 case 'Tanggal Proses':
                                                   if (data.timeStart != null) {
                                                     try {
-                                                      final date = DateTime.parse(data.timeStart!);
-                                                      value = DateFormat('dd MMM yyyy').format(date);
+                                                      final date =
+                                                          DateTime.parse(
+                                                              data.timeStart!);
+                                                      value = DateFormat(
+                                                              'dd MMM yyyy')
+                                                          .format(date);
                                                     } catch (e) {
                                                       value = 'Invalid';
                                                     }
@@ -1070,45 +1105,65 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                                                   value = '${data.a5Edit ?? 0}';
                                                   break;
                                                 case 'A10':
-                                                  value = '${data.a10Edit ?? 0}';
+                                                  value =
+                                                      '${data.a10Edit ?? 0}';
                                                   break;
                                                 case 'A20':
-                                                  value = '${data.a20Edit ?? 0}';
+                                                  value =
+                                                      '${data.a20Edit ?? 0}';
                                                   break;
                                                 case 'A50':
-                                                  value = '${data.a50Edit ?? 0}';
+                                                  value =
+                                                      '${data.a50Edit ?? 0}';
                                                   break;
                                                 case 'A75':
-                                                  value = '${data.a75Edit ?? 0}';
+                                                  value =
+                                                      '${data.a75Edit ?? 0}';
                                                   break;
                                                 case 'A100':
-                                                  value = '${data.a100Edit ?? 0}';
+                                                  value =
+                                                      '${data.a100Edit ?? 0}';
                                                   break;
                                                 case 'QTY':
-                                                  value = '${data.tQtyEdit ?? 0}';
+                                                  value =
+                                                      '${data.tQtyEdit ?? 0}';
                                                   break;
                                                 case 'Value':
-                                                  value = 'Rp ${NumberFormat('#,###').format(data.tValueEdit ?? 0)}';
+                                                  value =
+                                                      'Rp ${NumberFormat('#,###').format(data.tValueEdit ?? 0)}';
                                                   break;
                                               }
 
                                               return Container(
                                                 width: columnWidths[column],
-                                                padding: EdgeInsets.all(isTablet ? 8 : 4),
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
                                                 decoration: BoxDecoration(
                                                   border: Border(
-                                                    right: BorderSide(color: Colors.grey.shade300),
-                                                    bottom: BorderSide(color: Colors.grey.shade300),
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
                                                   ),
                                                 ),
                                                 child: column == 'Value'
                                                     ? SingleChildScrollView(
-                                                        scrollDirection: Axis.horizontal,
+                                                        scrollDirection:
+                                                            Axis.horizontal,
                                                         child: Text(
                                                           value,
                                                           style: TextStyle(
-                                                            fontSize: isTablet ? 12 : 9,
-                                                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                            fontSize: isTablet
+                                                                ? 12
+                                                                : 9,
+                                                            fontWeight:
+                                                                isSelected
+                                                                    ? FontWeight
+                                                                        .bold
+                                                                    : FontWeight
+                                                                        .normal,
                                                           ),
                                                           softWrap: false,
                                                         ),
@@ -1116,11 +1171,17 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                                                     : Text(
                                                         value,
                                                         style: TextStyle(
-                                                          fontSize: isTablet ? 12 : 9,
-                                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                          fontSize:
+                                                              isTablet ? 12 : 9,
+                                                          fontWeight: isSelected
+                                                              ? FontWeight.bold
+                                                              : FontWeight
+                                                                  .normal,
                                                         ),
-                                                        textAlign: TextAlign.center,
-                                                        overflow: TextOverflow.ellipsis,
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
                                                       ),
                                               );
                                             }).toList(),
@@ -1178,9 +1239,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // Lokasi WSID section
           Expanded(
             child: Container(
@@ -1247,15 +1308,28 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
   }
 
   Widget _buildDetailTable(bool isTablet) {
-    final columns = ['ID Tool', 'A1', 'A2', 'A5', 'A10', 'A20', 'A50', 'A75', 'A100', 'QTY', 'Value'];
-    
+    final columns = [
+      'ID Tool',
+      'A100',
+      'A75',
+      'A50',
+      'A20',
+      'A10',
+      'A5',
+      'A2',
+      'A1',
+      'QTY',
+      'Value'
+    ];
+
     // Calculate responsive column widths based on available width
     final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = (screenWidth / 2) - (isTablet ? 70.0 : 50.0); // Account for padding and half width
-    
+    final availableWidth = (screenWidth / 2) -
+        (isTablet ? 70.0 : 50.0); // Account for padding and half width
+
     // Calculate base column width
     final baseColumnWidth = availableWidth / columns.length;
-    
+
     // Adjust column widths proportionally
     Map<String, double> columnWidths = {};
     for (var column in columns) {
@@ -1280,8 +1354,9 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
       }
     }
 
-    final totalTableWidth = columns.fold<double>(0, (sum, column) => sum + (columnWidths[column] ?? 0));
-    
+    final totalTableWidth = columns.fold<double>(
+        0, (sum, column) => sum + (columnWidths[column] ?? 0));
+
     return Column(
       children: [
         // Header
@@ -1366,239 +1441,250 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
                         width: totalTableWidth,
                         child: Row(
                           children: [
-                      // ID Tool
-                      Container(
-                        width: columnWidths['ID Tool'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.id ?? 'N/A',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A1
-                      Container(
-                        width: columnWidths['A1'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a1Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A2
-                      Container(
-                        width: columnWidths['A2'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a2Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A5
-                      Container(
-                        width: columnWidths['A5'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a5Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A10
-                      Container(
-                        width: columnWidths['A10'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a10Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A20
-                      Container(
-                        width: columnWidths['A20'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a20Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A50
-                      Container(
-                        width: columnWidths['A50'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a50Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A75
-                      Container(
-                        width: columnWidths['A75'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a75Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // A100
-                      Container(
-                        width: columnWidths['A100'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _selectedKonsolData!.a100Default?.toString() ?? '0',
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // QTY - Calculate total from defaults
-                      Container(
-                        width: columnWidths['QTY'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            right: BorderSide(color: Color(0xFFD1D5DB)),
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            _calculateTotalQty(_selectedKonsolData!).toString(),
-                            style: TextStyle(
-                              fontSize: isTablet ? 10 : 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ),
-                      
-                      // Value - Calculate total value from defaults
-                      Container(
-                        width: columnWidths['Value'],
-                        padding: EdgeInsets.all(isTablet ? 4 : 2),
-                        child: Center(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Text(
-                              NumberFormat.currency(
-                                locale: 'id',
-                                symbol: '',
-                                decimalDigits: 0,
-                              ).format(_calculateTotalValue(_selectedKonsolData!)),
-                              style: TextStyle(
-                                fontSize: isTablet ? 10 : 8,
-                                fontWeight: FontWeight.w500,
+                            // ID Tool
+                            Container(
+                              width: columnWidths['ID Tool'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
                               ),
-                              softWrap: false,
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.id ?? 'N/A',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
-                      ],
+
+                            // A100
+                            Container(
+                              width: columnWidths['A100'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a100Default
+                                          ?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // A75
+                            Container(
+                              width: columnWidths['A75'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a75Default?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // A50
+                            Container(
+                              width: columnWidths['A50'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a50Default?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // A20
+                            Container(
+                              width: columnWidths['A20'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a20Default?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // A10
+                            Container(
+                              width: columnWidths['A10'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a10Default?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // A5
+                            Container(
+                              width: columnWidths['A5'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a5Default?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // A2
+                            Container(
+                              width: columnWidths['A2'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a2Default?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // A1
+                            Container(
+                              width: columnWidths['A1'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _selectedKonsolData!.a1Default?.toString() ??
+                                      '0',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // QTY - Calculate total from defaults
+                            Container(
+                              width: columnWidths['QTY'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              decoration: const BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(color: Color(0xFFD1D5DB)),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _calculateTotalQty(_selectedKonsolData!)
+                                      .toString(),
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 10 : 8,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+
+                            // Value - Calculate total value from defaults
+                            Container(
+                              width: columnWidths['Value'],
+                              padding: EdgeInsets.all(isTablet ? 4 : 2),
+                              child: Center(
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Text(
+                                    NumberFormat.currency(
+                                      locale: 'id',
+                                      symbol: '',
+                                      decimalDigits: 0,
+                                    ).format(_calculateTotalValue(
+                                        _selectedKonsolData!)),
+                                    style: TextStyle(
+                                      fontSize: isTablet ? 10 : 8,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    softWrap: false,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1608,29 +1694,29 @@ class _KonsolModePageState extends State<KonsolModePage> with AutoLogoutMixin, W
       ],
     );
   }
-  
+
   // Helper method to calculate total quantity from default values
   int _calculateTotalQty(KonsolData data) {
     return (data.a1Default ?? 0) +
-           (data.a2Default ?? 0) +
-           (data.a5Default ?? 0) +
-           (data.a10Default ?? 0) +
-           (data.a20Default ?? 0) +
-           (data.a50Default ?? 0) +
-           (data.a75Default ?? 0) +
-           (data.a100Default ?? 0);
+        (data.a2Default ?? 0) +
+        (data.a5Default ?? 0) +
+        (data.a10Default ?? 0) +
+        (data.a20Default ?? 0) +
+        (data.a50Default ?? 0) +
+        (data.a75Default ?? 0) +
+        (data.a100Default ?? 0);
   }
-  
+
   // Helper method to calculate total value from default values
   int _calculateTotalValue(KonsolData data) {
     return (data.a1Default ?? 0) * 1000 +
-           (data.a2Default ?? 0) * 2000 +
-           (data.a5Default ?? 0) * 5000 +
-           (data.a10Default ?? 0) * 10000 +
-           (data.a20Default ?? 0) * 20000 +
-           (data.a50Default ?? 0) * 50000 +
-           (data.a75Default ?? 0) * 75000 +
-           (data.a100Default ?? 0) * 100000;
+        (data.a2Default ?? 0) * 2000 +
+        (data.a5Default ?? 0) * 5000 +
+        (data.a10Default ?? 0) * 10000 +
+        (data.a20Default ?? 0) * 20000 +
+        (data.a50Default ?? 0) * 50000 +
+        (data.a75Default ?? 0) * 75000 +
+        (data.a100Default ?? 0) * 100000;
   }
 
   Widget _buildFooter(bool isTablet) {

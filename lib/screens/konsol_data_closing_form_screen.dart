@@ -16,10 +16,13 @@ class KonsolDataClosingFormScreen extends StatefulWidget {
   const KonsolDataClosingFormScreen({super.key});
 
   @override
-  State<KonsolDataClosingFormScreen> createState() => _KonsolDataClosingFormScreenState();
+  State<KonsolDataClosingFormScreen> createState() =>
+      _KonsolDataClosingFormScreenState();
 }
 
-class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScreen> with AutoLogoutMixin, WidgetsBindingObserver {
+class _KonsolDataClosingFormScreenState
+    extends State<KonsolDataClosingFormScreen>
+    with AutoLogoutMixin, WidgetsBindingObserver {
   final KonsolApiService _apiService = KonsolApiService();
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
@@ -28,13 +31,13 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
   String? selectedMesinType;
   List<Bank> bankList = [];
   List<String> mesinTypes = ['ATM', 'CRM/CDM'];
-  
+
   // Data for the form
   List<ClosingPreviewItem> closingPreviewItems = [];
   bool isLoading = false;
   bool hasAppliedFilter = false;
   String errorMessage = '';
-  
+
   // Totals for denominations
   int totalA1 = 0;
   int totalA2 = 0;
@@ -102,9 +105,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       setState(() {
         isLoading = true;
       });
-      
+
       final banks = await _apiService.getBankList();
-      
+
       setState(() {
         bankList = banks;
         if (banks.isNotEmpty) {
@@ -117,7 +120,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         errorMessage = 'Failed to load banks: $e';
         isLoading = false;
       });
-      
+
       await CustomModals.showFailedModal(
         context: context,
         message: 'Gagal memuat daftar bank: $e',
@@ -130,7 +133,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       setState(() {
         errorMessage = 'Please select Bank and Machine Type';
       });
-      
+
       await CustomModals.showFailedModal(
         context: context,
         message: 'Mohon pilih Bank dan Tipe Mesin',
@@ -150,10 +153,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
     try {
       final dateStr = DateFormat('dd-MM-yyyy').format(selectedDate);
       final items = await safeApiCall(() => _apiService.getClosingPreview(
-        selectedBank!,
-        selectedMesinType!,
-        dateStr
-      ));
+          selectedBank!, selectedMesinType!, dateStr));
 
       if (items != null) {
         // Calculate totals
@@ -190,7 +190,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
           totalA100 = a100Sum;
           isLoading = false;
         });
-        
+
         if (items.isEmpty) {
           await CustomModals.showFailedModal(
             context: context,
@@ -208,7 +208,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         errorMessage = 'Failed to load preview data: $e';
         isLoading = false;
       });
-      
+
       await CustomModals.showFailedModal(
         context: context,
         message: 'Gagal memuat data: $e',
@@ -221,7 +221,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       setState(() {
         errorMessage = 'Please select Bank and Machine Type';
       });
-      
+
       // Show error modal
       await CustomModals.showFailedModal(
         context: context,
@@ -235,7 +235,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       context: context,
       message: 'Apakah anda sudah Yakin untuk Closing Konsolidasi?',
     );
-    
+
     if (!confirmed) {
       return; // User canceled the operation
     }
@@ -248,13 +248,10 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
     try {
       // Use the same parameters from the filter
       final dateStr = DateFormat('dd-MM-yyyy').format(selectedDate);
-      
+
       // Call the API with the selected filter values
       final response = await _apiService.insertClosingData(
-        selectedBank!,
-        selectedMesinType!,
-        dateStr
-      );
+          selectedBank!, selectedMesinType!, dateStr);
 
       setState(() {
         isLoading = false;
@@ -276,7 +273,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         setState(() {
           errorMessage = response.message;
         });
-        
+
         // Show error modal
         await CustomModals.showFailedModal(
           context: context,
@@ -288,7 +285,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         errorMessage = 'Failed to submit closing data: $e';
         isLoading = false;
       });
-      
+
       // Show error modal
       await CustomModals.showFailedModal(
         context: context,
@@ -322,7 +319,8 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                         isTablet ? 16.0 : 12.0,
                         isTablet ? 16.0 : 12.0,
                         isTablet ? 16.0 : 12.0,
-                        (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                        (isTablet ? 16.0 : 12.0) +
+                            MediaQuery.viewInsetsOf(context).bottom,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,7 +337,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                                 style: TextStyle(color: Colors.red.shade800),
                               ),
                             ),
-                          if (hasAppliedFilter && closingPreviewItems.isNotEmpty) _buildClosingForm(isTablet),
+                          if (hasAppliedFilter &&
+                              closingPreviewItems.isNotEmpty)
+                            _buildClosingForm(isTablet),
                           if (hasAppliedFilter && closingPreviewItems.isEmpty)
                             Center(
                               child: Padding(
@@ -413,7 +413,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
             ),
           ),
           SizedBox(width: isTablet ? 20 : 16),
-          
+
           // Title
           Text(
             'Data Closing',
@@ -424,9 +424,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               letterSpacing: -0.5,
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Location info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -437,9 +437,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                 builder: (context, snapshot) {
                   String branchName = '';
                   if (snapshot.hasData && snapshot.data != null) {
-                    branchName = snapshot.data!['branchName'] ?? 
-                                snapshot.data!['branch'] ?? 
-                                '';
+                    branchName = snapshot.data!['branchName'] ??
+                        snapshot.data!['branch'] ??
+                        '';
                   }
                   return Text(
                     branchName,
@@ -461,9 +461,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                   builder: (context, snapshot) {
                     String meja = '';
                     if (snapshot.hasData && snapshot.data != null) {
-                      meja = snapshot.data!['noMeja'] ?? 
-                            snapshot.data!['NoMeja'] ?? 
-                            '010101';
+                      meja = snapshot.data!['noMeja'] ??
+                          snapshot.data!['NoMeja'] ??
+                          '010101';
                     } else {
                       meja = '010101';
                     }
@@ -488,9 +488,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               ),
             ],
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // CRF_KONSOL button
           Container(
             padding: EdgeInsets.symmetric(
@@ -506,9 +506,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               builder: (context, snapshot) {
                 String role = '';
                 if (snapshot.hasData && snapshot.data != null) {
-                  role = snapshot.data!['roleID'] ?? 
-                         snapshot.data!['role'] ?? 
-                         'CRF_KONSOL';
+                  role = snapshot.data!['roleID'] ??
+                      snapshot.data!['role'] ??
+                      'CRF_KONSOL';
                 } else {
                   role = 'CRF_KONSOL';
                 }
@@ -524,9 +524,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               },
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // User info
           Row(
             children: [
@@ -539,12 +539,13 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                     builder: (context, snapshot) {
                       String userName = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                        userName = snapshot.data!['userName'] ?? 
-                                  snapshot.data!['name'] ?? 
-                                  '';
+                        userName = snapshot.data!['userName'] ??
+                            snapshot.data!['name'] ??
+                            '';
                       }
                       return Container(
-                        constraints: BoxConstraints(maxWidth: isTablet ? 150 : 120),
+                        constraints:
+                            BoxConstraints(maxWidth: isTablet ? 150 : 120),
                         child: Text(
                           userName,
                           style: TextStyle(
@@ -563,9 +564,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                     builder: (context, snapshot) {
                       String nik = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                        nik = snapshot.data!['userId'] ?? 
-                              snapshot.data!['userID'] ?? 
-                              '';
+                        nik = snapshot.data!['userId'] ??
+                            snapshot.data!['userID'] ??
+                            '';
                       }
                       return Text(
                         nik,
@@ -582,7 +583,8 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               SizedBox(width: isTablet ? 12 : 10),
               GestureDetector(
                 onTap: () async {
-                  final shouldNavigate = await CustomModals.showConfirmationModal(
+                  final shouldNavigate =
+                      await CustomModals.showConfirmationModal(
                     context: context,
                     message: 'Apakah Anda ingin membuka halaman Profile Menu?',
                     confirmText: 'Ya',
@@ -642,7 +644,8 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
   }
 
   Widget _buildFilterSection(bool isTablet) {
-    final canApplyFilter = selectedBank != null && selectedMesinType != null && !isLoading;
+    final canApplyFilter =
+        selectedBank != null && selectedMesinType != null && !isLoading;
     return Container(
       padding: const EdgeInsets.all(16),
       color: Colors.white,
@@ -721,8 +724,8 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               ),
             ],
           ),
-          
-          // lalu saya 
+
+          // lalu saya
           Row(
             children: [
               Text(
@@ -781,7 +784,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               ),
             ],
           ),
-          
+
           // Jenis Mesin
           Row(
             children: [
@@ -885,13 +888,15 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // List of ATM data items
-              ...closingPreviewItems.map((item) => _buildAtmDataItem(item, isTablet)).toList(),
+              ...closingPreviewItems
+                  .map((item) => _buildAtmDataItem(item, isTablet))
+                  .toList(),
             ],
           ),
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         // Bottom section with Closing button and totals (separate container)
         Container(
           padding: const EdgeInsets.all(16),
@@ -935,9 +940,9 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                   ),
                 ),
               ),
-              
+
               const Spacer(),
-              
+
               // Totals section
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -957,7 +962,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       ],
     );
   }
-  
+
   Widget _buildAtmDataItem(ClosingPreviewItem item, bool isTablet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -967,7 +972,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
           height: 1,
           color: Colors.grey.shade300,
         ),
-        
+
         // ATM Code header
         Container(
           width: double.infinity,
@@ -980,15 +985,15 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
             ),
           ),
         ),
-        
+
         // Horizontal divider
         Container(
           height: 1,
           color: Colors.grey.shade300,
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Details section
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1007,7 +1012,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                 ],
               ),
             ),
-            
+
             // Vertical divider
             Container(
               width: 1,
@@ -1015,7 +1020,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               color: Colors.grey.shade300,
               margin: const EdgeInsets.symmetric(horizontal: 16),
             ),
-            
+
             // Middle section - Date and time
             Expanded(
               flex: 2,
@@ -1023,32 +1028,26 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildDetailRow(
-                    'Tanggal Proses', 
-                    DateFormat('dd MMM yyyy').format(
-                      DateTime.tryParse(item.timeFinish) ?? DateTime.now()
-                    ), 
-                    isTablet
-                  ),
+                      'Tanggal Proses',
+                      DateFormat('dd MMM yyyy').format(
+                          DateTime.tryParse(item.timeFinish) ?? DateTime.now()),
+                      isTablet),
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    'Jam Mulai', 
-                    DateFormat('HH:mm').format(
-                      DateTime.tryParse(item.timeStart) ?? DateTime.now()
-                    ), 
-                    isTablet
-                  ),
+                      'Jam Mulai',
+                      DateFormat('HH:mm').format(
+                          DateTime.tryParse(item.timeStart) ?? DateTime.now()),
+                      isTablet),
                   const SizedBox(height: 12),
                   _buildDetailRow(
-                    'Jam Selesai', 
-                    DateFormat('HH:mm').format(
-                      DateTime.tryParse(item.timeFinish) ?? DateTime.now()
-                    ), 
-                    isTablet
-                  ),
+                      'Jam Selesai',
+                      DateFormat('HH:mm').format(
+                          DateTime.tryParse(item.timeFinish) ?? DateTime.now()),
+                      isTablet),
                 ],
               ),
             ),
-            
+
             // Vertical divider
             Container(
               width: 1,
@@ -1056,7 +1055,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
               color: Colors.grey.shade300,
               margin: const EdgeInsets.symmetric(horizontal: 16),
             ),
-            
+
             // Right side - Denomination counts
             Expanded(
               flex: 2,
@@ -1077,7 +1076,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
             ),
           ],
         ),
-        
+
         const SizedBox(height: 24),
       ],
     );
@@ -1125,27 +1124,27 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
           children: [
             _buildDenomItem('A100', item.a100Edit.toString(), isTablet),
             const SizedBox(width: 8),
-            _buildDenomItem('A20', item.a20Edit.toString(), isTablet),
+            _buildDenomItem('A75', item.a75Edit.toString(), isTablet),
             const SizedBox(width: 8),
-            _buildDenomItem('A2', item.a2Edit.toString(), isTablet),
+            _buildDenomItem('A50', item.a50Edit.toString(), isTablet),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            _buildDenomItem('A75', item.a75Edit.toString(), isTablet),
+            _buildDenomItem('A20', item.a20Edit.toString(), isTablet),
             const SizedBox(width: 8),
             _buildDenomItem('A10', item.a10Edit.toString(), isTablet),
             const SizedBox(width: 8),
-            _buildDenomItem('A1', item.a1Edit.toString(), isTablet),
+            _buildDenomItem('A5', item.a5Edit.toString(), isTablet),
           ],
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            _buildDenomItem('A50', item.a50Edit.toString(), isTablet),
+            _buildDenomItem('A2', item.a2Edit.toString(), isTablet),
             const SizedBox(width: 8),
-            _buildDenomItem('A5', item.a5Edit.toString(), isTablet),
+            _buildDenomItem('A1', item.a1Edit.toString(), isTablet),
             const SizedBox(width: 8),
             Container(width: 50), // Empty space for balance
           ],
@@ -1153,7 +1152,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       ],
     );
   }
-  
+
   Widget _buildDenomItem(String label, String value, bool isTablet) {
     return Container(
       width: 50,
@@ -1197,10 +1196,19 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       ),
     );
   }
-  
+
   List<int> _getTotalsForRowLabel(String label) {
     if (label == 'Total Proses') {
-      return [totalA1, totalA2, totalA5, totalA10, totalA20, totalA50, totalA75, totalA100];
+      return [
+        totalA100,
+        totalA75,
+        totalA50,
+        totalA20,
+        totalA10,
+        totalA5,
+        totalA2,
+        totalA1,
+      ];
     }
 
     int a1 = 0;
@@ -1223,7 +1231,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         a75 += item.a75Pengurangan;
         a100 += item.a100Pengurangan;
       }
-      return [a1, a2, a5, a10, a20, a50, a75, a100];
+      return [a100, a75, a50, a20, a10, a5, a2, a1];
     }
 
     if (label == 'Penambahan Untuk Prepare') {
@@ -1237,7 +1245,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         a75 += item.a75Penambahan;
         a100 += item.a100Penambahan;
       }
-      return [a1, a2, a5, a10, a20, a50, a75, a100];
+      return [a100, a75, a50, a20, a10, a5, a2, a1];
     }
 
     if (label == 'Sisa Uang Proses (Closing Konsol)') {
@@ -1251,7 +1259,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
         a75 += (item.a75Default - item.a75Edit);
         a100 += (item.a100Default - item.a100Edit);
       }
-      return [a1, a2, a5, a10, a20, a50, a75, a100];
+      return [a100, a75, a50, a20, a10, a5, a2, a1];
     }
 
     return [0, 0, 0, 0, 0, 0, 0, 0];
@@ -1274,7 +1282,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 
+        //
         Container(
           width: 300,
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1286,7 +1294,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
             ),
           ),
         ),
-        
+
         // Denomination boxes
         if (label == 'Total Proses')
           Column(
@@ -1294,14 +1302,14 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
             children: [
               Row(
                 children: [
-                  _buildDenomHeader('A1', isTablet),
-                  _buildDenomHeader('A2', isTablet),
-                  _buildDenomHeader('A5', isTablet),
-                  _buildDenomHeader('A10', isTablet),
-                  _buildDenomHeader('A20', isTablet),
-                  _buildDenomHeader('A50', isTablet),
-                  _buildDenomHeader('A75', isTablet),
                   _buildDenomHeader('A100', isTablet),
+                  _buildDenomHeader('A75', isTablet),
+                  _buildDenomHeader('A50', isTablet),
+                  _buildDenomHeader('A20', isTablet),
+                  _buildDenomHeader('A10', isTablet),
+                  _buildDenomHeader('A5', isTablet),
+                  _buildDenomHeader('A2', isTablet),
+                  _buildDenomHeader('A1', isTablet),
                 ],
               ),
               const SizedBox(height: 4),
@@ -1331,7 +1339,7 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       ),
     );
   }
-  
+
   Widget _buildTotalBox(String value, bool isTablet) {
     return Container(
       width: 50,
@@ -1352,12 +1360,6 @@ class _KonsolDataClosingFormScreenState extends State<KonsolDataClosingFormScree
       ),
     );
   }
-
-
-
-
-
-
 
   Widget _buildFooter(bool isTablet) {
     return Container(

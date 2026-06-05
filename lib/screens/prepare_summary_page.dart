@@ -1702,74 +1702,7 @@ class _PrepareSummaryPageState extends State<PrepareSummaryPage> with WidgetsBin
             fontSize: isSmallScreen ? 14 : 16,
           ),
         ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _tlNikController,
-          decoration: const InputDecoration(
-            labelText: 'NIK Team Leader',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.person),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          style: const TextStyle(fontSize: 14),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _tlPasswordController,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Password Team Leader',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.lock),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          style: const TextStyle(fontSize: 14),
-        ),
         const SizedBox(height: 16),
-        SizedBox(
-          width: double.infinity,
-          height: 45,
-          child: ElevatedButton(
-            onPressed: _isSubmitting ? null : _validateTLAndSubmit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF10B981),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: _isSubmitting
-                ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                : Text(
-                    'Submit Data Prepare',
-                    style: TextStyle(
-                      fontSize: isSmallScreen ? 12 : 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        // Divider ATAU
-        Row(
-          children: [
-            Expanded(child: Divider(color: Colors.grey[400])),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'ATAU',
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 12 : 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ),
-            Expanded(child: Divider(color: Colors.grey[400])),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // QR Code Section
         Text(
           'Scan QR Code untuk Approval',
           style: TextStyle(

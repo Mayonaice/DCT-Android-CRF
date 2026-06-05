@@ -42,10 +42,6 @@ class ReturnModeApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
     );
   }
-
-
-
-
 }
 
 class ReturnModePage extends StatefulWidget {
@@ -55,7 +51,8 @@ class ReturnModePage extends StatefulWidget {
   State<ReturnModePage> createState() => _ReturnModePageState();
 }
 
-class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, WidgetsBindingObserver {
+class _ReturnModePageState extends State<ReturnModePage>
+    with AutoLogoutMixin, WidgetsBindingObserver {
   final TextEditingController _idCRFController = TextEditingController();
   final ApiService _apiService = ApiService();
   final ProfileService _profileService = ProfileService();
@@ -63,32 +60,33 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
   String _branchCode = '';
   String _errorMessage = '';
   bool _isLoading = false;
-  
+
   // User data variables
   String _userName = '';
   String _branchName = '';
   String _userId = '';
-  
+
   // Responsive design helper
   bool get isTablet => MediaQuery.of(context).size.width > 600;
-  
+
   // State untuk data return dan detail header
   ReturnHeaderResponse? _returnHeaderResponse;
   Map<String, dynamic>? _userData;
 
   // References to cartridge sections - now using a list to handle dynamic sections
   final List<GlobalKey<_CartridgeSectionState>> _cartridgeSectionKeys = [];
-  
+
   // New ID Tool controller for all sections
   final TextEditingController _idToolController = TextEditingController();
-  
+
   // Add jamMulai controller
   final TextEditingController _jamMulaiController = TextEditingController();
-  
+
   // Add tanggal replenish controller
-  final TextEditingController _tanggalReplenishController = TextEditingController();
+  final TextEditingController _tanggalReplenishController =
+      TextEditingController();
   String? _capturedDateStartReturn;
-  
+
   // NEW: Controllers for detail return forms (read-only)
   final Map<String, TextEditingController> _detailReturnLembarControllers = {
     '100K': TextEditingController(),
@@ -100,7 +98,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     '2K': TextEditingController(),
     '1K': TextEditingController(),
   };
-  
+
   final Map<String, TextEditingController> _detailReturnNominalControllers = {
     '100K': TextEditingController(),
     '75K': TextEditingController(),
@@ -111,12 +109,12 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     '2K': TextEditingController(),
     '1K': TextEditingController(),
   };
-  
+
   // Timer for debouncing ID Tool typing
   Timer? _idToolTypingTimer;
   Timer? _orientationLockTimer;
   bool _orientationEnforceScheduled = false;
-  
+
   // TL approval controllers
   final TextEditingController _tlNikController = TextEditingController();
   final TextEditingController _tlPasswordController = TextEditingController();
@@ -128,7 +126,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
   // NEW: Stream subscription for barcode results
   StreamSubscription<Map<String, dynamic>>? _barcodeStreamSubscription;
 
-  static const String _branchMismatchMessage = 'Data yang ditemukan tidak tersedia di cabang ini';
+  static const String _branchMismatchMessage =
+      'Data yang ditemukan tidak tersedia di cabang ini';
 
   bool _looksLikeBranchMismatch(String message) {
     final m = message.toLowerCase();
@@ -154,7 +153,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
   // Helper method to get all bag codes from catridge data
   List<String> _getAllBagCodes() {
     if (_returnHeaderResponse?.data == null) return [];
-    
+
     return _returnHeaderResponse!.data
         .map((catridge) => catridge.bagCode?.trim() ?? '')
         .where((bagCode) => bagCode.isNotEmpty)
@@ -167,7 +166,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     if (_cartridgeSectionKeys.isEmpty) return [];
     return _cartridgeSectionKeys
         .map((k) => k.currentState)
-        .where((s) => s != null && (excludeSectionId == null || s!.sectionId != excludeSectionId))
+        .where((s) =>
+            s != null &&
+            (excludeSectionId == null || s!.sectionId != excludeSectionId))
         .map((s) => s!.noCatridgeController.text.trim())
         .where((v) => v.isNotEmpty)
         .toList();
@@ -177,7 +178,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     if (_cartridgeSectionKeys.isEmpty) return [];
     return _cartridgeSectionKeys
         .map((k) => k.currentState)
-        .where((s) => s != null && (excludeSectionId == null || s!.sectionId != excludeSectionId))
+        .where((s) =>
+            s != null &&
+            (excludeSectionId == null || s!.sectionId != excludeSectionId))
         .map((s) => s!.noSealController.text.trim())
         .where((v) => v.isNotEmpty)
         .toList();
@@ -186,7 +189,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
   // Helper method to get all seal codes from catridge data
   List<String> _getAllSealCodes() {
     if (_returnHeaderResponse?.data == null) return [];
-    
+
     return _returnHeaderResponse!.data
         .map((catridge) => catridge.sealCodeReturn?.trim() ?? '')
         .where((sealCode) => sealCode.isNotEmpty)
@@ -196,13 +199,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
   }
 
   // Build dropdown field widget
-  Widget _buildDropdownField(
-    String label,
-    List<String> items,
-    String? selectedValue,
-    Function(String?) onChanged,
-    {bool isValid = true, String errorText = ''}
-  ) {
+  Widget _buildDropdownField(String label, List<String> items,
+      String? selectedValue, Function(String?) onChanged,
+      {bool isValid = true, String errorText = ''}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -272,7 +271,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     WidgetsBinding.instance.addObserver(this);
     _enforceLandscapeOrientation();
     _startOrientationLockWatchdog();
-    
+
     // Initialize detail return controllers with empty values
     for (var controller in _detailReturnLembarControllers.values) {
       controller.text = '0';
@@ -280,7 +279,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     _detailReturnNominalControllers.forEach((key, controller) {
       controller.text = _formatCurrency(0);
     });
-    
+
     _loadUserData();
     _setupBarcodeStream();
   }
@@ -302,7 +301,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     _idToolController.dispose();
     _jamMulaiController.dispose();
     _tanggalReplenishController.dispose();
-    
+
     // Dispose detail return controllers
     for (var controller in _detailReturnLembarControllers.values) {
       controller.dispose();
@@ -310,7 +309,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     for (var controller in _detailReturnNominalControllers.values) {
       controller.dispose();
     }
-    
+
     _barcodeStreamSubscription?.cancel(); // Cancel stream subscription
     if (_idToolTypingTimer != null) {
       _idToolTypingTimer!.cancel();
@@ -325,17 +324,18 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       setState(() {
         if (userData != null) {
           _userData = userData;
-          
+
           // Extract user data
           _userName = userData['userName'] ?? userData['name'] ?? '';
           _userId = userData['userId'] ?? userData['userID'] ?? '';
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
-          
+
           // Log all user data for debugging
           print('DEBUG - Loading user data: $userData');
           print('DEBUG - User data keys: ${userData.keys.toList()}');
-          print('DEBUG - UserName: $_userName, UserID: $_userId, BranchName: $_branchName');
-          
+          print(
+              'DEBUG - UserName: $_userName, UserID: $_userId, BranchName: $_branchName');
+
           // Extract and log the NIK value for debugging
           String userNIK = '';
           if (userData.containsKey('nik')) {
@@ -354,37 +354,44 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
             userNIK = userData['userName'].toString();
           }
           print('DEBUG - Found NIK: $userNIK');
-          
+
           // Ensure NIK exists in userData map
           if (userNIK.isNotEmpty && !userData.containsKey('nik')) {
             userData['nik'] = userNIK;
             print('DEBUG - Added NIK to userData: ${userData['nik']}');
           }
-          
+
           // First try to get branchCode directly
-          if (userData.containsKey('branchCode') && userData['branchCode'] != null && userData['branchCode'].toString().isNotEmpty) {
+          if (userData.containsKey('branchCode') &&
+              userData['branchCode'] != null &&
+              userData['branchCode'].toString().isNotEmpty) {
             _branchCode = userData['branchCode'].toString();
             print('Using branchCode from userData: $_branchCode');
-          } 
+          }
           // Then try groupId as fallback
-          else if (userData.containsKey('groupId') && userData['groupId'] != null && userData['groupId'].toString().isNotEmpty) {
+          else if (userData.containsKey('groupId') &&
+              userData['groupId'] != null &&
+              userData['groupId'].toString().isNotEmpty) {
             _branchCode = userData['groupId'].toString();
             print('Using groupId as branchCode: $_branchCode');
           }
           // Finally try BranchCode (different casing)
-          else if (userData.containsKey('BranchCode') && userData['BranchCode'] != null && userData['BranchCode'].toString().isNotEmpty) {
+          else if (userData.containsKey('BranchCode') &&
+              userData['BranchCode'] != null &&
+              userData['BranchCode'].toString().isNotEmpty) {
             _branchCode = userData['BranchCode'].toString();
             print('Using BranchCode from userData: $_branchCode');
           }
           // Default to '1' if nothing found
           else {
             _branchCode = '1';
-            print('No branch code found in userData, using default: $_branchCode');
+            print(
+                'No branch code found in userData, using default: $_branchCode');
           }
         } else {
           _branchCode = '1';
           print('No user data found, using default branch code: $_branchCode');
-          
+
           // Create a default userData map
           _userData = {'userName': '', 'userId': ''};
           print('DEBUG - Created default userData');
@@ -393,8 +400,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     } catch (e) {
       setState(() {
         _branchCode = '1';
-        print('Error loading user data: $e, using default branch code: $_branchCode');
-        
+        print(
+            'Error loading user data: $e, using default branch code: $_branchCode');
+
         // Create a default userData map
         _userData = {'userName': '', 'userId': ''};
         print('DEBUG - Created default userData after error');
@@ -406,17 +414,18 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     // DEBUG: Print current token to verify it's correctly stored
     try {
       final token = await _authService.getToken();
-      debugPrint('ðŸ”´ DEBUG: Current token before fetch: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
-      
+      debugPrint(
+          'ðŸ”´ DEBUG: Current token before fetch: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
+
       // If token is null, try to log the user out and redirect to login page
       if (token == null || token.isEmpty) {
         debugPrint('ðŸ”´ DEBUG: Token is null or empty, forcing logout');
-        
+
         setState(() {
           _isLoading = false;
           _errorMessage = 'Sesi telah berakhir. Silakan login kembali.';
         });
-        
+
         // Show dialog
         await CustomModals.showFailedModal(
           context: context,
@@ -430,18 +439,18 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         );
         return;
       }
-      
+
       // Validate token before proceeding
       debugPrint('ðŸ”´ DEBUG: Validating token before fetch...');
       final isTokenValid = await _apiService.checkTokenValidity();
       if (!isTokenValid) {
         debugPrint('ðŸ”´ DEBUG: Token validation failed, forcing logout');
-        
+
         setState(() {
           _isLoading = false;
           _errorMessage = 'Sesi telah berakhir. Silakan login kembali.';
         });
-        
+
         // Show dialog
         await CustomModals.showFailedModal(
           context: context,
@@ -455,49 +464,54 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         );
         return;
       }
-      
-      debugPrint('ðŸ”´ DEBUG: Token validation successful, proceeding with fetch');
+
+      debugPrint(
+          'ðŸ”´ DEBUG: Token validation successful, proceeding with fetch');
     } catch (e) {
       debugPrint('ðŸ”´ DEBUG: Error getting token: $e');
     }
-    
+
     final idCrf = _idCRFController.text.trim();
     if (idCrf.isEmpty) {
       await _showErrorDialog('ID CRF tidak boleh kosong');
       return;
     }
-    
-    setState(() { 
+
+    setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
       // Debug: Print state before fetch
       print('Fetching return data for ID CRF: $idCrf');
-      
-      final response = await _apiService.getReturnHeaderAndCatridge(idCrf, branchCode: _branchCode);
-      
+
+      final response = await _apiService.getReturnHeaderAndCatridge(idCrf,
+          branchCode: _branchCode);
+
       if (response.success) {
         setState(() {
           _returnHeaderResponse = response;
           _errorMessage = '';
-          
+
           // Set jamMulai with current time
           final now = DateTime.now();
-          _jamMulaiController.text = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-          
+          _jamMulaiController.text =
+              '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
           // Create the cartridge section keys based on the response
           _cartridgeSectionKeys.clear();
           if (response.data.isNotEmpty) {
             for (int i = 0; i < response.data.length; i++) {
               _cartridgeSectionKeys.add(GlobalKey<_CartridgeSectionState>());
             }
-            
+
             // For debugging
-            print('Created ${_cartridgeSectionKeys.length} cartridge section keys for ${response.data.length} catridges');
+            print(
+                'Created ${_cartridgeSectionKeys.length} cartridge section keys for ${response.data.length} catridges');
             for (int i = 0; i < response.data.length; i++) {
-              print('Catridge ${i+1}: Code=${response.data[i].catridgeCode}, Type=${response.data[i].typeCatridge}, TypeTrx=${response.data[i].typeCatridgeTrx ?? "C"}');
+              print(
+                  'Catridge ${i + 1}: Code=${response.data[i].catridgeCode}, Type=${response.data[i].typeCatridge}, TypeTrx=${response.data[i].typeCatridgeTrx ?? "C"}');
             }
           }
         });
@@ -513,7 +527,10 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       });
       await _showErrorDialog(e.toString());
     } finally {
-      if (mounted) setState(() { _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+        });
     }
   }
 
@@ -555,24 +572,23 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         ),
       );
       _enforceLandscapeOrientation();
-      
+
       // Handle the scanned result directly
       if (scannedBarcode != null && scannedBarcode.isNotEmpty) {
         print('ðŸŽ¯ ID TOOL SCANNER RESULT: $scannedBarcode');
-        
+
         // Update the ID Tool field with scanned value
         setState(() {
           _idToolController.text = scannedBarcode;
         });
-        
+
         // Fetch data based on scanned ID Tool
         _fetchDataByIdTool(scannedBarcode);
-        
+
         print('ðŸŽ¯ ID TOOL FIELD UPDATED: $scannedBarcode');
       } else {
         print('ðŸŽ¯ ID TOOL SCANNER CANCELLED: No barcode scanned');
       }
-      
     } catch (e) {
       print('Error opening ID Tool barcode scanner: $e');
       debugPrint('Gagal membuka scanner ID Tool: ${e.toString()}');
@@ -582,23 +598,23 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
   // Check if all forms are valid
   bool get _isFormsValid {
     if (_cartridgeSectionKeys.isEmpty) return false;
-    
+
     // Check all cartridge sections
     for (var key in _cartridgeSectionKeys) {
       if (!(key.currentState?.isFormValid ?? false)) {
         return false;
       }
     }
-    
+
     return true;
   }
-  
+
   // Helper method to format currency
   String _formatCurrency(int amount) {
     final formatted = amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
     return 'Rp. $formatted';
   }
 
@@ -607,44 +623,75 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     print('=== DEBUG _calculateAndUpdateDetailReturn ===');
     // Initialize totals for each denomination
     Map<String, int> totalLembar = {
-      '100K': 0, '75K': 0, '50K': 0, '20K': 0,
-      '10K': 0, '5K': 0, '2K': 0, '1K': 0,
+      '100K': 0,
+      '75K': 0,
+      '50K': 0,
+      '20K': 0,
+      '10K': 0,
+      '5K': 0,
+      '2K': 0,
+      '1K': 0,
     };
-    
+
     Map<String, int> totalNominal = {
-      '100K': 0, '75K': 0, '50K': 0, '20K': 0,
-      '10K': 0, '5K': 0, '2K': 0, '1K': 0,
+      '100K': 0,
+      '75K': 0,
+      '50K': 0,
+      '20K': 0,
+      '10K': 0,
+      '5K': 0,
+      '2K': 0,
+      '1K': 0,
     };
-    
+
     print('Number of cartridge sections: ${_cartridgeSectionKeys.length}');
-    
+
     // Sum up values from all cartridge sections
     for (var key in _cartridgeSectionKeys) {
       final sectionState = key.currentState;
       print('Section state: $sectionState');
       if (sectionState != null) {
-        print('Processing section with ${sectionState.denomControllers.length} controllers');
+        print(
+            'Processing section with ${sectionState.denomControllers.length} controllers');
         sectionState.denomControllers.forEach((denom, controller) {
           print('  Denom: $denom, Value: "${controller.text}"');
           if (controller.text.isNotEmpty) {
             try {
               final count = int.parse(controller.text);
               totalLembar[denom] = (totalLembar[denom] ?? 0) + count;
-              
+
               // Calculate nominal value
               int denomValue = 0;
               switch (denom) {
-                case '100K': denomValue = 100000; break;
-                case '75K': denomValue = 75000; break;
-                case '50K': denomValue = 50000; break;
-                case '20K': denomValue = 20000; break;
-                case '10K': denomValue = 10000; break;
-                case '5K': denomValue = 5000; break;
-                case '2K': denomValue = 2000; break;
-                case '1K': denomValue = 1000; break;
+                case '100K':
+                  denomValue = 100000;
+                  break;
+                case '75K':
+                  denomValue = 75000;
+                  break;
+                case '50K':
+                  denomValue = 50000;
+                  break;
+                case '20K':
+                  denomValue = 20000;
+                  break;
+                case '10K':
+                  denomValue = 10000;
+                  break;
+                case '5K':
+                  denomValue = 5000;
+                  break;
+                case '2K':
+                  denomValue = 2000;
+                  break;
+                case '1K':
+                  denomValue = 1000;
+                  break;
               }
-              totalNominal[denom] = (totalNominal[denom] ?? 0) + (count * denomValue);
-              print('    Added $count * $denomValue = ${count * denomValue} to $denom');
+              totalNominal[denom] =
+                  (totalNominal[denom] ?? 0) + (count * denomValue);
+              print(
+                  '    Added $count * $denomValue = ${count * denomValue} to $denom');
             } catch (e) {
               print('    Parse error: $e');
               // Ignore parsing errors
@@ -653,25 +700,25 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         });
       }
     }
-    
+
     print('Final totals - Lembar: $totalLembar');
     print('Final totals - Nominal: $totalNominal');
-    
+
     // Update detail return controllers
     totalLembar.forEach((denom, total) {
       _detailReturnLembarControllers[denom]?.text = total.toString();
       print('Updated lembar $denom: $total');
     });
-    
+
     totalNominal.forEach((denom, total) {
       final formatted = _formatCurrency(total);
       _detailReturnNominalControllers[denom]?.text = formatted;
       print('Updated nominal $denom: $formatted');
     });
-    
+
     // Trigger setState to update Grand Total display
     setState(() {});
-    
+
     print('=== END DEBUG _calculateAndUpdateDetailReturn ===');
   }
 
@@ -680,7 +727,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     // Periksa apakah semua cartridge sections telah divalidasi
     bool allSectionsValidated = true;
     bool anyManualMode = false;
-    
+
     for (var key in _cartridgeSectionKeys) {
       if (key.currentState != null) {
         // Jika section tidak semua field di-scan, tandai belum valid
@@ -690,14 +737,14 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         }
       }
     }
-    
+
     // Jika semua section divalidasi dengan scan atau dalam mode manual, bisa langsung submit
     if (allSectionsValidated) {
       // Jika ada yang menggunakan mode manual, tetap minta approval TL
       if (anyManualMode) {
         _tlNikController.clear();
         _tlPasswordController.clear();
-        
+
         return showDialog<void>(
           context: context,
           barrierDismissible: false,
@@ -726,14 +773,16 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
                     const SizedBox(height: 8),
                     Container(
                       decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
+                        border: Border(
+                            bottom: BorderSide(color: Colors.grey.shade400)),
                       ),
                       child: TextField(
                         controller: _tlNikController,
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 8),
-                          suffixIcon: Icon(Icons.person_outline, color: Colors.grey),
+                          suffixIcon:
+                              Icon(Icons.person_outline, color: Colors.grey),
                         ),
                       ),
                     ),
@@ -748,7 +797,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
                     const SizedBox(height: 8),
                     Container(
                       decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
+                        border: Border(
+                            bottom: BorderSide(color: Colors.grey.shade400)),
                       ),
                       child: TextField(
                         controller: _tlPasswordController,
@@ -756,7 +806,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
                         decoration: const InputDecoration(
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(vertical: 8),
-                          suffixIcon: Icon(Icons.visibility, color: Colors.grey),
+                          suffixIcon:
+                              Icon(Icons.visibility, color: Colors.grey),
                         ),
                       ),
                     ),
@@ -799,14 +850,25 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       }
     } else {
       // Jika belum semua divalidasi, tampilkan pesan error
-      await _showErrorDialog('Harap lengkapi validasi scan untuk semua field atau gunakan mode manual');
+      await _showErrorDialog(
+          'Harap lengkapi validasi scan untuk semua field atau gunakan mode manual');
     }
   }
 
   // Navigate to summary page with cartridge data
-  int _calculateQtyFromDenomControllers(Map<String, TextEditingController> denomControllers) {
+  int _calculateQtyFromDenomControllers(
+      Map<String, TextEditingController> denomControllers) {
     int qtyCount = 0;
-    for (final denom in ['1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K']) {
+    for (final denom in [
+      '1K',
+      '2K',
+      '5K',
+      '10K',
+      '20K',
+      '50K',
+      '75K',
+      '100K'
+    ]) {
       final txt = denomControllers[denom]?.text ?? '';
       if (txt.isEmpty) continue;
       qtyCount += int.tryParse(txt) ?? 0;
@@ -899,20 +961,32 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     required Map<String, TextEditingController> denomControllers,
   }) {
     final normalizedBaseCode = _normalizeSubmitDenomCode(baseDenomCode);
-    final isCdmOrCrm = normalizedBaseCode == 'CDM' || normalizedBaseCode == 'CRM';
+    final isCdmOrCrm =
+        normalizedBaseCode == 'CDM' || normalizedBaseCode == 'CRM';
 
     if (!isCdmOrCrm) {
       return [
         {
-          'denomCode': normalizedBaseCode.isEmpty ? baseDenomCode : normalizedBaseCode,
+          'denomCode':
+              normalizedBaseCode.isEmpty ? baseDenomCode : normalizedBaseCode,
           'qty': _calculateQtyFromDenomControllers(denomControllers).toString(),
         }
       ];
     }
 
     final List<Map<String, String>> rows = [];
-    for (final label in ['1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K']) {
-      final count = int.tryParse((denomControllers[label]?.text ?? '').trim()) ?? 0;
+    for (final label in [
+      '1K',
+      '2K',
+      '5K',
+      '10K',
+      '20K',
+      '50K',
+      '75K',
+      '100K'
+    ]) {
+      final count =
+          int.tryParse((denomControllers[label]?.text ?? '').trim()) ?? 0;
       if (count <= 0) continue;
 
       final mappedCode = _aCodeFromDenomLabel(label);
@@ -950,8 +1024,10 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
           return;
         }
         if (state._catridgeFisikManualMode) {
-          final alasanEmpty = state._catridgeFisikAlasanController.text.trim().isEmpty;
-          final remarkEmpty = state._catridgeFisikRemarkController.text.trim().isEmpty;
+          final alasanEmpty =
+              state._catridgeFisikAlasanController.text.trim().isEmpty;
+          final remarkEmpty =
+              state._catridgeFisikRemarkController.text.trim().isEmpty;
           if (alasanEmpty || remarkEmpty) {
             await CustomModals.showFailedModal(
               context: context,
@@ -989,18 +1065,20 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
 
     // Collect cartridge data from all sections
     List<Map<String, dynamic>> cartridgeData = [];
-    
+
     for (int i = 0; i < _cartridgeSectionKeys.length; i++) {
       final key = _cartridgeSectionKeys[i];
       if (key.currentState != null) {
         final state = key.currentState!;
-        
+
         // Get typeCatridgeTrx from return header data
         String typeCatridgeTrx = 'C'; // Default
-        if (_returnHeaderResponse?.data != null && i < _returnHeaderResponse!.data.length) {
-          typeCatridgeTrx = _returnHeaderResponse!.data[i].typeCatridgeTrx ?? 'C';
+        if (_returnHeaderResponse?.data != null &&
+            i < _returnHeaderResponse!.data.length) {
+          typeCatridgeTrx =
+              _returnHeaderResponse!.data[i].typeCatridgeTrx ?? 'C';
         }
-        
+
         // Collect data from each cartridge section
         final String scanCatStatusVal = state._catridgeFisikManualMode
             ? state._catridgeFisikAlasanController.text
@@ -1019,19 +1097,29 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
           'typeCatridgeTrx': typeCatridgeTrx,
           'scanCatStatus': scanCatStatusVal,
           'scanCatStatusRemark': scanCatRemarkVal,
-          'qty': _calculateQtyFromDenomControllers(state.denomControllers).toString(),
+          'qty': _calculateQtyFromDenomControllers(state.denomControllers)
+              .toString(),
         };
-        
+
         // Add denomination data
-        for (String denom in ['1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K']) {
+        for (String denom in [
+          '1K',
+          '2K',
+          '5K',
+          '10K',
+          '20K',
+          '50K',
+          '75K',
+          '100K'
+        ]) {
           data['lembar_$denom'] = state.denomControllers[denom]?.text ?? '0';
           data['nominal_$denom'] = state.denomControllers[denom]?.text ?? '0';
         }
-        
+
         cartridgeData.add(data);
       }
     }
-    
+
     String idTool = _idToolController.text;
     String userNIK = '';
     if (_userData != null) {
@@ -1054,20 +1142,25 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     List<String> errorMessages = [];
     for (int i = 0; i < cartridgeData.length; i++) {
       final c = cartridgeData[i];
-      final sectionState = i < _cartridgeSectionKeys.length ? _cartridgeSectionKeys[i].currentState : null;
-      final String scanCatStatusVal = (sectionState != null && sectionState._catridgeFisikManualMode)
-          ? sectionState._catridgeFisikAlasanController.text
-          : '';
-      final String scanCatRemarkVal = (sectionState != null && sectionState._catridgeFisikManualMode)
-          ? sectionState._catridgeFisikRemarkController.text
-          : '';
+      final sectionState = i < _cartridgeSectionKeys.length
+          ? _cartridgeSectionKeys[i].currentState
+          : null;
+      final String scanCatStatusVal =
+          (sectionState != null && sectionState._catridgeFisikManualMode)
+              ? sectionState._catridgeFisikAlasanController.text
+              : '';
+      final String scanCatRemarkVal =
+          (sectionState != null && sectionState._catridgeFisikManualMode)
+              ? sectionState._catridgeFisikRemarkController.text
+              : '';
       try {
-        final String baseDenomCode = (
-          _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
-          _returnHeaderResponse!.data[i].denomCode.isNotEmpty
-        )
+        final String baseDenomCode = (_returnHeaderResponse != null &&
+                i < _returnHeaderResponse!.data.length &&
+                _returnHeaderResponse!.data[i].denomCode.isNotEmpty)
             ? _returnHeaderResponse!.data[i].denomCode
-            : ((sectionState?._resolvedDenomCode ?? sectionState?.catridgeFisikController.text) ?? '');
+            : ((sectionState?._resolvedDenomCode ??
+                    sectionState?.catridgeFisikController.text) ??
+                '');
         final tempRows = sectionState != null
             ? _buildTempRowsForSection(
                 baseDenomCode: baseDenomCode,
@@ -1114,7 +1207,9 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     }
 
     if (!allSuccess) {
-      await _showErrorDialog(errorMessages.isNotEmpty ? errorMessages.join('\n') : 'Gagal proses insert temp');
+      await _showErrorDialog(errorMessages.isNotEmpty
+          ? errorMessages.join('\n')
+          : 'Gagal proses insert temp');
       return;
     }
 
@@ -1173,52 +1268,67 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       await _showErrorDialog('NIK dan Password TL harus diisi');
       return;
     }
-    
-    if (mounted) setState(() { _isSubmitting = true; });
-    
+
+    if (mounted)
+      setState(() {
+        _isSubmitting = true;
+      });
+
     try {
       // Validate TL credentials
       final tlResponse = await _apiService.validateTLSupervisor(
         nik: _tlNikController.text,
         password: _tlPasswordController.text,
       );
-      
+
       if (!tlResponse.success) {
         await _showErrorDialog(tlResponse.message);
-        if (mounted) setState(() { _isSubmitting = false; });
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
         return;
       }
-      
+
       // 1. Update Planning RTN first - this is crucial for correct flow
       print('Updating Planning RTN...');
       final updateParams = {
         "idTool": _idToolController.text,
         "CashierReturnCode": _userData?['nik'] ?? '',
         "TableReturnCode": _userData?['tableCode'] ?? '',
-        "DateStartReturn": _capturedDateStartReturn ?? DateTime.now().toIso8601String(),
+        "DateStartReturn":
+            _capturedDateStartReturn ?? DateTime.now().toIso8601String(),
         "WarehouseCode": _userData?['warehouseCode'] ?? 'Cideng',
         "UserATMReturn": _tlNikController.text,
         "SPVBARusak": _tlNikController.text,
         "IsManual": "N"
       };
-      
+
       final updateResponse = await _apiService.updatePlanningRTN(updateParams);
-      
+
       if (!updateResponse.success) {
-        await _showErrorDialog('Gagal update planning RTN: ${updateResponse.message}');
-        if (mounted) setState(() { _isSubmitting = false; });
+        await _showErrorDialog(
+            'Gagal update planning RTN: ${updateResponse.message}');
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
         return;
       }
-      
+
       print('Planning RTN updated successfully!');
-      
+
       // 2. Now insert each catridge data into RTN
-      if (_returnHeaderResponse?.data == null || _returnHeaderResponse!.data.isEmpty) {
+      if (_returnHeaderResponse?.data == null ||
+          _returnHeaderResponse!.data.isEmpty) {
         await _showErrorDialog('Tidak ada data catridge untuk diproses');
-        if (mounted) setState(() { _isSubmitting = false; });
+        if (mounted)
+          setState(() {
+            _isSubmitting = false;
+          });
         return;
       }
-      
+
       // Get NIK from userData with proper error checking
       String userNIK = '';
       if (_userData != null) {
@@ -1236,7 +1346,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         } else if (_userData!.containsKey('ID')) {
           userNIK = _userData!['ID'].toString();
         }
-        
+
         // Log the NIK value for debugging
         print('DEBUG - Using UserInput NIK: $userNIK');
         print('DEBUG - Available userData keys: ${_userData!.keys.toList()}');
@@ -1244,38 +1354,46 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       } else {
         print('ERROR - userData is null, cannot get NIK');
       }
-      
+
       // If NIK is still empty, use a hardcoded value to prevent API error
       if (userNIK.isEmpty) {
-        print('WARNING - Using default NIK since userData does not contain NIK');
-                  userNIK = ''; // No default NIK
+        print(
+            'WARNING - Using default NIK since userData does not contain NIK');
+        userNIK = ''; // No default NIK
       }
-      
+
       bool allSuccess = true;
       String errorMessage = '';
-      
+
       // Process each catridge
       for (int i = 0; i < _returnHeaderResponse!.data.length; i++) {
         final catridge = _returnHeaderResponse!.data[i];
-        
-        print('Processing catridge ${i+1} of ${_returnHeaderResponse!.data.length}: ${catridge.catridgeCode}');
-        print('DEBUG - Sending to API: idTool=${_idToolController.text}, userInput=$userNIK');
-        
-        final catridgeState = i < _cartridgeSectionKeys.length ? _cartridgeSectionKeys[i].currentState : null;
-        final String scanCatStatusVal = (catridgeState != null && catridgeState._catridgeFisikManualMode)
-            ? catridgeState._catridgeFisikAlasanController.text
-            : '';
-        final String scanCatRemarkVal = (catridgeState != null && catridgeState._catridgeFisikManualMode)
-            ? catridgeState._catridgeFisikRemarkController.text
-            : '';
+
+        print(
+            'Processing catridge ${i + 1} of ${_returnHeaderResponse!.data.length}: ${catridge.catridgeCode}');
+        print(
+            'DEBUG - Sending to API: idTool=${_idToolController.text}, userInput=$userNIK');
+
+        final catridgeState = i < _cartridgeSectionKeys.length
+            ? _cartridgeSectionKeys[i].currentState
+            : null;
+        final String scanCatStatusVal =
+            (catridgeState != null && catridgeState._catridgeFisikManualMode)
+                ? catridgeState._catridgeFisikAlasanController.text
+                : '';
+        final String scanCatRemarkVal =
+            (catridgeState != null && catridgeState._catridgeFisikManualMode)
+                ? catridgeState._catridgeFisikRemarkController.text
+                : '';
 
         // Send to RTN endpoint dengan parameter sesuai ketentuan
-        final String baseDenomCode = (
-          _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
-          _returnHeaderResponse!.data[i].denomCode.isNotEmpty
-        )
+        final String baseDenomCode = (_returnHeaderResponse != null &&
+                i < _returnHeaderResponse!.data.length &&
+                _returnHeaderResponse!.data[i].denomCode.isNotEmpty)
             ? _returnHeaderResponse!.data[i].denomCode
-            : ((catridgeState?._resolvedDenomCode ?? catridgeState?.catridgeFisikController.text) ?? '');
+            : ((catridgeState?._resolvedDenomCode ??
+                    catridgeState?.catridgeFisikController.text) ??
+                '');
 
         final tempRows = catridgeState != null
             ? _buildTempRowsForSection(
@@ -1291,36 +1409,37 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
 
         for (final row in tempRows) {
           final rtneResponse = await _apiService.insertReturnAtmCatridgeTemp(
-            // field Id Tool diisi ke IdTool
-            idTool: _idToolController.text,
-            // field No Bag diisi ke BagCode
-            bagCode: catridge.bagCode ?? '0',
-            // field No Catridge diisi ke CatridgeCode
-            catridgeCode: catridge.catridgeCode,
-            // field Seal Code diisi ke SealCode
-            sealCode: '0', // Use default or get from catridge data if available
-            // field No Seal diisi ke CatridgeSeal
-            catridgeSeal: catridge.catridgeSeal,
-            // DenomCode diisi sesuai mapping row submit
-            denomCode: row['denomCode'] ?? '',
-            // qty per row sesuai denom
-            qty: row['qty'] ?? '0',
-            // nik saat login yang tersimpan akan mengisi ke UserInput
-            userInput: userNIK,
-            // N untuk isBalikKaset
-            isBalikKaset: "N",
-            // CatridgeCodeOld kosong jika tidak ada
-            catridgeCodeOld: "",
-            scanCatStatus: scanCatStatusVal,
-            scanCatStatusRemark: scanCatRemarkVal,
-            scanSealStatus: '',
-            scanSealStatusRemark: ''
-          );
+              // field Id Tool diisi ke IdTool
+              idTool: _idToolController.text,
+              // field No Bag diisi ke BagCode
+              bagCode: catridge.bagCode ?? '0',
+              // field No Catridge diisi ke CatridgeCode
+              catridgeCode: catridge.catridgeCode,
+              // field Seal Code diisi ke SealCode
+              sealCode:
+                  '0', // Use default or get from catridge data if available
+              // field No Seal diisi ke CatridgeSeal
+              catridgeSeal: catridge.catridgeSeal,
+              // DenomCode diisi sesuai mapping row submit
+              denomCode: row['denomCode'] ?? '',
+              // qty per row sesuai denom
+              qty: row['qty'] ?? '0',
+              // nik saat login yang tersimpan akan mengisi ke UserInput
+              userInput: userNIK,
+              // N untuk isBalikKaset
+              isBalikKaset: "N",
+              // CatridgeCodeOld kosong jika tidak ada
+              catridgeCodeOld: "",
+              scanCatStatus: scanCatStatusVal,
+              scanCatStatusRemark: scanCatRemarkVal,
+              scanSealStatus: '',
+              scanSealStatusRemark: '');
 
           if (!rtneResponse.success) {
             allSuccess = false;
             errorMessage = rtneResponse.message;
-            print('Failed to insert catridge ${catridge.catridgeCode}: ${rtneResponse.message}');
+            print(
+                'Failed to insert catridge ${catridge.catridgeCode}: ${rtneResponse.message}');
             break;
           }
         }
@@ -1331,9 +1450,12 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
 
         print('Successfully inserted catridge ${catridge.catridgeCode}');
       }
-      
-      if (mounted) setState(() { _isSubmitting = false; });
-      
+
+      if (mounted)
+        setState(() {
+          _isSubmitting = false;
+        });
+
       if (allSuccess) {
         // Show success dialog
         await CustomModals.showSuccessModal(
@@ -1353,14 +1475,20 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         }
       }
     } catch (e) {
-      if (mounted) setState(() { _isSubmitting = false; });
+      if (mounted)
+        setState(() {
+          _isSubmitting = false;
+        });
       await _showErrorDialog('Terjadi kesalahan: ${e.toString()}');
     }
   }
 
   Future<void> _submitReturnData() async {
     if (_returnHeaderResponse == null || _returnHeaderResponse!.data.isEmpty) {
-      if (mounted) setState(() { _errorMessage = 'Tidak ada data untuk disubmit'; });
+      if (mounted)
+        setState(() {
+          _errorMessage = 'Tidak ada data untuk disubmit';
+        });
       return;
     }
 
@@ -1374,10 +1502,13 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
           return;
         }
         if (state._catridgeFisikManualMode) {
-          final alasanEmpty = state._catridgeFisikAlasanController.text.trim().isEmpty;
-          final remarkEmpty = state._catridgeFisikRemarkController.text.trim().isEmpty;
+          final alasanEmpty =
+              state._catridgeFisikAlasanController.text.trim().isEmpty;
+          final remarkEmpty =
+              state._catridgeFisikRemarkController.text.trim().isEmpty;
           if (alasanEmpty || remarkEmpty) {
-            await _showErrorDialog('Alasan dan Remark wajib diisi untuk mode manual');
+            await _showErrorDialog(
+                'Alasan dan Remark wajib diisi untuk mode manual');
             return;
           }
         }
@@ -1405,14 +1536,18 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       }
     }
 
-    if (mounted) setState(() { _isLoading = true; _errorMessage = ''; });
-    
+    if (mounted)
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+
     try {
       // Check if we have any cartridge sections
       if (_cartridgeSectionKeys.isEmpty) {
         throw Exception('Tidak ada data catridge untuk disubmit');
       }
-      
+
       // Get NIK from userData with proper error checking
       String userNIK = '';
       if (_userData != null) {
@@ -1430,7 +1565,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         } else if (_userData!.containsKey('ID')) {
           userNIK = _userData!['ID'].toString();
         }
-        
+
         // Log the NIK value for debugging
         print('DEBUG - Using UserInput NIK: $userNIK');
         print('DEBUG - Available userData keys: ${_userData!.keys.toList()}');
@@ -1438,31 +1573,33 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
       } else {
         print('ERROR - userData is null, cannot get NIK');
       }
-      
+
       // If NIK is still empty, use a hardcoded value to prevent API error
       if (userNIK.isEmpty) {
-        print('WARNING - Using default NIK since userData does not contain NIK');
-                  userNIK = ''; // No default NIK
+        print(
+            'WARNING - Using default NIK since userData does not contain NIK');
+        userNIK = ''; // No default NIK
       }
-      
+
       bool allSuccess = true;
-      
+
       // Submit data for each cartridge section
       for (int i = 0; i < _cartridgeSectionKeys.length; i++) {
         if (i >= _returnHeaderResponse!.data.length) break;
-        
+
         final catridgeState = _cartridgeSectionKeys[i].currentState!;
-        
+
         // Log the parameters being sent to the API
-        print('DEBUG - Sending to API: idTool=${_idToolController.text}, userInput=$userNIK');
-        
+        print(
+            'DEBUG - Sending to API: idTool=${_idToolController.text}, userInput=$userNIK');
+
         // Implementasi parameter sesuai ketentuan
-        final String denomCodeVal = (
-          _returnHeaderResponse != null && i < _returnHeaderResponse!.data.length &&
-          _returnHeaderResponse!.data[i].denomCode.isNotEmpty
-        )
+        final String denomCodeVal = (_returnHeaderResponse != null &&
+                i < _returnHeaderResponse!.data.length &&
+                _returnHeaderResponse!.data[i].denomCode.isNotEmpty)
             ? _returnHeaderResponse!.data[i].denomCode
-            : (catridgeState._resolvedDenomCode ?? catridgeState.catridgeFisikController.text);
+            : (catridgeState._resolvedDenomCode ??
+                catridgeState.catridgeFisikController.text);
         final response = await _apiService.insertReturnAtmCatridgeTemp(
           // field Id Tool diisi ke IdTool
           idTool: _idToolController.text,
@@ -1479,7 +1616,16 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
           // qty diambil dari jumlah lembar per section (sum semua denom)
           qty: (() {
             int qtyCount = 0;
-            for (final denom in ['1K','2K','5K','10K','20K','50K','75K','100K']) {
+            for (final denom in [
+              '1K',
+              '2K',
+              '5K',
+              '10K',
+              '20K',
+              '50K',
+              '75K',
+              '100K'
+            ]) {
               final txt = catridgeState.denomControllers[denom]?.text ?? '';
               if (txt.isNotEmpty) {
                 qtyCount += int.tryParse(txt) ?? 0;
@@ -1503,16 +1649,16 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
           scanSealStatusRemark: '',
           // Additional manual mode parameters - removed as these are not valid API parameters
         );
-        
+
         if (!response.success) {
           allSuccess = false;
           throw Exception(response.message);
         }
       }
-      
+
       // Tampilkan dialog sukses
       await _showSuccessDialog('Data return berhasil disubmit');
-      
+
       // Reset form
       _idCRFController.clear();
       _idToolController.clear();
@@ -1521,12 +1667,17 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         _capturedDateStartReturn = null;
         _formsLocked = true;
       });
-      
     } catch (e) {
-      if (mounted) setState(() { _errorMessage = e.toString(); });
+      if (mounted)
+        setState(() {
+          _errorMessage = e.toString();
+        });
       await _showErrorDialog('Error submit data: ${e.toString()}');
     } finally {
-      if (mounted) setState(() { _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+        });
     }
   }
 
@@ -1535,23 +1686,21 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     if (idTool.isEmpty) {
       return;
     }
-    
-    setState(() { 
+
+    setState(() {
       _isLoading = true;
     });
-    
+
     try {
       // Use a more direct approach to fetch data
       final result = await _apiService.validateAndGetReplenish(
-              idTool: idTool,
-        branchCode: _branchCode
-      );
+          idTool: idTool, branchCode: _branchCode);
 
-      final validationStatus = result.data?.validationStatus.toString().toUpperCase() ?? '';
+      final validationStatus =
+          result.data?.validationStatus.toString().toUpperCase() ?? '';
       final validationErrorMessage = result.data?.errorMessage.toString() ?? '';
-      final shouldTreatAsError = !result.success ||
-          result.data == null ||
-          validationStatus == 'ERROR';
+      final shouldTreatAsError =
+          !result.success || result.data == null || validationStatus == 'ERROR';
 
       if (shouldTreatAsError) {
         String message = result.message.trim();
@@ -1606,20 +1755,23 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
               idTypeAtm: result.data!.idTypeAtm.toString(),
               timeSTReturn: result.data!.timeSTReturn.toString(),
             ),
-            data: result.data!.catridges.map((c) => ReturnCatridgeData(
-              idTool: result.data!.idToolPrepare.toString(),
-              catridgeCode: c.catridgeCode.toString(),
-              catridgeSeal: c.catridgeSeal.toString(),
-              denomCode: c.denomCode.toString(),
-              typeCatridge: c.typeCatridgeTrx.toString(),
-              bagCode: c.bagCode.toString(),
-              sealCodeReturn: c.sealCodeReturn.toString(),
-              typeCatridgeTrx: c.typeCatridgeTrx.toString(), // Fix: Map to correct field
-              isMdm: c.isMdm,
-              isKios: c.isKios,
-            )).toList(),
+            data: result.data!.catridges
+                .map((c) => ReturnCatridgeData(
+                      idTool: result.data!.idToolPrepare.toString(),
+                      catridgeCode: c.catridgeCode.toString(),
+                      catridgeSeal: c.catridgeSeal.toString(),
+                      denomCode: c.denomCode.toString(),
+                      typeCatridge: c.typeCatridgeTrx.toString(),
+                      bagCode: c.bagCode.toString(),
+                      sealCodeReturn: c.sealCodeReturn.toString(),
+                      typeCatridgeTrx: c.typeCatridgeTrx
+                          .toString(), // Fix: Map to correct field
+                      isMdm: c.isMdm,
+                      isKios: c.isKios,
+                    ))
+                .toList(),
           );
-          
+
           // Set current time to jam mulai when data is fetched successfully
           _setCurrentTime();
           _setTanggalReplenishFromData(result.data!.dateReplenish);
@@ -1639,14 +1791,15 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     } finally {
       setState(() {
         _isLoading = false;
-        });
-      }
-            }
+      });
+    }
+  }
 
   // Add method to set current time
   void _setCurrentTime() {
     final now = DateTime.now();
-    final formattedTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final formattedTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     _jamMulaiController.text = formattedTime;
   }
 
@@ -1659,7 +1812,8 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
 
     final DateTime? parsedDate = DateTime.tryParse(value);
     if (parsedDate != null) {
-      _tanggalReplenishController.text = DateFormat('dd MMM yyyy').format(parsedDate);
+      _tanggalReplenishController.text =
+          DateFormat('dd MMM yyyy').format(parsedDate);
       return;
     }
 
@@ -1704,7 +1858,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
               ),
             ),
           ),
-          
+
           // Input field section with underline - expandable
           Expanded(
             child: Container(
@@ -1740,7 +1894,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
                       ),
                     ),
                   ),
-                  
+
                   // Icons positioned on the underline
                   if (enableScan)
                     Container(
@@ -1757,11 +1911,12 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
                           size: 18, // Fixed size
                         ),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(), // Remove constraints
+                        constraints:
+                            const BoxConstraints(), // Remove constraints
                         onPressed: readOnly ? null : onIconPressed,
                       ),
                     ),
-                  
+
                   if (hasIcon)
                     Container(
                       width: 24, // Fixed width
@@ -1805,27 +1960,27 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
         ),
       );
       _enforceLandscapeOrientation();
-      
+
       // If no barcode was scanned (user cancelled), return early
       if (result == null) {
         print('ID Tool scanning cancelled');
         return;
       }
-      
+
       String barcode = result;
       print('ðŸŽ¯ ID Tool scanned via navigation: $barcode');
-      
+
       setState(() {
         _idToolController.text = barcode;
       });
-      
+
       // Reset all scan validation states in all cartridge sections
       for (var key in _cartridgeSectionKeys) {
         if (key.currentState != null) {
           key.currentState!._resetAllScanStates();
         }
       }
-      
+
       // Fetch data using the scanned ID Tool
       _fetchDataByIdTool(barcode);
     } catch (e) {
@@ -1841,7 +1996,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
     final isTabletOrLandscapeMobile = size.width >= 600;
     final isLandscape = size.width > size.height;
     final minHeight = isTabletOrLandscapeMobile ? 80.0 : 70.0;
-    
+
     return Scaffold(
       appBar: null, // Remove default AppBar
       body: Column(
@@ -1886,7 +2041,7 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
                   ),
                 ),
                 SizedBox(width: isTabletOrLandscapeMobile ? 20 : 16),
-                
+
                 // Title
                 Text(
                   'Return Mode',
@@ -1897,481 +2052,511 @@ class _ReturnModePageState extends State<ReturnModePage> with AutoLogoutMixin, W
                     letterSpacing: -0.5,
                   ),
                 ),
-                
+
                 const Spacer(),
-                
+
                 // Location info
                 Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _branchName,
-                style: TextStyle(
-                  fontSize: isTablet ? 18 : 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black,
-                  letterSpacing: 0.5,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
-                child: FutureBuilder<Map<String, dynamic>?>(
-                  future: _authService.getUserData(),
-                  builder: (context, snapshot) {
-                    String meja = '';
-                    if (snapshot.hasData && snapshot.data != null) {
-                      meja = snapshot.data!['noMeja'] ?? 
-                            snapshot.data!['NoMeja'] ?? 
-                            '010101';
-                    } else {
-                      meja = '010101';
-                    }
-                    return Align(
-                      alignment: Alignment.centerRight,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          'Meja: $meja',
-                          style: TextStyle(
-                            fontSize: isTablet ? 16 : 14,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF6B7280),
-                          ),
-                          maxLines: 1,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-          
-          SizedBox(width: isTablet ? 24 : 20),
-          
-          // CRF_KONSOL button
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 20 : 16,
-              vertical: isTablet ? 12 : 10,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Text(
-              _userData?['role'] ?? 'CRF_KONSOL', // Get role from user data, fallback to default
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isTablet ? 16 : 14,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ),
-          
-          SizedBox(width: isTablet ? 16 : 12),
-          
-          // Refresh button
-          GestureDetector(
-          onTap: () {
-            // Refresh data when clicked
-            setState(() {
-              _returnHeaderResponse = null;
-              _idToolController.clear();
-              _jamMulaiController.clear();
-              _errorMessage = '';
-              _capturedDateStartReturn = null;
-              _formsLocked = true;
-            });
-          },
-            child: Container(
-              width: isTablet ? 44 : 40,
-              height: isTablet ? 44 : 40,
-              decoration: const BoxDecoration(
-                color: Color(0xFF10B981),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.refresh,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-          ),
-          
-          SizedBox(width: isTablet ? 24 : 20),
-          
-          // User info
-          Row(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    constraints: BoxConstraints(maxWidth: isTablet ? 150 : 120),
-                    child: Text(
-                      _userName,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _branchName,
                       style: TextStyle(
                         fontSize: isTablet ? 18 : 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.black,
+                        letterSpacing: 0.5,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
-                  ),
-                  FutureBuilder<Map<String, dynamic>?>(
-                    future: _authService.getUserData(),
-                    builder: (context, snapshot) {
-                      String nik = '';
-                      if (snapshot.hasData && snapshot.data != null) {
-                        nik = snapshot.data!['userId'] ?? 
-                              snapshot.data!['userID'] ?? 
-                              '';
-                      } else {
-                        nik = _userData != null && _userData!.containsKey('userId') ? _userData!['userId'] : '';
-                      }
-                      return Text(
-                        nik,
-                        style: TextStyle(
-                          fontSize: isTablet ? 14 : 12,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF6B7280),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              SizedBox(width: isTablet ? 12 : 10),
-              GestureDetector(
-                onTap: () async {
-                  final confirmed = await CustomModals.showConfirmationModal(
-                    context: context,
-                    message: "Apakah kamu yakin ingin pergi ke halaman profile?",
-                    confirmText: "Ya",
-                    cancelText: "Tidak",
-                  );
-                  if (confirmed) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const ProfileMenuScreen(),
-                      ),
-                    );
-                  }
-                },
-                child: Container(
-                  width: isTablet ? 48 : 44,
-                  height: isTablet ? 48 : 44,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF10B981),
-                    shape: BoxShape.circle,
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: FutureBuilder<ImageProvider>(
-                      future: _profileService.getProfilePhoto(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.done && 
-                            snapshot.hasData) {
-                          return Image(
-                            image: snapshot.data!,
-                            width: isTablet ? 48 : 44,
-                            height: isTablet ? 48 : 44,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: const Color(0xFF10B981),
-                                child: const Icon(
-                                  Icons.person,
-                                  color: Colors.white,
-                                  size: 24,
+                    ConstrainedBox(
+                      constraints:
+                          BoxConstraints(maxWidth: isTablet ? 200 : 160),
+                      child: FutureBuilder<Map<String, dynamic>?>(
+                        future: _authService.getUserData(),
+                        builder: (context, snapshot) {
+                          String meja = '';
+                          if (snapshot.hasData && snapshot.data != null) {
+                            meja = snapshot.data!['noMeja'] ??
+                                snapshot.data!['NoMeja'] ??
+                                '010101';
+                          } else {
+                            meja = '010101';
+                          }
+                          return Align(
+                            alignment: Alignment.centerRight,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                'Meja: $meja',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 16 : 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF6B7280),
                                 ),
-                              );
-                            },
+                                maxLines: 1,
+                              ),
+                            ),
                           );
-                        } else {
-                          return Container(
-                            color: const Color(0xFF10B981),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 24,
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+                SizedBox(width: isTablet ? 24 : 20),
+
+                // CRF_KONSOL button
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 20 : 16,
+                    vertical: isTablet ? 12 : 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Text(
+                    _userData?['role'] ??
+                        'CRF_KONSOL', // Get role from user data, fallback to default
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: isTablet ? 16 : 12),
+
+                // Refresh button
+                GestureDetector(
+                  onTap: () {
+                    // Refresh data when clicked
+                    setState(() {
+                      _returnHeaderResponse = null;
+                      _idToolController.clear();
+                      _jamMulaiController.clear();
+                      _errorMessage = '';
+                      _capturedDateStartReturn = null;
+                      _formsLocked = true;
+                    });
+                  },
+                  child: Container(
+                    width: isTablet ? 44 : 40,
+                    height: isTablet ? 44 : 40,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.refresh,
+                      color: Colors.red,
+                      size: 22,
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: isTablet ? 24 : 20),
+
+                // User info
+                Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          constraints:
+                              BoxConstraints(maxWidth: isTablet ? 150 : 120),
+                          child: Text(
+                            _userName,
+                            style: TextStyle(
+                              fontSize: isTablet ? 18 : 16,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        FutureBuilder<Map<String, dynamic>?>(
+                          future: _authService.getUserData(),
+                          builder: (context, snapshot) {
+                            String nik = '';
+                            if (snapshot.hasData && snapshot.data != null) {
+                              nik = snapshot.data!['userId'] ??
+                                  snapshot.data!['userID'] ??
+                                  '';
+                            } else {
+                              nik = _userData != null &&
+                                      _userData!.containsKey('userId')
+                                  ? _userData!['userId']
+                                  : '';
+                            }
+                            return Text(
+                              nik,
+                              style: TextStyle(
+                                fontSize: isTablet ? 14 : 12,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF6B7280),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(width: isTablet ? 12 : 10),
+                    GestureDetector(
+                      onTap: () async {
+                        final confirmed =
+                            await CustomModals.showConfirmationModal(
+                          context: context,
+                          message:
+                              "Apakah kamu yakin ingin pergi ke halaman profile?",
+                          confirmText: "Ya",
+                          cancelText: "Tidak",
+                        );
+                        if (confirmed) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ProfileMenuScreen(),
                             ),
                           );
                         }
                       },
+                      child: Container(
+                        width: isTablet ? 48 : 44,
+                        height: isTablet ? 48 : 44,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: FutureBuilder<ImageProvider>(
+                            future: _profileService.getProfilePhoto(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                      ConnectionState.done &&
+                                  snapshot.hasData) {
+                                return Image(
+                                  image: snapshot.data!,
+                                  width: isTablet ? 48 : 44,
+                                  height: isTablet ? 48 : 44,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: const Color(0xFF10B981),
+                                      child: const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    );
+                                  },
+                                );
+                              } else {
+                                return Container(
+                                  color: const Color(0xFF10B981),
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 24,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
                   ],
                 ),
               ],
             ),
           ),
-          
+
           // Rest of the content
           Expanded(
             child: Container(
               color: Colors.white,
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  // Reset content
-                  setState(() {
-                    _returnHeaderResponse = null;
-                    _idToolController.clear();
-                    _jamMulaiController.clear();
-                    _errorMessage = '';
-                    _capturedDateStartReturn = null;
-                    _formsLocked = true;
-                  });
-                },
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Use Row for wide screens, Column for narrow screens
-                    final useRow = constraints.maxWidth >= 600;
-                    
-                    // Create dynamic cartridge sections based on API response
-                    List<Widget> cartridgeSections = [];
-                    
-                    // Loading indicator
-                    if (_isLoading) {
-                      return const Center(child: CircularProgressIndicator());
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Use Row for wide screens, Column for narrow screens
+                  final useRow = constraints.maxWidth >= 600;
+
+                  // Create dynamic cartridge sections based on API response
+                  List<Widget> cartridgeSections = [];
+
+                  // Loading indicator
+                  if (_isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // Note: Error messages are now shown using CustomModals instead of inline display
+                  // This ensures forms below remain visible even when there are validation errors
+
+                  // Clear and recreate keys when response changes
+                  if (_returnHeaderResponse?.data != null &&
+                      _cartridgeSectionKeys.length !=
+                          _returnHeaderResponse!.data.length) {
+                    _cartridgeSectionKeys.clear();
+                    for (int i = 0;
+                        i < _returnHeaderResponse!.data.length;
+                        i++) {
+                      _cartridgeSectionKeys
+                          .add(GlobalKey<_CartridgeSectionState>());
+                      print(
+                          'Created key for item ${i + 1} of ${_returnHeaderResponse!.data.length}');
                     }
-                    
-                    // Note: Error messages are now shown using CustomModals instead of inline display
-                    // This ensures forms below remain visible even when there are validation errors
-                    
-                    // Clear and recreate keys when response changes
-                    if (_returnHeaderResponse?.data != null && _cartridgeSectionKeys.length != _returnHeaderResponse!.data.length) {
+                  }
+
+                  // Build cartridge sections based on response data
+                  if (_returnHeaderResponse?.data != null) {
+                    print(
+                        'Building ${_returnHeaderResponse!.data.length} cartridge sections');
+                    print('Current keys: ${_cartridgeSectionKeys.length}');
+
+                    // Ensure we have the right number of keys
+                    if (_cartridgeSectionKeys.length !=
+                        _returnHeaderResponse!.data.length) {
                       _cartridgeSectionKeys.clear();
-                      for (int i = 0; i < _returnHeaderResponse!.data.length; i++) {
-                        _cartridgeSectionKeys.add(GlobalKey<_CartridgeSectionState>());
-                        print('Created key for item ${i+1} of ${_returnHeaderResponse!.data.length}');
+                      for (int i = 0;
+                          i < _returnHeaderResponse!.data.length;
+                          i++) {
+                        _cartridgeSectionKeys
+                            .add(GlobalKey<_CartridgeSectionState>());
+                        print(
+                            'Created key for item ${i + 1} of ${_returnHeaderResponse!.data.length}');
                       }
                     }
-                    
-                    // Build cartridge sections based on response data
-                    if (_returnHeaderResponse?.data != null) {
-                      print('Building ${_returnHeaderResponse!.data.length} cartridge sections');
-                      print('Current keys: ${_cartridgeSectionKeys.length}');
-                      
-                      // Ensure we have the right number of keys
-                      if (_cartridgeSectionKeys.length != _returnHeaderResponse!.data.length) {
-                        _cartridgeSectionKeys.clear();
-                        for (int i = 0; i < _returnHeaderResponse!.data.length; i++) {
-                          _cartridgeSectionKeys.add(GlobalKey<_CartridgeSectionState>());
-                          print('Created key for item ${i+1} of ${_returnHeaderResponse!.data.length}');
+
+                    // Sort the data by typeCatridgeTrx: C first, D second, P third
+                    List<ReturnCatridgeData> sortedData =
+                        List.from(_returnHeaderResponse!.data);
+                    sortedData.sort((a, b) {
+                      String typeA = (a.typeCatridgeTrx?.toUpperCase() ?? 'C');
+                      String typeB = (b.typeCatridgeTrx?.toUpperCase() ?? 'C');
+
+                      // Define sort order: C=0, D=1, P=2
+                      int getOrder(String type) {
+                        switch (type) {
+                          case 'C':
+                            return 0;
+                          case 'D':
+                            return 1;
+                          case 'P':
+                            return 2;
+                          default:
+                            return 0; // Default to C
                         }
                       }
-                      
-                      // Sort the data by typeCatridgeTrx: C first, D second, P third
-                      List<ReturnCatridgeData> sortedData = List.from(_returnHeaderResponse!.data);
-                      sortedData.sort((a, b) {
-                        String typeA = (a.typeCatridgeTrx?.toUpperCase() ?? 'C');
-                        String typeB = (b.typeCatridgeTrx?.toUpperCase() ?? 'C');
-                        
-                        // Define sort order: C=0, D=1, P=2
-                        int getOrder(String type) {
-                          switch (type) {
-                            case 'C': return 0;
-                            case 'D': return 1;
-                            case 'P': return 2;
-                            default: return 0; // Default to C
-                          }
+
+                      return getOrder(typeA).compareTo(getOrder(typeB));
+                    });
+
+                    // Build sections with sorted data
+                    for (int i = 0; i < sortedData.length; i++) {
+                      if (i < _cartridgeSectionKeys.length) {
+                        // Safety check
+                        final data = sortedData[i];
+
+                        // Debug the data
+                        print(
+                            'Data at index $i: id=${data.idTool}, code=${data.catridgeCode}, typeTrx=${data.typeCatridgeTrx}');
+
+                        // Determine section title based on typeCatridgeTrx
+                        String sectionTitle;
+                        final typeCatridgeTrx =
+                            data.typeCatridgeTrx?.toUpperCase() ?? 'C';
+
+                        print(
+                            'DEBUG: Processing data at index $i - typeCatridgeTrx: "${data.typeCatridgeTrx}" -> normalized: "$typeCatridgeTrx"');
+
+                        switch (typeCatridgeTrx) {
+                          case 'C':
+                            sectionTitle = 'Catridge';
+                            break;
+                          case 'D':
+                            sectionTitle = 'Divert';
+                            break;
+                          case 'P':
+                            sectionTitle = 'Pocket';
+                            break;
+                          default:
+                            sectionTitle = 'Catridge';
+                            print(
+                                'DEBUG: Using default title for unknown type: "$typeCatridgeTrx"');
                         }
-                        
-                        return getOrder(typeA).compareTo(getOrder(typeB));
-                      });
-                      
-                      // Build sections with sorted data
-                      for (int i = 0; i < sortedData.length; i++) {
-                        if (i < _cartridgeSectionKeys.length) { // Safety check
-                          final data = sortedData[i];
-                          
-                          // Debug the data
-                          print('Data at index $i: id=${data.idTool}, code=${data.catridgeCode}, typeTrx=${data.typeCatridgeTrx}');
-                          
-                          // Determine section title based on typeCatridgeTrx
-                          String sectionTitle;
-                          final typeCatridgeTrx = data.typeCatridgeTrx?.toUpperCase() ?? 'C';
-                          
-                          print('DEBUG: Processing data at index $i - typeCatridgeTrx: "${data.typeCatridgeTrx}" -> normalized: "$typeCatridgeTrx"');
-                          
-                          switch (typeCatridgeTrx) {
-                            case 'C':
-                              sectionTitle = 'Catridge';
-                              break;
-                            case 'D':
-                              sectionTitle = 'Divert';
-                              break;
-                            case 'P':
-                              sectionTitle = 'Pocket';
-                              break;
-                            default:
-                              sectionTitle = 'Catridge';
-                              print('DEBUG: Using default title for unknown type: "$typeCatridgeTrx"');
-                          }
-                          
-                          print('DEBUG: Final section title: "$sectionTitle" for typeCatridgeTrx: "$typeCatridgeTrx"');
-                          
-                          cartridgeSections.add(
-                            Column(
-                              children: [
-                                CartridgeSection(
-                                  key: _cartridgeSectionKeys[i],
-                                  title: sectionTitle,
-                                  returnData: data,
-                                  parentIdToolController: _idToolController,
-                                  sectionId: 'section_$i', // NEW: Add unique section ID
-                                  onDenomChanged: _calculateAndUpdateDetailReturn, // NEW: Add callback
-                                ),
-                                const SizedBox(height: 16), // Consistent spacing
-                              ],
-                            ),
-                          );
-                        }
+
+                        print(
+                            'DEBUG: Final section title: "$sectionTitle" for typeCatridgeTrx: "$typeCatridgeTrx"');
+
+                        cartridgeSections.add(
+                          Column(
+                            children: [
+                              CartridgeSection(
+                                key: _cartridgeSectionKeys[i],
+                                title: sectionTitle,
+                                returnData: data,
+                                parentIdToolController: _idToolController,
+                                sectionId:
+                                    'section_$i', // NEW: Add unique section ID
+                                onDenomChanged:
+                                    _calculateAndUpdateDetailReturn, // NEW: Add callback
+                              ),
+                              const SizedBox(height: 16), // Consistent spacing
+                            ],
+                          ),
+                        );
                       }
-                    } else {
-                      // Add at least one empty cartridge section if no data
-                      _cartridgeSectionKeys.clear();
-                      _cartridgeSectionKeys.add(GlobalKey<_CartridgeSectionState>());
-                      
-                      cartridgeSections.add(
-                        Column(
-                          children: [
-                            CartridgeSection(
-                              key: _cartridgeSectionKeys[0],
-                              title: 'Catridge 1',
-                              returnData: null,
-                              parentIdToolController: _idToolController,
-                              sectionId: 'section_0', // NEW: Add unique section ID
-                              onDenomChanged: _calculateAndUpdateDetailReturn, // NEW: Add callback
-                            ),
-                            const SizedBox(height: 16),
-                          ],
-                        ),
-                      );
                     }
-                    
-                    // Build the main content
-                    Widget mainContent;
-                    
-                    // ID CRF, Jam Mulai, and Tanggal Replenish fields
-                    Widget idCrfAndTimeFields = Container(
-                      margin: const EdgeInsets.only(bottom: 20), // Increased margin
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  } else {
+                    // Add at least one empty cartridge section if no data
+                    _cartridgeSectionKeys.clear();
+                    _cartridgeSectionKeys
+                        .add(GlobalKey<_CartridgeSectionState>());
+
+                    cartridgeSections.add(
+                      Column(
                         children: [
-                          // ID CRF field
-                          Expanded(
-                            flex: 1,
-                            child: _buildFormField(
-                              label: 'ID CRF :',
-                              controller: _idToolController,
-                              enableScan: true,
-                              isSmallScreen: false,
-                              hintText: 'Masukkan ID CRF',
-                              onIconPressed: () => _scanIdTool(),
-                              onFocusChange: (hasFocus) {
-                                // Trigger API call when user leaves the field (loses focus)
-                                if (!hasFocus && _idToolController.text.isNotEmpty) {
-                                  _fetchDataByIdTool(_idToolController.text);
-                                }
-                              },
-                            ),
+                          CartridgeSection(
+                            key: _cartridgeSectionKeys[0],
+                            title: 'Catridge 1',
+                            returnData: null,
+                            parentIdToolController: _idToolController,
+                            sectionId:
+                                'section_0', // NEW: Add unique section ID
+                            onDenomChanged:
+                                _calculateAndUpdateDetailReturn, // NEW: Add callback
                           ),
-                          
-                          const SizedBox(width: 20),
-                          
-                          // Jam Mulai field
-                          Expanded(
-                            flex: 1,
-                            child: _buildFormField(
-                              label: 'Jam Mulai :',
-                              controller: _jamMulaiController,
-                              readOnly: true,
-                              hasIcon: true,
-                              iconData: Icons.access_time,
-                              isSmallScreen: false,
-                              hintText: '--:--',
-                            ),
-                          ),
-                          
-                          const SizedBox(width: 12),
-                          
-                          // Tanggal Replenish field
-                          Expanded(
-                            flex: 1,
-                            child: _buildFormField(
-                              label: 'Tanggal Replenish:',
-                              controller: _tanggalReplenishController,
-                              readOnly: true,
-                              hasIcon: true,
-                              iconData: Icons.calendar_today,
-                              isSmallScreen: false,
-                              hintText: 'dd MMM yyyy',
-                            ),
-                          ),
+                          const SizedBox(height: 16),
                         ],
                       ),
                     );
-                    
-                    // Wrap in SingleChildScrollView for proper scrolling
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: useRow
-                          ? Column(
-                              children: [
-                                idCrfAndTimeFields,
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      flex: 5,
-                                      child: Column(
-                                        children: cartridgeSections,
-                                      ),
+                  }
+
+                  // Build the main content
+                  Widget mainContent;
+
+                  // ID CRF, Jam Mulai, and Tanggal Replenish fields
+                  Widget idCrfAndTimeFields = Container(
+                    margin:
+                        const EdgeInsets.only(bottom: 20), // Increased margin
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ID CRF field
+                        Expanded(
+                          flex: 1,
+                          child: _buildFormField(
+                            label: 'ID CRF :',
+                            controller: _idToolController,
+                            enableScan: true,
+                            isSmallScreen: false,
+                            hintText: 'Masukkan ID CRF',
+                            onIconPressed: () => _scanIdTool(),
+                            onFocusChange: (hasFocus) {
+                              // Trigger API call when user leaves the field (loses focus)
+                              if (!hasFocus &&
+                                  _idToolController.text.isNotEmpty) {
+                                _fetchDataByIdTool(_idToolController.text);
+                              }
+                            },
+                          ),
+                        ),
+
+                        const SizedBox(width: 20),
+
+                        // Jam Mulai field
+                        Expanded(
+                          flex: 1,
+                          child: _buildFormField(
+                            label: 'Jam Mulai :',
+                            controller: _jamMulaiController,
+                            readOnly: true,
+                            hasIcon: true,
+                            iconData: Icons.access_time,
+                            isSmallScreen: false,
+                            hintText: '--:--',
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // Tanggal Replenish field
+                        Expanded(
+                          flex: 1,
+                          child: _buildFormField(
+                            label: 'Tanggal Replenish:',
+                            controller: _tanggalReplenishController,
+                            readOnly: true,
+                            hasIcon: true,
+                            iconData: Icons.calendar_today,
+                            isSmallScreen: false,
+                            hintText: 'dd MMM yyyy',
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  // Wrap in SingleChildScrollView for proper scrolling
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.all(16),
+                    child: useRow
+                        ? Column(
+                            children: [
+                              idCrfAndTimeFields,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 5,
+                                    child: Column(
+                                      children: cartridgeSections,
                                     ),
-                                    const SizedBox(width: 24),
-                                    Expanded(
-                                      flex: 4,
-                                      child: DetailSection(
-                                        returnData: _returnHeaderResponse,
-                                        onSubmitPressed: _navigateToSummaryPage,
-                                        isLandscape: false, // Consistent styling
-                                        detailReturnLembarControllers: _detailReturnLembarControllers,
-                                        detailReturnNominalControllers: _detailReturnNominalControllers,
-                                      ),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  Expanded(
+                                    flex: 4,
+                                    child: DetailSection(
+                                      returnData: _returnHeaderResponse,
+                                      onSubmitPressed: _navigateToSummaryPage,
+                                      isLandscape: false, // Consistent styling
+                                      detailReturnLembarControllers:
+                                          _detailReturnLembarControllers,
+                                      detailReturnNominalControllers:
+                                          _detailReturnNominalControllers,
                                     ),
-                                  ],
-                                ),
-                              ],
-                            )
-                          : Column(
-                              children: [
-                                idCrfAndTimeFields,
-                                ...cartridgeSections,
-                                DetailSection(
-                                  returnData: _returnHeaderResponse,
-                                  onSubmitPressed: _navigateToSummaryPage,
-                                  isLandscape: false, // Consistent styling
-                                  detailReturnLembarControllers: _detailReturnLembarControllers,
-                                  detailReturnNominalControllers: _detailReturnNominalControllers,
-                                ),
-                              ],
-                            ),
-                    );
-                  },
-                ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              idCrfAndTimeFields,
+                              ...cartridgeSections,
+                              DetailSection(
+                                returnData: _returnHeaderResponse,
+                                onSubmitPressed: _navigateToSummaryPage,
+                                isLandscape: false, // Consistent styling
+                                detailReturnLembarControllers:
+                                    _detailReturnLembarControllers,
+                                detailReturnNominalControllers:
+                                    _detailReturnNominalControllers,
+                              ),
+                            ],
+                          ),
+                  );
+                },
               ),
             ),
           ),
@@ -2386,11 +2571,12 @@ class CartridgeSection extends StatefulWidget {
   final ReturnCatridgeData? returnData;
   final TextEditingController parentIdToolController;
   final String sectionId; // NEW: Add section ID
-  final VoidCallback? onDenomChanged; // NEW: Add callback for denomination changes
-  
+  final VoidCallback?
+      onDenomChanged; // NEW: Add callback for denomination changes
+
   const CartridgeSection({
-    Key? key, 
-    required this.title, 
+    Key? key,
+    required this.title,
     this.returnData,
     required this.parentIdToolController,
     required this.sectionId, // NEW: Require section ID
@@ -2401,15 +2587,27 @@ class CartridgeSection extends StatefulWidget {
   State<CartridgeSection> createState() => _CartridgeSectionState();
 }
 
-class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixin {
+class _CartridgeSectionState extends State<CartridgeSection>
+    with AutoLogoutMixin {
   String? kondisiSeal;
   String? kondisiCatridge;
   String wsidValue = '';
 
   // Modified to only have two options
-  final List<String> kondisiSealOptions = ['BAIK', 'PUTUS', 'HILANG', 'TIDAK UTUH', 'SEAL BEDA'];
-  final List<String> kondisiCatridgeOptions = ['BAIK', 'CATRIDGE KEMBALI', 'CATRIDGE RUSAK', 'TAMBUR RUSAK'];
-  
+  final List<String> kondisiSealOptions = [
+    'BAIK',
+    'PUTUS',
+    'HILANG',
+    'TIDAK UTUH',
+    'SEAL BEDA'
+  ];
+  final List<String> kondisiCatridgeOptions = [
+    'BAIK',
+    'CATRIDGE KEMBALI',
+    'CATRIDGE RUSAK',
+    'TAMBUR RUSAK'
+  ];
+
   // NEW: Getter for section ID
   String get sectionId => widget.sectionId;
 
@@ -2425,21 +2623,30 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   final TextEditingController noSealController = TextEditingController();
   final TextEditingController catridgeFisikController = TextEditingController();
   final TextEditingController bagCodeController = TextEditingController();
-  final TextEditingController sealCodeReturnController = TextEditingController();
+  final TextEditingController sealCodeReturnController =
+      TextEditingController();
   final TextEditingController branchCodeController = TextEditingController();
-  
+
   // NEW: Controllers for manual mode alasan and remark per field
-  final TextEditingController _noCatridgeAlasanController = TextEditingController();
-  final TextEditingController _noCatridgeRemarkController = TextEditingController();
+  final TextEditingController _noCatridgeAlasanController =
+      TextEditingController();
+  final TextEditingController _noCatridgeRemarkController =
+      TextEditingController();
   final TextEditingController _noSealAlasanController = TextEditingController();
   final TextEditingController _noSealRemarkController = TextEditingController();
-  final TextEditingController _bagCodeAlasanController = TextEditingController();
-  final TextEditingController _bagCodeRemarkController = TextEditingController();
-  final TextEditingController _sealCodeAlasanController = TextEditingController();
-  final TextEditingController _sealCodeRemarkController = TextEditingController();
-  final TextEditingController _catridgeFisikAlasanController = TextEditingController();
-  final TextEditingController _catridgeFisikRemarkController = TextEditingController();
-  
+  final TextEditingController _bagCodeAlasanController =
+      TextEditingController();
+  final TextEditingController _bagCodeRemarkController =
+      TextEditingController();
+  final TextEditingController _sealCodeAlasanController =
+      TextEditingController();
+  final TextEditingController _sealCodeRemarkController =
+      TextEditingController();
+  final TextEditingController _catridgeFisikAlasanController =
+      TextEditingController();
+  final TextEditingController _catridgeFisikRemarkController =
+      TextEditingController();
+
   // NEW: Remark filled tracking per field
   bool _noCatridgeRemarkFilled = false;
   bool _noSealRemarkFilled = false;
@@ -2457,15 +2664,15 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   // Add getters for bagCode and sealCode (now from dropdown)
   String? get bagCode => selectedBagCode;
   String? get sealCode => selectedSealCode;
-  
+
   // NEW: Getter untuk mengetahui apakah semua field telah di-scan
-  bool get allFieldsScanned => 
-    scannedFields['noCatridge'] == true &&
-    scannedFields['noSeal'] == true &&
-    scannedFields['catridgeFisik'] == true &&
-    scannedFields['bagCode'] == true &&
-    scannedFields['sealCode'] == true;
-  
+  bool get allFieldsScanned =>
+      scannedFields['noCatridge'] == true &&
+      scannedFields['noSeal'] == true &&
+      scannedFields['catridgeFisik'] == true &&
+      scannedFields['bagCode'] == true &&
+      scannedFields['sealCode'] == true;
+
   // NEW: Getter untuk mode validasi
   bool get isValidationComplete => allFieldsScanned;
 
@@ -2490,17 +2697,13 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   }
 
   // Build dropdown field widget for CartridgeSection
-  Widget _buildDropdownFieldForBagCode(
-    String label,
-    List<String> items,
-    String? selectedValue,
-    Function(String?) onChanged,
-    {bool isValid = true, String errorText = ''}
-  ) {
+  Widget _buildDropdownFieldForBagCode(String label, List<String> items,
+      String? selectedValue, Function(String?) onChanged,
+      {bool isValid = true, String errorText = ''}) {
     // Get screen size for responsive design
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
-    
+
     final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
     final bool isLocked = parentState?.formsLocked ?? true;
     // Sanitize items: trim and deduplicate
@@ -2510,9 +2713,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         .toSet()
         .toList();
     // Ensure selected value is present; otherwise null to avoid Dropdown assertion
-    final safeSelectedValue = (selectedValue != null && sanitizedItems.contains(selectedValue.trim()))
-        ? selectedValue.trim()
-        : null;
+    final safeSelectedValue =
+        (selectedValue != null && sanitizedItems.contains(selectedValue.trim()))
+            ? selectedValue.trim()
+            : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2536,7 +2740,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   ),
                 ),
               ),
-              
+
               // Dropdown field with underline and dropdown icon
               Expanded(
                 child: Container(
@@ -2572,9 +2776,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                                 child: Text(value),
                               );
                             }).toList(),
-                            onChanged: isLocked ? null : (val) {
-                              onChanged(val);
-                            },
+                            onChanged: isLocked
+                                ? null
+                                : (val) {
+                                    onChanged(val);
+                                  },
                             icon: Container(
                               width: isSmallScreen ? 30 : 40,
                               height: isSmallScreen ? 30 : 40,
@@ -2615,17 +2821,13 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   }
 
   // Build dropdown field widget for Seal Code
-  Widget _buildDropdownFieldForSealCode(
-    String label,
-    List<String> items,
-    String? selectedValue,
-    Function(String?) onChanged,
-    {bool isValid = true, String errorText = ''}
-  ) {
+  Widget _buildDropdownFieldForSealCode(String label, List<String> items,
+      String? selectedValue, Function(String?) onChanged,
+      {bool isValid = true, String errorText = ''}) {
     // Get screen size for responsive design
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
-    
+
     final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
     final bool isLocked = parentState?.formsLocked ?? true;
     // Sanitize items: trim and deduplicate
@@ -2635,9 +2837,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         .toSet()
         .toList();
     // Ensure selected value is present; otherwise null to avoid Dropdown assertion
-    final safeSelectedValue = (selectedValue != null && sanitizedItems.contains(selectedValue.trim()))
-        ? selectedValue.trim()
-        : null;
+    final safeSelectedValue =
+        (selectedValue != null && sanitizedItems.contains(selectedValue.trim()))
+            ? selectedValue.trim()
+            : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2661,7 +2864,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   ),
                 ),
               ),
-              
+
               // Dropdown field with underline and dropdown icon
               Expanded(
                 child: Container(
@@ -2697,9 +2900,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                                 child: Text(value),
                               );
                             }).toList(),
-                            onChanged: isLocked ? null : (val) {
-                              onChanged(val);
-                            },
+                            onChanged: isLocked
+                                ? null
+                                : (val) {
+                                    onChanged(val);
+                                  },
                             icon: Container(
                               width: isSmallScreen ? 30 : 40,
                               height: isSmallScreen ? 30 : 40,
@@ -2740,40 +2945,48 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   }
 
   // NEW: Method to handle barcode results from stream
-  void _handleStreamBarcodeResult(String fieldKey, String barcode, String label) async {
-    print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Handling stream result for $fieldKey: $barcode');
-    print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Current scannedFields state: $scannedFields');
-    
+  void _handleStreamBarcodeResult(
+      String fieldKey, String barcode, String label) async {
+    print(
+        'ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Handling stream result for $fieldKey: $barcode');
+    print(
+        'ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Current scannedFields state: $scannedFields');
+
     // Get the appropriate controller
     TextEditingController? controller = _getControllerForFieldKey(fieldKey);
     if (controller == null) {
-      print('âŒ CARTRIDGE [${widget.sectionId}]: No controller found for field: $fieldKey');
+      print(
+          'âŒ CARTRIDGE [${widget.sectionId}]: No controller found for field: $fieldKey');
       return;
     }
-    
-    print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Controller current value: "${controller.text}"');
-    
+
+    print(
+        'ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Controller current value: "${controller.text}"');
+
     // Validate barcode if field already has content
     if (controller.text.isNotEmpty && controller.text != barcode) {
-      debugPrint('Scan mismatch [${widget.sectionId}] expected=${controller.text} scanned=$barcode');
+      debugPrint(
+          'Scan mismatch [${widget.sectionId}] expected=${controller.text} scanned=$barcode');
       return;
     }
-    
+
     // Update the field if it's empty
     if (controller.text.isEmpty) {
       controller.text = barcode;
-      print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Field updated with barcode: $barcode');
+      print(
+          'ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: Field updated with barcode: $barcode');
     }
-    
+
     // CRITICAL: Only one setState call with all updates
     if (mounted) {
       setState(() {
-        print('ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: SETTING scannedFields[$fieldKey] = true');
+        print(
+            'ðŸŽ¯ CARTRIDGE [${widget.sectionId}]: SETTING scannedFields[$fieldKey] = true');
         scannedFields[fieldKey] = true;
-        
+
         // Update validation flags
         _updateValidationForField(fieldKey, barcode);
-        
+
         // Pastikan field terkait ditandai sebagai valid
         if (fieldKey == 'noCatridge') {
           isNoCatridgeValid = true;
@@ -2795,17 +3008,18 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           isSealCodeReturnValid = true;
           sealCodeReturnError = '';
         }
-        
-        print('âœ… CARTRIDGE [${widget.sectionId}]: $fieldKey validated with checkmark - scannedFields[$fieldKey] = ${scannedFields[fieldKey]}');
+
+        print(
+            'âœ… CARTRIDGE [${widget.sectionId}]: $fieldKey validated with checkmark - scannedFields[$fieldKey] = ${scannedFields[fieldKey]}');
       });
-      
+
       // Force rebuild untuk memastikan checkmark muncul
       Future.microtask(() {
         if (mounted) setState(() {});
       });
     }
   }
-  
+
   // Helper method to get controller for field key
   TextEditingController? _getControllerForFieldKey(String fieldKey) {
     switch (fieldKey) {
@@ -2820,7 +3034,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         return null;
     }
   }
-  
+
   // Helper method to update validation flags
   void _updateValidationForField(String fieldKey, String barcode) {
     switch (fieldKey) {
@@ -2846,7 +3060,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         break;
     }
   }
-  
+
   // Method to reset all scan states
   void _resetAllScanStates() {
     if (mounted) {
@@ -2929,11 +3143,13 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
 
   bool _isMainCatridgeSection() {
     final normalizedTitle = widget.title.trim().toUpperCase();
-    if (normalizedTitle.contains('DIVERT') || normalizedTitle.contains('POCKET')) {
+    if (normalizedTitle.contains('DIVERT') ||
+        normalizedTitle.contains('POCKET')) {
       return false;
     }
 
-    final normalizedType = (widget.returnData?.typeCatridgeTrx ?? '').trim().toUpperCase();
+    final normalizedType =
+        (widget.returnData?.typeCatridgeTrx ?? '').trim().toUpperCase();
     if (normalizedType == 'D' || normalizedType == 'P') {
       return false;
     }
@@ -2970,7 +3186,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   }
 
   bool _isDenomEnabled(String label) {
-    String code = _normalizeDenomCode(_resolvedDenomCode ?? widget.returnData?.denomCode ?? '');
+    String code = _normalizeDenomCode(
+        _resolvedDenomCode ?? widget.returnData?.denomCode ?? '');
     if (code.isEmpty) {
       code = _normalizeDenomCode(noCatridgeController.text);
     }
@@ -2995,7 +3212,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
 
     switch (code) {
       case 'CDM':
-        final bool enableAllForCdm = widget.returnData?.isMdm == true || widget.returnData?.isKios == true;
+        final bool enableAllForCdm = widget.returnData?.isMdm == true ||
+            widget.returnData?.isKios == true;
         if (enableAllForCdm) {
           return true;
         }
@@ -3011,18 +3229,25 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
 
   Future<void> _resolveDenomCode() async {
     try {
-      final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
-      final String branch = branchCodeController.text.isNotEmpty ? branchCodeController.text : (parentState?._branchCode ?? '1');
+      final parentState =
+          context.findAncestorStateOfType<_ReturnModePageState>();
+      final String branch = branchCodeController.text.isNotEmpty
+          ? branchCodeController.text
+          : (parentState?._branchCode ?? '1');
       final String catridge = noCatridgeController.text.trim();
       if (catridge.isEmpty) return;
-      final resp = await _apiService.getCatridgeDetails(branch, catridge, idTool: widget.parentIdToolController.text);
+      final resp = await _apiService.getCatridgeDetails(branch, catridge,
+          idTool: widget.parentIdToolController.text);
       if (resp.success && resp.data is List && (resp.data as List).isNotEmpty) {
         final first = (resp.data as List).first;
         int standValue = 0;
         if (first is Map) {
           final map = first as Map;
-          final sv = map['StandValue'] ?? map['standValue'] ?? map['STANDVALUE'];
-          if (sv is int) standValue = sv; else if (sv is String) standValue = int.tryParse(sv) ?? 0;
+          final sv =
+              map['StandValue'] ?? map['standValue'] ?? map['STANDVALUE'];
+          if (sv is int)
+            standValue = sv;
+          else if (sv is String) standValue = int.tryParse(sv) ?? 0;
         }
         String code;
         switch (standValue) {
@@ -3061,7 +3286,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       }
     } catch (_) {}
   }
-  
+
   // NEW: Controllers for total calculations
   final TextEditingController totalLembarController = TextEditingController();
   final TextEditingController totalNominalController = TextEditingController();
@@ -3091,7 +3316,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   final ApiService _apiService = ApiService();
   bool _isValidating = false;
   bool _isLoading = false;
-  
+
   // Data baru
   String _branchCode = '1'; // Default branch code
 
@@ -3100,10 +3325,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     super.initState();
     _loadReturnData();
     _loadUserData();
-    
+
     // Set default branch code
     branchCodeController.text = _branchCode;
-    
+
     // Initialize scannedFields map
     scannedFields = {
       'noCatridge': false,
@@ -3112,14 +3337,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       'bagCode': false,
       'sealCode': false,
     };
-    
+
     // NEW: Initialize total controllers with default values
     totalLembarController.text = '0';
     totalNominalController.text = _formatCurrency(0);
-    
+
     // Add focus listener for Catridge Fisik validation
     _catridgeFisikFocusNode.addListener(_onCatridgeFisikFocusChanged);
-    
+
     // Debug log
     print('INIT: scannedFields initialized: $scannedFields');
   }
@@ -3138,35 +3363,51 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     // NEW: Dispose total controllers
     totalLembarController.dispose();
     totalNominalController.dispose();
-    
+
     // Dispose focus node
     _catridgeFisikFocusNode.dispose();
-    
+
     super.dispose();
   }
-  
+
   // NEW: Method to calculate totals for this section
   void _calculateSectionTotals() {
     int totalLembar = 0;
     int totalNominal = 0;
-    
+
     denomControllers.forEach((denom, controller) {
       if (controller.text.isNotEmpty) {
         try {
           final count = int.parse(controller.text);
           totalLembar += count;
-          
+
           // Calculate nominal value
           int denomValue = 0;
           switch (denom) {
-            case '100K': denomValue = 100000; break;
-            case '75K': denomValue = 75000; break;
-            case '50K': denomValue = 50000; break;
-            case '20K': denomValue = 20000; break;
-            case '10K': denomValue = 10000; break;
-            case '5K': denomValue = 5000; break;
-            case '2K': denomValue = 2000; break;
-            case '1K': denomValue = 1000; break;
+            case '100K':
+              denomValue = 100000;
+              break;
+            case '75K':
+              denomValue = 75000;
+              break;
+            case '50K':
+              denomValue = 50000;
+              break;
+            case '20K':
+              denomValue = 20000;
+              break;
+            case '10K':
+              denomValue = 10000;
+              break;
+            case '5K':
+              denomValue = 5000;
+              break;
+            case '2K':
+              denomValue = 2000;
+              break;
+            case '1K':
+              denomValue = 1000;
+              break;
           }
           totalNominal += count * denomValue;
         } catch (e) {
@@ -3174,49 +3415,49 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         }
       }
     });
-    
+
     // Update total controllers
-     totalLembarController.text = totalLembar.toString();
-     totalNominalController.text = _formatCurrency(totalNominal);
-   }
-   
-   // NEW: Build total field with same design as form No. Catridge
+    totalLembarController.text = totalLembar.toString();
+    totalNominalController.text = _formatCurrency(totalNominal);
+  }
+
+  // NEW: Build total field with same design as form No. Catridge
   Widget _buildTotalField(String label, TextEditingController controller) {
-     final size = MediaQuery.of(context).size;
-     final isSmallScreen = size.width < 600;
-     
-     return Container(
-       child: Row(
-         crossAxisAlignment: CrossAxisAlignment.end,
-         children: [
-           // Label section - fixed width
-           SizedBox(
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.width < 600;
+
+    return Container(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Label section - fixed width
+          SizedBox(
             width: isSmallScreen ? 88 : 102,
             child: Padding(
               padding: EdgeInsets.only(bottom: isSmallScreen ? 6 : 8),
               child: Text(
-                 '$label :',
-                 style: TextStyle(
-                   fontWeight: FontWeight.bold,
-                   color: Colors.black,
-                   fontSize: isSmallScreen ? 12 : 14,
-                 ),
-               ),
-             ),
-           ),
-           
-           // Input field with underline (same design as No. Catridge)
-           Expanded(
-             child: Container(
-               decoration: BoxDecoration(
-                 border: Border(
-                   bottom: BorderSide(
-                     color: Colors.grey.shade400,
-                     width: 1.5,
-                   ),
-                 ),
-               ),
-               child: Padding(
+                '$label :',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                  fontSize: isSmallScreen ? 12 : 14,
+                ),
+              ),
+            ),
+          ),
+
+          // Input field with underline (same design as No. Catridge)
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.grey.shade400,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: Padding(
                 padding: EdgeInsets.only(
                   left: isSmallScreen ? 4 : 6,
                   right: isSmallScreen ? 4 : 6,
@@ -3242,11 +3483,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               ),
             ),
           ),
-         ],
-       ),
-     );
-   }
-  
+        ],
+      ),
+    );
+  }
+
   // Load user data untuk mendapatkan branch code
   Future<void> _loadUserData() async {
     try {
@@ -3255,38 +3496,49 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       if (userData != null) {
         setState(() {
           // First try to get branchCode directly
-          if (userData.containsKey('branchCode') && userData['branchCode'] != null && userData['branchCode'].toString().isNotEmpty) {
+          if (userData.containsKey('branchCode') &&
+              userData['branchCode'] != null &&
+              userData['branchCode'].toString().isNotEmpty) {
             _branchCode = userData['branchCode'].toString();
-            print('CartridgeSection: Using branchCode from userData: $_branchCode');
-          } 
+            print(
+                'CartridgeSection: Using branchCode from userData: $_branchCode');
+          }
           // Then try groupId as fallback
-          else if (userData.containsKey('groupId') && userData['groupId'] != null && userData['groupId'].toString().isNotEmpty) {
+          else if (userData.containsKey('groupId') &&
+              userData['groupId'] != null &&
+              userData['groupId'].toString().isNotEmpty) {
             _branchCode = userData['groupId'].toString();
-            print('CartridgeSection: Using groupId as branchCode: $_branchCode');
+            print(
+                'CartridgeSection: Using groupId as branchCode: $_branchCode');
           }
           // Finally try BranchCode (different casing)
-          else if (userData.containsKey('BranchCode') && userData['BranchCode'] != null && userData['BranchCode'].toString().isNotEmpty) {
+          else if (userData.containsKey('BranchCode') &&
+              userData['BranchCode'] != null &&
+              userData['BranchCode'].toString().isNotEmpty) {
             _branchCode = userData['BranchCode'].toString();
-            print('CartridgeSection: Using BranchCode from userData: $_branchCode');
+            print(
+                'CartridgeSection: Using BranchCode from userData: $_branchCode');
           }
           // Default to '1' if nothing found
           else {
             _branchCode = '1';
-            print('CartridgeSection: No branch code found in userData, using default: $_branchCode');
+            print(
+                'CartridgeSection: No branch code found in userData, using default: $_branchCode');
           }
-          
+
           branchCodeController.text = _branchCode;
         });
       }
     } catch (e) {
-      print('CartridgeSection: Error loading user data: $e, using default branch code: 1');
+      print(
+          'CartridgeSection: Error loading user data: $e, using default branch code: 1');
       setState(() {
         _branchCode = '1';
         branchCodeController.text = _branchCode;
       });
     }
   }
-  
+
   // New method to fetch data from API with provided idTool
   Future<void> fetchDataFromApi(String idTool) async {
     if (idTool.isEmpty) {
@@ -3296,83 +3548,101 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       );
       return;
     }
-    
+
     // Check token expiry sebelum API call
     final isTokenValid = await checkTokenBeforeApiCall();
     if (!isTokenValid) return;
-    
+
     setState(() {
       _isLoading = true;
-      
+
       // Reset all scanned fields flags
       scannedFields.forEach((key, value) {
         scannedFields[key] = false;
       });
     });
-    
+
     try {
       // Ensure branchCode is numeric
       String numericBranchCode = branchCodeController.text;
-      if (branchCodeController.text.isEmpty || !RegExp(r'^\d+$').hasMatch(branchCodeController.text)) {
+      if (branchCodeController.text.isEmpty ||
+          !RegExp(r'^\d+$').hasMatch(branchCodeController.text)) {
         numericBranchCode = '1'; // Default to '1' if not numeric
-        print('WARNING: Branch code is not numeric: "${branchCodeController.text}", using default: $numericBranchCode');
+        print(
+            'WARNING: Branch code is not numeric: "${branchCodeController.text}", using default: $numericBranchCode');
         branchCodeController.text = numericBranchCode;
       }
-      
+
       // Log the request for debugging
-      print('Fetching data with idTool: $idTool, branchCode: $numericBranchCode (original: ${branchCodeController.text})');
-      
+      print(
+          'Fetching data with idTool: $idTool, branchCode: $numericBranchCode (original: ${branchCodeController.text})');
+
       // Create test URL for manual verification
-      final String testUrl = 'https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=$idTool&branchCode=$numericBranchCode';
+      final String testUrl =
+          'https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=$idTool&branchCode=$numericBranchCode';
       print('Test URL: $testUrl');
-      
-      final result = await safeApiCall(() => _apiService.validateAndGetReplenishRaw(
-        idTool,
-        numericBranchCode,
-        catridgeCode: noCatridgeController.text.isNotEmpty ? noCatridgeController.text : null,
-      ));
-      
-      if (result != null && result['success'] == true && result['data'] != null) {
+
+      final result =
+          await safeApiCall(() => _apiService.validateAndGetReplenishRaw(
+                idTool,
+                numericBranchCode,
+                catridgeCode: noCatridgeController.text.isNotEmpty
+                    ? noCatridgeController.text
+                    : null,
+              ));
+
+      if (result != null &&
+          result['success'] == true &&
+          result['data'] != null) {
         setState(() {
           // Set WSID from atmCode
           if (result['data']['atmCode'] != null) {
             wsidValue = result['data']['atmCode'].toString();
           }
-          
+
           // Process catridge data if available
-          if (result['data']['catridges'] != null && result['data']['catridges'] is List && (result['data']['catridges'] as List).isNotEmpty) {
+          if (result['data']['catridges'] != null &&
+              result['data']['catridges'] is List &&
+              (result['data']['catridges'] as List).isNotEmpty) {
             final catridgeData = (result['data']['catridges'] as List).first;
-            
+
             // Fill fields from API data
-            if (catridgeData['catridgeCode'] != null || catridgeData['CatridgeCode'] != null) {
-              noCatridgeController.text = catridgeData['catridgeCode'] ?? catridgeData['CatridgeCode'] ?? '';
+            if (catridgeData['catridgeCode'] != null ||
+                catridgeData['CatridgeCode'] != null) {
+              noCatridgeController.text = catridgeData['catridgeCode'] ??
+                  catridgeData['CatridgeCode'] ??
+                  '';
             }
-            
-            if (catridgeData['catridgeSeal'] != null || catridgeData['CatridgeSeal'] != null) {
-              noSealController.text = catridgeData['catridgeSeal'] ?? catridgeData['CatridgeSeal'] ?? '';
+
+            if (catridgeData['catridgeSeal'] != null ||
+                catridgeData['CatridgeSeal'] != null) {
+              noSealController.text = catridgeData['catridgeSeal'] ??
+                  catridgeData['CatridgeSeal'] ??
+                  '';
             }
-            
+
             if (catridgeData['bagCode'] != null) {
               bagCodeController.text = catridgeData['bagCode'] ?? '';
               selectedBagCode = catridgeData['bagCode'];
             }
-            
+
             if (catridgeData['sealCodeReturn'] != null) {
-              sealCodeReturnController.text = catridgeData['sealCodeReturn'] ?? '';
+              sealCodeReturnController.text =
+                  catridgeData['sealCodeReturn'] ?? '';
               selectedSealCode = catridgeData['sealCodeReturn'];
             }
-            
+
             // Set validation flags
             isNoCatridgeValid = noCatridgeController.text.isNotEmpty;
             isNoSealValid = noSealController.text.isNotEmpty;
             isBagCodeValid = true;
             isSealCodeReturnValid = true;
-            
+
             // IMPORTANT: Reset all scanned fields flags
             scannedFields.forEach((key, value) {
               scannedFields[key] = false;
             });
-            
+
             print('Scan states reset after API fetch:');
             print('Scanned fields: $scannedFields');
           } else {
@@ -3382,60 +3652,61 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       } else {
         // Enhanced error handling
         String errorMessage = result?['message'] ?? 'Gagal mengambil data';
-        
+
         // Add debugging info for 404 errors
         if (errorMessage.contains('404')) {
-          errorMessage += '\n\nDetail permintaan:\nURL: https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish'
+          errorMessage +=
+              '\n\nDetail permintaan:\nURL: https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish'
               '\nParameter: idtool=$idTool, branchCode=$numericBranchCode';
-              
+
           print('404 Error: $errorMessage');
-          
+
           // Show more detailed error message with test URL
           _showDetailedErrorDialog(
-            title: 'Kesalahan API (404)',
-            message: 'Endpoint API tidak ditemukan. Mohon periksa konfigurasi server atau parameter.',
-            technicalDetails: errorMessage,
-            testUrl: testUrl
-          );
+              title: 'Kesalahan API (404)',
+              message:
+                  'Endpoint API tidak ditemukan. Mohon periksa konfigurasi server atau parameter.',
+              technicalDetails: errorMessage,
+              testUrl: testUrl);
         } else {
           // Show more detailed error message for other errors
           _showDetailedErrorDialog(
-            title: 'Kesalahan API',
-            message: errorMessage,
-            technicalDetails: 'Endpoint: /CRF/rtn/validate-and-get-replenish\n'
-                'ID Tool: $idTool\n'
-                'Branch Code: $numericBranchCode',
-            testUrl: testUrl
-          );
+              title: 'Kesalahan API',
+              message: errorMessage,
+              technicalDetails:
+                  'Endpoint: /CRF/rtn/validate-and-get-replenish\n'
+                  'ID Tool: $idTool\n'
+                  'Branch Code: $numericBranchCode',
+              testUrl: testUrl);
         }
       }
     } catch (e) {
       // Enhanced error dialog with technical details
       _showDetailedErrorDialog(
-        title: 'Kesalahan Jaringan',
-        message: 'Terjadi kesalahan saat menghubungi server. Mohon periksa koneksi internet dan coba lagi.',
-        technicalDetails: e.toString(),
-        testUrl: 'https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=${widget.parentIdToolController.text}&branchCode=$numericBranchCode'
-      );
+          title: 'Kesalahan Jaringan',
+          message:
+              'Terjadi kesalahan saat menghubungi server. Mohon periksa koneksi internet dan coba lagi.',
+          technicalDetails: e.toString(),
+          testUrl:
+              'https://dev.advantagescm.com/LocalCRF/api/CRF/rtn/validate-and-get-replenish?idtool=${widget.parentIdToolController.text}&branchCode=$numericBranchCode');
     } finally {
       setState(() {
         _isLoading = false;
       });
     }
   }
-  
+
   // Modified _fetchDataFromApi to use the parent ID Tool
   Future<void> _fetchDataFromApi() async {
     await fetchDataFromApi(widget.parentIdToolController.text);
   }
 
   // Helper method to show detailed error dialog with technical info
-  void _showDetailedErrorDialog({
-    required String title, 
-    required String message,
-    String? technicalDetails,
-    String? testUrl
-  }) {
+  void _showDetailedErrorDialog(
+      {required String title,
+      required String message,
+      String? technicalDetails,
+      String? testUrl}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -3454,7 +3725,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               Text(message),
               if (technicalDetails != null) ...[
                 const SizedBox(height: 16),
-                const Text('Informasi Teknis:', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('Informasi Teknis:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.all(8),
@@ -3464,7 +3736,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   ),
                   child: Text(
                     technicalDetails,
-                    style: TextStyle(fontSize: 12, fontFamily: 'Courier', color: Colors.grey[800]),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'Courier',
+                        color: Colors.grey[800]),
                   ),
                 ),
               ],
@@ -3515,7 +3790,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                 Clipboard.setData(ClipboardData(text: testUrl));
                 await CustomModals.showSuccessModal(
                   context: context,
-                  message: 'URL disalin ke clipboard, buka di browser untuk menguji API secara langsung',
+                  message:
+                      'URL disalin ke clipboard, buka di browser untuk menguji API secara langsung',
                 );
               },
               child: const Text('Salin URL Test'),
@@ -3530,12 +3806,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       _isValidating = true;
       noCatridgeError = ''; // Reset error message
     });
-    
+
     // Get the catridge code
     final catridgeCode = noCatridgeController.text.trim();
-    
+
     // Basic validation - ensure it's not empty
-    if (catridgeCode.isEmpty || catridgeCode == '0' || catridgeCode.toLowerCase() == 'false') {
+    if (catridgeCode.isEmpty ||
+        catridgeCode == '0' ||
+        catridgeCode.toLowerCase() == 'false') {
       setState(() {
         isNoCatridgeValid = false;
         noCatridgeError = 'Nomor Catridge tidak boleh kosong';
@@ -3545,8 +3823,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     }
 
     final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
-    final otherValues = parentState?._getAllNoCatridgeValues(excludeSectionId: sectionId) ?? [];
-    final isDuplicate = otherValues.any((v) => v.toLowerCase() == catridgeCode.toLowerCase());
+    final otherValues =
+        parentState?._getAllNoCatridgeValues(excludeSectionId: sectionId) ?? [];
+    final isDuplicate =
+        otherValues.any((v) => v.toLowerCase() == catridgeCode.toLowerCase());
     if (isDuplicate) {
       setState(() {
         isNoCatridgeValid = false;
@@ -3555,12 +3835,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       });
       return;
     }
-    
+
     // Try to fetch data from API if ID Tool is filled
     if (widget.parentIdToolController.text.isNotEmpty) {
       await fetchDataFromApi(widget.parentIdToolController.text);
     }
-    
+
     // Lakukan validasi sederhana di sisi client
     setState(() {
       _isValidating = false;
@@ -3576,12 +3856,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       _isValidating = true;
       noSealError = ''; // Reset error message
     });
-    
+
     // Get the seal code
     final sealCode = noSealController.text.trim();
-    
+
     // Basic validation - ensure it's not empty
-    if (sealCode.isEmpty || sealCode == '0' || sealCode.toLowerCase() == 'false') {
+    if (sealCode.isEmpty ||
+        sealCode == '0' ||
+        sealCode.toLowerCase() == 'false') {
       setState(() {
         isNoSealValid = false;
         noSealError = 'Nomor Seal tidak boleh kosong';
@@ -3591,8 +3873,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     }
 
     final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
-    final otherValues = parentState?._getAllNoSealValues(excludeSectionId: sectionId) ?? [];
-    final isDuplicate = otherValues.any((v) => v.toLowerCase() == sealCode.toLowerCase());
+    final otherValues =
+        parentState?._getAllNoSealValues(excludeSectionId: sectionId) ?? [];
+    final isDuplicate =
+        otherValues.any((v) => v.toLowerCase() == sealCode.toLowerCase());
     if (isDuplicate) {
       setState(() {
         isNoSealValid = false;
@@ -3601,7 +3885,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       });
       return;
     }
-    
+
     // Lakukan validasi sederhana di sisi client
     setState(() {
       _isValidating = false;
@@ -3616,7 +3900,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     final value = catridgeFisikController.text;
     setState(() {
       isCatridgeFisikValid = value.isNotEmpty;
-      catridgeFisikError = value.isEmpty ? 'Catridge Fisik tidak boleh kosong' : '';
+      catridgeFisikError =
+          value.isEmpty ? 'Catridge Fisik tidak boleh kosong' : '';
     });
   }
 
@@ -3639,14 +3924,17 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   void _validateBagCode() {
     setState(() {
       isBagCodeValid = bagCodeController.text.isNotEmpty;
-      bagCodeError = bagCodeController.text.isEmpty ? 'Bag Code tidak boleh kosong' : '';
+      bagCodeError =
+          bagCodeController.text.isEmpty ? 'Bag Code tidak boleh kosong' : '';
     });
   }
 
   void _validateSealCodeReturn() {
     setState(() {
       isSealCodeReturnValid = sealCodeReturnController.text.isNotEmpty;
-      sealCodeReturnError = sealCodeReturnController.text.isEmpty ? 'Seal Code Return tidak boleh kosong' : '';
+      sealCodeReturnError = sealCodeReturnController.text.isEmpty
+          ? 'Seal Code Return tidak boleh kosong'
+          : '';
     });
   }
 
@@ -3664,25 +3952,25 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         return;
       }
     }
-    
+
     setState(() {
       isDenomValid = true;
       denomError = '';
     });
-    
+
     _calculateTotals();
   }
 
   void _calculateTotals() {
     int totalLembar = 0;
     int totalNominal = 0;
-    
+
     denomControllers.forEach((key, controller) {
       if (controller.text.isNotEmpty) {
         try {
           final count = int.parse(controller.text);
           totalLembar += count;
-          
+
           // Calculate nominal based on denom
           int denomValue = 0;
           switch (key) {
@@ -3711,14 +3999,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               denomValue = 1000;
               break;
           }
-          
+
           totalNominal += count * denomValue;
         } catch (e) {
           // Ignore parsing errors here
         }
       }
     });
-    
+
     // Update the totals display
     // We'll implement this in the next step
   }
@@ -3730,8 +4018,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     final oldData = oldWidget.returnData;
     final newData = widget.returnData;
 
-    final bool shouldReload =
-        oldData?.idTool != newData?.idTool ||
+    final bool shouldReload = oldData?.idTool != newData?.idTool ||
         oldData?.catridgeCode != newData?.catridgeCode ||
         oldData?.catridgeSeal != newData?.catridgeSeal ||
         oldData?.denomCode != newData?.denomCode ||
@@ -3750,65 +4037,72 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       setState(() {
         _isValidating = true;
       });
-      
+
       print('ðŸ“Š Setting controller values...');
       noCatridgeController.text = widget.returnData!.catridgeCode;
       noSealController.text = widget.returnData!.catridgeSeal;
       _resolvedDenomCode = _normalizeDenomCode(widget.returnData!.denomCode);
-      
+
       // FIXED: Only clear catridgeFisik field if it's empty - preserve user input
       if (catridgeFisikController.text.isEmpty) {
         catridgeFisikController.text = '';
         print('ðŸ“Š catridgeFisik field was empty, keeping it empty');
       } else {
-        print('ðŸ“Š catridgeFisik field has content, preserving: "${catridgeFisikController.text}"');
+        print(
+            'ðŸ“Š catridgeFisik field has content, preserving: "${catridgeFisikController.text}"');
       }
-      
+
       // If bagCode is available, use it and set dropdown selection
       if (widget.returnData!.bagCode != null) {
         bagCodeController.text = widget.returnData!.bagCode!.trim();
         selectedBagCode = widget.returnData!.bagCode!.trim();
       }
-      
+
       // Set sealCodeReturn from API response and set dropdown selection
       if (widget.returnData!.sealCodeReturn != null) {
-        sealCodeReturnController.text = widget.returnData!.sealCodeReturn!.trim();
+        sealCodeReturnController.text =
+            widget.returnData!.sealCodeReturn!.trim();
         selectedSealCode = widget.returnData!.sealCodeReturn!.trim();
       }
-      
-      print('ðŸ“Š Controller values set: noCatridge="${noCatridgeController.text}", noSeal="${noSealController.text}", bagCode="${bagCodeController.text}", sealCode="${sealCodeReturnController.text}"');
+
+      print(
+          'ðŸ“Š Controller values set: noCatridge="${noCatridgeController.text}", noSeal="${noSealController.text}", bagCode="${bagCodeController.text}", sealCode="${sealCodeReturnController.text}"');
       _resolveDenomCode();
-      
+
       // Reset validation state for pre-filled fields
       isNoCatridgeValid = noCatridgeController.text.isNotEmpty;
       isNoSealValid = noSealController.text.isNotEmpty;
-      isCatridgeFisikValid = catridgeFisikController.text.isNotEmpty; // Update based on current content
+      isCatridgeFisikValid = catridgeFisikController
+          .text.isNotEmpty; // Update based on current content
       isBagCodeValid = bagCodeController.text.isNotEmpty;
       isSealCodeReturnValid = sealCodeReturnController.text.isNotEmpty;
-      
-      print('ðŸ“Š Validation flags set: isNoCatridgeValid=$isNoCatridgeValid, isNoSealValid=$isNoSealValid, isCatridgeFisikValid=$isCatridgeFisikValid, isBagCodeValid=$isBagCodeValid, isSealCodeReturnValid=$isSealCodeReturnValid');
-      
+
+      print(
+          'ðŸ“Š Validation flags set: isNoCatridgeValid=$isNoCatridgeValid, isNoSealValid=$isNoSealValid, isCatridgeFisikValid=$isCatridgeFisikValid, isBagCodeValid=$isBagCodeValid, isSealCodeReturnValid=$isSealCodeReturnValid');
+
       // IMPORTANT: Reset all scanned fields flags because user needs to validate by scanning
       // BUT preserve catridgeFisik scan state if field has content
       print('ðŸ“Š BEFORE RESET: scannedFields = $scannedFields');
       scannedFields.forEach((key, value) {
         if (key == 'catridgeFisik' && catridgeFisikController.text.isNotEmpty) {
           // Preserve catridgeFisik scan state if field has content
-          print('ðŸ“Š Preserving catridgeFisik scan state: ${scannedFields[key]}');
+          print(
+              'ðŸ“Š Preserving catridgeFisik scan state: ${scannedFields[key]}');
         } else {
           scannedFields[key] = false;
         }
       });
       print('ðŸ“Š AFTER RESET: scannedFields = $scannedFields');
-      
+
       print('Scan states reset after loading data:');
       print('Scanned fields: $scannedFields');
-      print('Loaded data - noCatridge: ${noCatridgeController.text}, noSeal: ${noSealController.text}, bagCode: ${bagCodeController.text}, sealCode: ${sealCodeReturnController.text}');
-      
+      print(
+          'Loaded data - noCatridge: ${noCatridgeController.text}, noSeal: ${noSealController.text}, bagCode: ${bagCodeController.text}, sealCode: ${sealCodeReturnController.text}');
+
       setState(() {
         _isValidating = false;
       });
-      
+
       print('ðŸ“Š _loadReturnData() completed');
     } else {
       print('ðŸ“Š No return data to load');
@@ -3842,65 +4136,70 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
 
   // Check if all forms are valid
   bool get isFormValid {
-    bool formIsValid = isNoCatridgeValid && 
-           isNoSealValid && 
-           isCatridgeFisikValid && 
-           isKondisiSealValid && 
-           isKondisiCatridgeValid && 
-           isBagCodeValid && 
-           isSealCodeReturnValid && 
-           isDenomValid &&
-           noCatridgeController.text.isNotEmpty &&
-           noSealController.text.isNotEmpty &&
-           catridgeFisikController.text.isNotEmpty &&
-           kondisiSeal != null &&
-           kondisiCatridge != null &&
-           bagCodeController.text.isNotEmpty &&
-           sealCodeReturnController.text.isNotEmpty;
-    
+    bool formIsValid = isNoCatridgeValid &&
+        isNoSealValid &&
+        isCatridgeFisikValid &&
+        isKondisiSealValid &&
+        isKondisiCatridgeValid &&
+        isBagCodeValid &&
+        isSealCodeReturnValid &&
+        isDenomValid &&
+        noCatridgeController.text.isNotEmpty &&
+        noSealController.text.isNotEmpty &&
+        catridgeFisikController.text.isNotEmpty &&
+        kondisiSeal != null &&
+        kondisiCatridge != null &&
+        bagCodeController.text.isNotEmpty &&
+        sealCodeReturnController.text.isNotEmpty;
+
     // Periksa juga status scan (tanpa No. Catridge dan No. Seal)
-    final bool catridgeFisikSatisfied = (scannedFields['catridgeFisik'] == true) || (
-      _catridgeFisikManualMode == true &&
-      _catridgeFisikAlasanController.text.isNotEmpty &&
-      _catridgeFisikRemarkFilled == true &&
-      catridgeFisikController.text.isNotEmpty
-    );
-    formIsValid = formIsValid && 
-                  catridgeFisikSatisfied &&
-                  scannedFields['bagCode'] == true &&
-                  scannedFields['sealCode'] == true;
-           
+    final bool catridgeFisikSatisfied =
+        (scannedFields['catridgeFisik'] == true) ||
+            (_catridgeFisikManualMode == true &&
+                _catridgeFisikAlasanController.text.isNotEmpty &&
+                _catridgeFisikRemarkFilled == true &&
+                catridgeFisikController.text.isNotEmpty);
+    formIsValid = formIsValid &&
+        catridgeFisikSatisfied &&
+        scannedFields['bagCode'] == true &&
+        scannedFields['sealCode'] == true;
+
     // Log validation status for debugging
     if (!formIsValid) {
       print('Form validation failed. Scan status: $scannedFields');
-      print('Required fields scanned: noCatridge=${scannedFields['noCatridge']}, noSeal=${scannedFields['noSeal']}, catridgeFisik=${scannedFields['catridgeFisik']}, bagCode=${scannedFields['bagCode']}, sealCode=${scannedFields['sealCode']}');
+      print(
+          'Required fields scanned: noCatridge=${scannedFields['noCatridge']}, noSeal=${scannedFields['noSeal']}, catridgeFisik=${scannedFields['catridgeFisik']}, bagCode=${scannedFields['bagCode']}, sealCode=${scannedFields['sealCode']}');
     }
-    
+
     return formIsValid;
   }
 
   // Add validation method for scanned codes
-  bool _validateScannedCode(String scannedCode, TextEditingController controller) {
+  bool _validateScannedCode(
+      String scannedCode, TextEditingController controller) {
     // If controller is empty, any code is valid (first scan)
     if (controller.text.isEmpty) {
       return true;
     }
-    
+
     // Otherwise, scanned code must match the existing value
     bool isValid = scannedCode == controller.text;
-    print('Validating scanned code: $scannedCode against ${controller.text} - isValid: $isValid');
+    print(
+        'Validating scanned code: $scannedCode against ${controller.text} - isValid: $isValid');
     return isValid;
   }
-  
+
   // NEW: Streamlined barcode scanner for validation using direct callback approach
-  Future<void> _openBarcodeScanner(String label, TextEditingController controller, String fieldKey) async {
+  Future<void> _openBarcodeScanner(
+      String label, TextEditingController controller, String fieldKey) async {
     try {
-      print('ðŸŽ¯ OPENING SCANNER: $label for field $fieldKey in section $sectionId');
-      
+      print(
+          'ðŸŽ¯ OPENING SCANNER: $label for field $fieldKey in section $sectionId');
+
       // Clean field label for display
       String cleanLabel = label.replaceAll(':', '').trim();
       String? scannedFromCallback;
-      
+
       // Navigate to barcode scanner and wait for result
       final String? scannedBarcode = await Navigator.push<String?>(
         context,
@@ -3914,7 +4213,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               final normalized = barcode.trim();
               if (normalized.isEmpty) return;
               scannedFromCallback = normalized;
-              print('ðŸŽ¯ SCANNER CALLBACK: $normalized for $fieldKey in section $sectionId');
+              print(
+                  'ðŸŽ¯ SCANNER CALLBACK: $normalized for $fieldKey in section $sectionId');
 
               if (!mounted) return;
               setState(() {
@@ -3934,25 +4234,28 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           ),
         ),
       );
-      final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+      final parentState =
+          context.findAncestorStateOfType<_ReturnModePageState>();
       parentState?._enforceLandscapeOrientation();
-      
+
       // Handle the scanned result directly
       final String effectiveScanned =
           (scannedBarcode ?? scannedFromCallback ?? '').trim();
 
       if (effectiveScanned.isNotEmpty) {
-        print('ðŸŽ¯ SCANNER RESULT: $effectiveScanned for $fieldKey in section $sectionId');
-        
+        print(
+            'ðŸŽ¯ SCANNER RESULT: $effectiveScanned for $fieldKey in section $sectionId');
+
         // Update the controller with scanned value
         setState(() {
           _isApplyingScannerValue = true;
           controller.text = effectiveScanned;
-          
+
           // IMPORTANT: Mark field as scanned
           scannedFields[fieldKey] = true;
-          print('ðŸŽ¯ SCANNER [${sectionId}]: SETTING scannedFields[$fieldKey] = true for scanned value: $effectiveScanned');
-          
+          print(
+              'ðŸŽ¯ SCANNER [${sectionId}]: SETTING scannedFields[$fieldKey] = true for scanned value: $effectiveScanned');
+
           // Reset manual mode for Catridge Fisik when scanned (like prepare_mode)
           if (fieldKey == 'catridgeFisik') {
             _catridgeFisikManualMode = false;
@@ -3969,30 +4272,30 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _validateCatridgeFisikMatch(showResultModal: true);
           });
         }
-        
+
         print('ðŸŽ¯ FIELD UPDATED: $fieldKey = $effectiveScanned');
       } else {
         print('ðŸŽ¯ SCANNER CANCELLED: No barcode scanned for $fieldKey');
       }
-      
     } catch (e) {
       print('Error opening barcode scanner: $e');
       debugPrint('Gagal membuka scanner: ${e.toString()}');
     }
   }
-  
+
   // REMOVED: Old scanning methods replaced with stream-based approach
 
   // REMOVED: _scanAndValidateField - replaced with stream approach
 
   @override
   Widget build(BuildContext context) {
-    final bool shouldShow = widget.returnData != null || widget.title == 'Catridge 1';
-    
+    final bool shouldShow =
+        widget.returnData != null || widget.title == 'Catridge 1';
+
     if (!shouldShow) {
       return const SizedBox.shrink();
     }
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -4016,7 +4319,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Hidden branch code field
           Opacity(
             opacity: 0,
@@ -4029,7 +4332,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               ),
             ),
           ),
-          
+
           // Two-column layout for fields
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -4050,9 +4353,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       isLoading: _isValidating,
                       readOnly: true,
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // No Seal input field
                     _buildInputField(
                       'No. Seal',
@@ -4064,9 +4367,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       isLoading: _isValidating,
                       readOnly: true,
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // Catridge Fisik input field
                     _buildInputField(
                       'Catridge Fisik',
@@ -4076,12 +4379,13 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       errorText: catridgeFisikError,
                       isScanInput: true, // Use scan input mode for this field
                       hasScanner: true, // Add scanner
-                      readOnly: false, // Pengecualian: Catridge Fisik selalu bisa diinput
+                      readOnly:
+                          false, // Pengecualian: Catridge Fisik selalu bisa diinput
                       focusNode: _catridgeFisikFocusNode,
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // Bag Code dropdown (replaced input field with dropdown)
                     _buildDropdownFieldForBagCode(
                       'Bag Code',
@@ -4094,7 +4398,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           // IMPORTANT: Mark bagCode as scanned when selected from dropdown
                           if (value != null && value.isNotEmpty) {
                             scannedFields['bagCode'] = true;
-                            print('ðŸŽ¯ DROPDOWN [${sectionId}]: SETTING scannedFields[bagCode] = true for value: $value');
+                            print(
+                                'ðŸŽ¯ DROPDOWN [${sectionId}]: SETTING scannedFields[bagCode] = true for value: $value');
                           }
                         });
                         _validateBagCode();
@@ -4102,9 +4407,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       isValid: isBagCodeValid,
                       errorText: bagCodeError,
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // Seal Code dropdown (replaced input field with dropdown)
                     _buildDropdownFieldForSealCode(
                       'Seal Code',
@@ -4117,7 +4422,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           // IMPORTANT: Mark sealCode as scanned when selected from dropdown
                           if (value != null && value.isNotEmpty) {
                             scannedFields['sealCode'] = true;
-                            print('ðŸŽ¯ DROPDOWN [${sectionId}]: SETTING scannedFields[sealCode] = true for value: $value');
+                            print(
+                                'ðŸŽ¯ DROPDOWN [${sectionId}]: SETTING scannedFields[sealCode] = true for value: $value');
                           }
                         });
                         _validateSealCodeReturn();
@@ -4128,9 +4434,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 20),
-              
+
               // Right column
               Expanded(
                 child: Column(
@@ -4145,9 +4451,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                       isValid: isKondisiSealValid,
                       errorText: kondisiSealError,
                     ),
-                    
+
                     const SizedBox(height: 12),
-                    
+
                     // Kondisi Catridge dropdown (reduced to two options)
                     _buildDropdownField(
                       'Kondisi Catridge',
@@ -4162,9 +4468,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
               ),
             ],
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Denom fields
           const Text(
             'Denom',
@@ -4195,9 +4501,11 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   spacing: 12,
                   runSpacing: 8,
                   children: denomControllers.entries.map((entry) {
-                    final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
+                    final parentState =
+                        context.findAncestorStateOfType<_ReturnModePageState>();
                     final bool isLocked = parentState?.formsLocked ?? true;
-                    final bool enabled = _isDenomEnabled(entry.key) && !isLocked;
+                    final bool enabled =
+                        _isDenomEnabled(entry.key) && !isLocked;
                     return SizedBox(
                       width: 60,
                       child: TextField(
@@ -4218,7 +4526,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           contentPadding: const EdgeInsets.symmetric(
                               vertical: 8, horizontal: 8),
                         ),
-                        onEditingComplete: () => _validateDenom(entry.key, entry.value),
+                        onEditingComplete: () =>
+                            _validateDenom(entry.key, entry.value),
                         onChanged: (value) {
                           _calculateSectionTotals();
                           if (widget.onDenomChanged != null) {
@@ -4230,25 +4539,25 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   }).toList(),
                 ),
               ),
-              
+
               const SizedBox(width: 20),
-              
+
               // Right side - Total Lembar and Total Nominal (vertical alignment)
-               SizedBox(
-                 width: 210,
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     // Total Lembar
-                     _buildTotalField('Total Lembar', totalLembarController),
-                     
-                     const SizedBox(height: 12),
-                     
-                     // Total Nominal
-                     _buildTotalField('Total Nominal', totalNominalController),
-                   ],
-                 ),
-               ),
+              SizedBox(
+                width: 210,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Total Lembar
+                    _buildTotalField('Total Lembar', totalLembarController),
+
+                    const SizedBox(height: 12),
+
+                    // Total Nominal
+                    _buildTotalField('Total Nominal', totalNominalController),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -4256,18 +4565,15 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     );
   }
 
-  Widget _buildInputField(
-    String label,
-    TextEditingController controller,
-    {VoidCallback? onEditingComplete,
-    bool isValid = true,
-    String errorText = '',
-    bool hasScanner = false,
-    bool isScanInput = false, 
-    bool isLoading = false,
-    bool readOnly = false,
-    FocusNode? focusNode}
-  ) {
+  Widget _buildInputField(String label, TextEditingController controller,
+      {VoidCallback? onEditingComplete,
+      bool isValid = true,
+      String errorText = '',
+      bool hasScanner = false,
+      bool isScanInput = false,
+      bool isLoading = false,
+      bool readOnly = false,
+      FocusNode? focusNode}) {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
 
@@ -4283,12 +4589,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     } else if (label.contains('Seal Code')) {
       fieldKey = 'sealCode';
     }
-    
+
     // Get current scan status and manual mode status
     bool isScanned = scannedFields[fieldKey] == true;
     bool isManualMode = _getFieldManualMode(fieldKey);
     bool hasAlasanRemark = _getFieldAlasanRemarkStatus(fieldKey);
-    
+
     // Check if field is pre-filled from prepare_page (has data but not scanned)
     bool isPreFilled = _isFieldPreFilled(fieldKey);
 
@@ -4296,9 +4602,9 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     final parentState = context.findAncestorStateOfType<_ReturnModePageState>();
     final bool isLocked = parentState?.formsLocked ?? true;
     final bool effectiveReadOnly = readOnly || isLocked;
-    
+
     return _buildFormFieldWithManualMode(
-      label, 
+      label,
       controller,
       fieldKey: fieldKey,
       isValid: isValid,
@@ -4309,35 +4615,43 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       hasAlasanRemark: hasAlasanRemark,
       isPreFilled: isPreFilled,
       focusNode: focusNode,
-      onScan: isLocked ? null : (hasScanner ? () {
-        // Open scanner for this field
-        _openBarcodeScanner(label, controller, fieldKey);
-      } : null),
+      onScan: isLocked
+          ? null
+          : (hasScanner
+              ? () {
+                  // Open scanner for this field
+                  _openBarcodeScanner(label, controller, fieldKey);
+                }
+              : null),
       // Remove manual mode for No. Catridge and Seal Catridge (No. Seal) fields
-      onManualModeToggle: (fieldKey == 'noCatridge' || fieldKey == 'noSeal' || isLocked) 
-        ? null 
-        : (
-            fieldKey == 'catridgeFisik' 
-              ? (isScanned ? null : () { _toggleCatridgeFisikManualMode(); })
-              : (isScanned ? null : () { _toggleFieldManualMode(fieldKey); })
-          ),
+      onManualModeToggle:
+          (fieldKey == 'noCatridge' || fieldKey == 'noSeal' || isLocked)
+              ? null
+              : (fieldKey == 'catridgeFisik'
+                  ? (isScanned
+                      ? null
+                      : () {
+                          _toggleCatridgeFisikManualMode();
+                        })
+                  : (isScanned
+                      ? null
+                      : () {
+                          _toggleFieldManualMode(fieldKey);
+                        })),
     );
   }
-  
+
   // Form field with scan button
-  Widget _buildFormField(
-    String label, 
-    TextEditingController controller, 
-    {bool isValid = true, 
-    String errorText = '', 
-    bool readOnly = false, 
-    VoidCallback? onScan,
-    bool isPassword = false}
-  ) {
+  Widget _buildFormField(String label, TextEditingController controller,
+      {bool isValid = true,
+      String errorText = '',
+      bool readOnly = false,
+      VoidCallback? onScan,
+      bool isPassword = false}) {
     // Mendapatkan ukuran layar untuk responsivitas
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4345,25 +4659,25 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           height: isSmallScreen ? 40 : 50,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
+            children: [
               // Label section - fixed width
-            SizedBox(
-              width: isSmallScreen ? 90 : 110,
+              SizedBox(
+                width: isSmallScreen ? 90 : 110,
                 child: Padding(
                   padding: EdgeInsets.only(bottom: isSmallScreen ? 6 : 8),
-              child: Text(
+                  child: Text(
                     '$label :',
-                style: TextStyle(
-                  fontWeight: isValid ? FontWeight.normal : FontWeight.bold,
-                  color: isValid ? Colors.black : Colors.red,
-                  fontSize: isSmallScreen ? 12 : 14,
+                    style: TextStyle(
+                      fontWeight: isValid ? FontWeight.normal : FontWeight.bold,
+                      color: isValid ? Colors.black : Colors.red,
+                      fontSize: isSmallScreen ? 12 : 14,
+                    ),
+                  ),
                 ),
               ),
-            ),
-              ),
-              
+
               // Input field with underline and scan button
-            Expanded(
+              Expanded(
                 child: Container(
                   decoration: BoxDecoration(
                     border: Border(
@@ -4392,10 +4706,10 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                             ),
                             border: InputBorder.none,
                             isDense: true,
-                    ),
-                  ),
+                          ),
+                        ),
                       ),
-                      
+
                       // Scan button
                       if (onScan != null)
                         Container(
@@ -4404,23 +4718,24 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           margin: EdgeInsets.only(
                             left: isSmallScreen ? 4 : 6,
                             bottom: isSmallScreen ? 3 : 4,
-            ),
+                          ),
                           child: IconButton(
-                icon: Icon(
-                  Icons.qr_code_scanner, 
-                  color: readOnly ? Colors.grey.shade400 : Colors.blue,
+                            icon: Icon(
+                              Icons.qr_code_scanner,
+                              color:
+                                  readOnly ? Colors.grey.shade400 : Colors.blue,
                               size: isSmallScreen ? 20 : 24,
-                ),
+                            ),
                             padding: EdgeInsets.zero,
                             onPressed: readOnly ? null : onScan,
                           ),
-              ),
+                        ),
                     ],
                   ),
                 ),
               ),
             ],
-              ),
+          ),
         ),
         if (errorText.isNotEmpty)
           Padding(
@@ -4454,7 +4769,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         return false;
     }
   }
-  
+
   bool _getFieldAlasanRemarkStatus(String fieldKey) {
     switch (fieldKey) {
       case 'noCatridge':
@@ -4466,30 +4781,31 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       case 'sealCode':
         return _sealCodeRemarkFilled;
       case 'catridgeFisik':
-        return _catridgeFisikAlasanController.text.isNotEmpty && _catridgeFisikRemarkFilled;
+        return _catridgeFisikAlasanController.text.isNotEmpty &&
+            _catridgeFisikRemarkFilled;
       default:
         return false;
     }
   }
-  
+
   // Helper method to check if field is pre-filled from prepare_page
   bool _isFieldPreFilled(String fieldKey) {
     switch (fieldKey) {
       case 'noCatridge':
         // Field is pre-filled if it has data from returnData but hasn't been scanned
-        return widget.returnData != null && 
-               widget.returnData!.catridgeCode.isNotEmpty && 
-               scannedFields[fieldKey] != true;
+        return widget.returnData != null &&
+            widget.returnData!.catridgeCode.isNotEmpty &&
+            scannedFields[fieldKey] != true;
       case 'noSeal':
         // Field is pre-filled if it has data from returnData but hasn't been scanned
-        return widget.returnData != null && 
-               widget.returnData!.catridgeSeal.isNotEmpty && 
-               scannedFields[fieldKey] != true;
+        return widget.returnData != null &&
+            widget.returnData!.catridgeSeal.isNotEmpty &&
+            scannedFields[fieldKey] != true;
       default:
         return false;
     }
   }
-  
+
   void _toggleFieldManualMode(String fieldKey) {
     switch (fieldKey) {
       case 'noCatridge':
@@ -4509,38 +4825,38 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         break;
     }
   }
-  
+
   // NEW: Enhanced form field with manual mode icons
   Widget _buildFormFieldWithManualMode(
-    String label, 
-    TextEditingController controller, 
-    {required String fieldKey,
-    bool isValid = true, 
-    String errorText = '', 
-    bool readOnly = false, 
-    VoidCallback? onScan,
-    VoidCallback? onManualModeToggle,
-    bool isScanned = false,
-    bool isManualMode = false,
-    bool hasAlasanRemark = false,
-    bool isPreFilled = false,
-    bool isPassword = false,
-    FocusNode? focusNode}
-  ) {
+      String label, TextEditingController controller,
+      {required String fieldKey,
+      bool isValid = true,
+      String errorText = '',
+      bool readOnly = false,
+      VoidCallback? onScan,
+      VoidCallback? onManualModeToggle,
+      bool isScanned = false,
+      bool isManualMode = false,
+      bool hasAlasanRemark = false,
+      bool isPreFilled = false,
+      bool isPassword = false,
+      FocusNode? focusNode}) {
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
     final bool forceNonRedUi = fieldKey == 'catridgeFisik';
     final bool uiIsValid = forceNonRedUi ? true : isValid;
 
-    final List<TextInputFormatter>? inputFormatters = (fieldKey == 'catridgeFisik')
-        ? <TextInputFormatter>[
-            LengthLimitingTextInputFormatter(20),
-          ]
-        : null;
-    
+    final List<TextInputFormatter>? inputFormatters =
+        (fieldKey == 'catridgeFisik')
+            ? <TextInputFormatter>[
+                LengthLimitingTextInputFormatter(20),
+              ]
+            : null;
+
     // Hide underline for No. Catridge and No. Seal in all cases
-    bool shouldHideUnderline = (fieldKey == 'noCatridge' || fieldKey == 'noSeal') ? true : isPreFilled;
-    
+    bool shouldHideUnderline =
+        (fieldKey == 'noCatridge' || fieldKey == 'noSeal') ? true : isPreFilled;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4557,24 +4873,28 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   child: Text(
                     '$label :',
                     style: TextStyle(
-                      fontWeight: uiIsValid ? FontWeight.normal : FontWeight.bold,
+                      fontWeight:
+                          uiIsValid ? FontWeight.normal : FontWeight.bold,
                       color: uiIsValid ? Colors.black : Colors.red,
                       fontSize: isSmallScreen ? 12 : 14,
                     ),
                   ),
                 ),
               ),
-              
+
               // Input field with conditional underline and icons
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    border: shouldHideUnderline ? null : Border(
-                      bottom: BorderSide(
-                        color: uiIsValid ? Colors.grey.shade400 : Colors.red,
-                        width: 1.5,
-                      ),
-                    ),
+                    border: shouldHideUnderline
+                        ? null
+                        : Border(
+                            bottom: BorderSide(
+                              color:
+                                  uiIsValid ? Colors.grey.shade400 : Colors.red,
+                              width: 1.5,
+                            ),
+                          ),
                   ),
                   child: Row(
                     children: [
@@ -4619,14 +4939,14 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                           ),
                         ),
                       ),
-                      
+
                       // Manual mode icon - hanya tampil jika onManualModeToggle tidak null dan field belum di-scan
                       // Untuk Catridge Fisik, hanya tampil jika field sudah ada isinya
-                      if (onManualModeToggle != null && 
-                          (
-                            (fieldKey == 'catridgeFisik' && (isManualMode || !isScanned) && controller.text.isNotEmpty) ||
-                            (fieldKey != 'catridgeFisik' && !isScanned)
-                          ))
+                      if (onManualModeToggle != null &&
+                          ((fieldKey == 'catridgeFisik' &&
+                                  (isManualMode || !isScanned) &&
+                                  controller.text.isNotEmpty) ||
+                              (fieldKey != 'catridgeFisik' && !isScanned)))
                         Container(
                           width: isSmallScreen ? 28 : 32,
                           height: isSmallScreen ? 28 : 32,
@@ -4638,21 +4958,23 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                             onTap: onManualModeToggle,
                             child: Image.asset(
                               (isManualMode && hasAlasanRemark)
-                                ? 'assets/images/ManualModeIcon_done.png'
-                                : 'assets/images/ManualModeIcon_notdone.png',
+                                  ? 'assets/images/ManualModeIcon_done.png'
+                                  : 'assets/images/ManualModeIcon_notdone.png',
                               width: isSmallScreen ? 20 : 24,
                               height: isSmallScreen ? 20 : 24,
                               errorBuilder: (context, error, stackTrace) {
                                 return Icon(
                                   Icons.edit,
                                   size: isSmallScreen ? 20 : 24,
-                                  color: (isManualMode && hasAlasanRemark) ? Colors.green : Colors.orange,
+                                  color: (isManualMode && hasAlasanRemark)
+                                      ? Colors.green
+                                      : Colors.orange,
                                 );
                               },
                             ),
                           ),
                         ),
-                      
+
                       // Scan button
                       if (onScan != null)
                         Container(
@@ -4672,7 +4994,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                             ),
                             padding: EdgeInsets.zero,
                             onPressed: readOnly ? null : onScan,
-                            tooltip: isScanned ? 'Sudah di-scan' : 'Scan barcode',
+                            tooltip:
+                                isScanned ? 'Sudah di-scan' : 'Scan barcode',
                           ),
                         ),
                     ],
@@ -4703,7 +5026,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       setState(() {
         print('ðŸ§ª [$sectionId] SIMULATING scan validation for $fieldKey');
         scannedFields[fieldKey] = true;
-        
+
         // Set field-specific validation flags
         if (label.contains('No. Catridge')) {
           isNoCatridgeValid = true;
@@ -4722,24 +5045,19 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
           catridgeFisikError = '';
         }
       });
-      
+
       debugPrint('[$sectionId] $label validated (TEST)!');
     }
   }
 
   // Simple dropdown field with validation
-  Widget _buildDropdownField(
-    String label,
-    String? value,
-    List<String> options,
-    Function(String?) onChanged,
-    {bool isValid = true,
-    String errorText = ''}
-  ) {
+  Widget _buildDropdownField(String label, String? value, List<String> options,
+      Function(String?) onChanged,
+      {bool isValid = true, String errorText = ''}) {
     // Mendapatkan ukuran layar untuk responsivitas
     final size = MediaQuery.of(context).size;
     final isSmallScreen = size.width < 600;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -4765,12 +5083,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
                   style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
                 ),
                 isExpanded: true,
-                style: TextStyle(fontSize: isSmallScreen ? 12 : 14, color: Colors.black),
+                style: TextStyle(
+                    fontSize: isSmallScreen ? 12 : 14, color: Colors.black),
                 decoration: InputDecoration(
                   contentPadding: EdgeInsets.symmetric(
-                    vertical: isSmallScreen ? 6 : 8, 
-                    horizontal: isSmallScreen ? 8 : 12
-                  ),
+                      vertical: isSmallScreen ? 6 : 8,
+                      horizontal: isSmallScreen ? 8 : 12),
                   isDense: true,
                   enabledBorder: UnderlineInputBorder(
                     borderSide: BorderSide(
@@ -4813,12 +5131,13 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
   // Add numericBranchCode getter to fix the error
   String get numericBranchCode {
     // Ensure branchCode is numeric
-    if (branchCodeController.text.isEmpty || !RegExp(r'^\d+$').hasMatch(branchCodeController.text)) {
+    if (branchCodeController.text.isEmpty ||
+        !RegExp(r'^\d+$').hasMatch(branchCodeController.text)) {
       return '1'; // Default to '1' if not numeric
     }
     return branchCodeController.text;
   }
-  
+
   // NEW: Field-specific manual mode toggle functions (following prepare_mode pattern)
   void _toggleNoCatridgeManualMode() {
     if (!_noCatridgeManualMode) {
@@ -4830,11 +5149,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         _noCatridgeRemarkController.clear();
         _noCatridgeRemarkFilled = false;
         // Reset validation to scan-based
-        isNoCatridgeValid = noCatridgeController.text.isNotEmpty && scannedFields['noCatridge'] == true;
+        isNoCatridgeValid = noCatridgeController.text.isNotEmpty &&
+            scannedFields['noCatridge'] == true;
       });
     }
   }
-  
+
   void _toggleNoSealManualMode() {
     if (!_noSealManualMode) {
       _showManualModeDialog('No. Seal', 'noSeal');
@@ -4845,11 +5165,12 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         _noSealRemarkController.clear();
         _noSealRemarkFilled = false;
         // Reset validation to scan-based
-        isNoSealValid = noSealController.text.isNotEmpty && scannedFields['noSeal'] == true;
+        isNoSealValid =
+            noSealController.text.isNotEmpty && scannedFields['noSeal'] == true;
       });
     }
   }
-  
+
   void _toggleBagCodeManualMode() {
     if (!_bagCodeManualMode) {
       _showManualModeDialog('Bag Code', 'bagCode');
@@ -4864,7 +5185,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
       });
     }
   }
-  
+
   void _toggleSealCodeManualMode() {
     if (!_sealCodeManualMode) {
       _showManualModeDialog('Seal Code', 'sealCode');
@@ -4875,14 +5196,16 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         _sealCodeRemarkController.clear();
         _sealCodeRemarkFilled = false;
         // Reset validation to dropdown-based
-        isSealCodeReturnValid = selectedSealCode != null && selectedSealCode!.isNotEmpty;
+        isSealCodeReturnValid =
+            selectedSealCode != null && selectedSealCode!.isNotEmpty;
       });
     }
   }
-  
+
   void _toggleCatridgeFisikManualMode() {
     _showManualModeDialog('Catridge Fisik', 'catridgeFisik');
   }
+
   void _activateCatridgeFisikManualMode() {
     if (!_catridgeFisikManualMode) {
       setState(() {
@@ -4896,7 +5219,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
     String? initialAlasan;
     String? initialRemark;
     TextEditingController? fieldController;
-    
+
     // Get initial values and field controller based on field type
     switch (fieldType) {
       case 'noCatridge':
@@ -4923,7 +5246,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         fieldController = catridgeFisikController;
         break;
     }
-    
+
     final result = await showDialog<Map<String, String>>(
       context: context,
       barrierDismissible: false,
@@ -4936,7 +5259,7 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
         );
       },
     );
-    
+
     if (result != null) {
       if (!mounted) return;
       setState(() {
@@ -4948,7 +5271,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _noCatridgeRemarkController.text = result['remark']!;
             _noCatridgeRemarkFilled = true;
             isNoCatridgeValid = noCatridgeController.text.isNotEmpty;
-            scannedFields['noCatridge'] = true; // Mark as scanned in manual mode
+            scannedFields['noCatridge'] =
+                true; // Mark as scanned in manual mode
             break;
           case 'noSeal':
             _noSealManualMode = true;
@@ -4963,7 +5287,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _bagCodeAlasanController.text = result['alasan']!;
             _bagCodeRemarkController.text = result['remark']!;
             _bagCodeRemarkFilled = true;
-            isBagCodeValid = selectedBagCode != null && selectedBagCode!.isNotEmpty;
+            isBagCodeValid =
+                selectedBagCode != null && selectedBagCode!.isNotEmpty;
             scannedFields['bagCode'] = true; // Mark as scanned in manual mode
             break;
           case 'sealCode':
@@ -4971,7 +5296,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             _sealCodeAlasanController.text = result['alasan']!;
             _sealCodeRemarkController.text = result['remark']!;
             _sealCodeRemarkFilled = true;
-            isSealCodeValid = selectedSealCode != null && selectedSealCode!.isNotEmpty;
+            isSealCodeValid =
+                selectedSealCode != null && selectedSealCode!.isNotEmpty;
             scannedFields['sealCode'] = true; // Mark as scanned in manual mode
             break;
           case 'catridgeFisik':
@@ -5011,7 +5337,8 @@ class _CartridgeSectionState extends State<CartridgeSection> with AutoLogoutMixi
             message: 'Catridge Fisik tidak sesuai dengan No. Catridge',
           );
         } else {
-          debugPrint('Catridge Fisik mismatch after scan: $catridgeFisikValue != $noCatridgeValue');
+          debugPrint(
+              'Catridge Fisik mismatch after scan: $catridgeFisikValue != $noCatridgeValue');
         }
         if (mounted) {
           setState(() {
@@ -5044,7 +5371,8 @@ class _ReturnManualModeDialog extends StatefulWidget {
   });
 
   @override
-  State<_ReturnManualModeDialog> createState() => _ReturnManualModeDialogState();
+  State<_ReturnManualModeDialog> createState() =>
+      _ReturnManualModeDialogState();
 }
 
 class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
@@ -5059,7 +5387,9 @@ class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
     _remarkController = TextEditingController(text: widget.initialRemark);
     _remarkFocusNode = FocusNode();
     final initialAlasan = widget.initialAlasan?.trim();
-    _selectedAlasan = (initialAlasan != null && initialAlasan.isNotEmpty) ? initialAlasan : null;
+    _selectedAlasan = (initialAlasan != null && initialAlasan.isNotEmpty)
+        ? initialAlasan
+        : null;
   }
 
   @override
@@ -5154,16 +5484,21 @@ class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
                       width: 90,
                       child: Text(
                         widget.fieldName,
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ),
                     Text(' : ', style: TextStyle(fontSize: 12)),
                     Expanded(
                       child: Text(
-                        widget.fieldValue!.isNotEmpty ? widget.fieldValue! : 'ATM XXXXXX',
+                        widget.fieldValue!.isNotEmpty
+                            ? widget.fieldValue!
+                            : 'ATM XXXXXX',
                         style: TextStyle(
                           fontSize: 12,
-                          color: widget.fieldValue!.isNotEmpty ? Colors.black : Colors.grey,
+                          color: widget.fieldValue!.isNotEmpty
+                              ? Colors.black
+                              : Colors.grey,
                         ),
                       ),
                     ),
@@ -5178,7 +5513,8 @@ class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
                     width: 90,
                     child: Text(
                       'Alasan',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                   ),
                   Text(' : ', style: TextStyle(fontSize: 12)),
@@ -5191,10 +5527,12 @@ class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
                             Expanded(
                               child: Text(
                                 'Pilih alasan',
-                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey),
                               ),
                             ),
-                            Icon(Icons.keyboard_arrow_down, size: 16, color: Colors.grey),
+                            Icon(Icons.keyboard_arrow_down,
+                                size: 16, color: Colors.grey),
                           ],
                         ),
                         isExpanded: true,
@@ -5202,15 +5540,18 @@ class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
                         items: [
                           DropdownMenuItem(
                             value: 'Segel Tidak Terbaca',
-                            child: Text('Segel Tidak Terbaca', style: TextStyle(fontSize: 12)),
+                            child: Text('Segel Tidak Terbaca',
+                                style: TextStyle(fontSize: 12)),
                           ),
                           DropdownMenuItem(
                             value: 'Scanner Rusak',
-                            child: Text('Scanner Rusak', style: TextStyle(fontSize: 12)),
+                            child: Text('Scanner Rusak',
+                                style: TextStyle(fontSize: 12)),
                           ),
                           DropdownMenuItem(
                             value: 'Kaset Berbeda',
-                            child: Text('Kaset Berbeda', style: TextStyle(fontSize: 12)),
+                            child: Text('Kaset Berbeda',
+                                style: TextStyle(fontSize: 12)),
                           ),
                         ],
                         onChanged: (value) {
@@ -5234,7 +5575,8 @@ class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
                       padding: EdgeInsets.only(top: 8),
                       child: Text(
                         'Remark',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ),
@@ -5246,7 +5588,8 @@ class _ReturnManualModeDialogState extends State<_ReturnManualModeDialog> {
                       decoration: InputDecoration(
                         hintText: 'Wajib diisi',
                         border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 6, vertical: 6),
                         hintStyle: TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                       style: TextStyle(fontSize: 12),
@@ -5316,9 +5659,9 @@ class DetailSection extends StatelessWidget {
   final bool isLandscape;
   final Map<String, TextEditingController> detailReturnLembarControllers;
   final Map<String, TextEditingController> detailReturnNominalControllers;
-  
+
   const DetailSection({
-    Key? key, 
+    Key? key,
     this.returnData,
     this.onSubmitPressed,
     this.isLandscape = false,
@@ -5339,22 +5682,30 @@ class DetailSection extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade300),
       ),
       padding: EdgeInsets.all(isLandscape ? 8 : 12),
-              child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '| Detail WSID',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: isLandscape ? 14 : 16,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '| Detail WSID',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isLandscape ? 14 : 16,
             ),
-            SizedBox(height: isLandscape ? 6 : 8),
+          ),
+          SizedBox(height: isLandscape ? 6 : 8),
           _buildLabelValue('WSID', returnData?.header?.atmCode ?? ''),
-          _buildLabelValue('Bank', returnData?.header?.codeBank ?? returnData?.header?.namaBank ?? ''),
+          _buildLabelValue(
+              'Bank',
+              returnData?.header?.codeBank ??
+                  returnData?.header?.namaBank ??
+                  ''),
           _buildLabelValue('Lokasi', returnData?.header?.lokasi ?? ''),
           _buildLabelValue('Jenis Mesin', returnData?.header?.jnsMesin ?? ''),
-          _buildLabelValue('ATM Type', returnData?.header?.idTypeAtm ?? returnData?.header?.typeATM ?? ''),
+          _buildLabelValue(
+              'ATM Type',
+              returnData?.header?.idTypeAtm ??
+                  returnData?.header?.typeATM ??
+                  ''),
           const Divider(height: 24, thickness: 1),
           const Text(
             '| Detail Return',
@@ -5422,7 +5773,8 @@ class DetailSection extends StatelessWidget {
               label: const Text('Submit Data'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
@@ -5486,7 +5838,8 @@ class DetailSection extends StatelessWidget {
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                       // Use underlined style for consistency
                       border: UnderlineInputBorder(),
                       enabledBorder: UnderlineInputBorder(
@@ -5543,7 +5896,8 @@ class DetailSection extends StatelessWidget {
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: 8, horizontal: 8),
                       // Use underlined style for consistency
                       border: UnderlineInputBorder(),
                       enabledBorder: UnderlineInputBorder(
@@ -5597,8 +5951,8 @@ class DetailSection extends StatelessWidget {
   // Format currency for display
   String _formatCurrency(int amount) {
     return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
   }
 }

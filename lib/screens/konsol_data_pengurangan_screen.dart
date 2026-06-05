@@ -17,21 +17,23 @@ class KonsolDataPenguranganPage extends StatefulWidget {
   const KonsolDataPenguranganPage({super.key});
 
   @override
-  State<KonsolDataPenguranganPage> createState() => _KonsolDataPenguranganPageState();
+  State<KonsolDataPenguranganPage> createState() =>
+      _KonsolDataPenguranganPageState();
 }
 
-class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> with AutoLogoutMixin, WidgetsBindingObserver {
+class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage>
+    with AutoLogoutMixin, WidgetsBindingObserver {
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
   String searchQuery = '';
   final AuthService _authService = AuthService();
   final KonsolApiService _konsolApiService = KonsolApiService();
   final ProfileService _profileService = ProfileService();
-  String _userName = ''; 
+  String _userName = '';
   String _branchName = '';
   String _userId = '';
   String _branchCode = '';
-  
+
   // Data state
   List<PenguranganData> _penguranganDataList = [];
   bool _isLoading = false;
@@ -91,23 +93,24 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
           _userName = userData['userName'] ?? userData['name'] ?? '';
           _userId = userData['userId'] ?? userData['userID'] ?? '';
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
-          
+
           // Use groupId as the primary source for branchCode parameter
-          _branchCode = userData['groupId'] ?? 
-                       userData['GroupId'] ?? 
-                       userData['groupID'] ?? 
-                       userData['GroupID'] ?? 
-                       userData['branchCode'] ?? 
-                       userData['BranchCode'] ?? 
-                       '';
+          _branchCode = userData['groupId'] ??
+              userData['GroupId'] ??
+              userData['groupID'] ??
+              userData['GroupID'] ??
+              userData['branchCode'] ??
+              userData['BranchCode'] ??
+              '';
         });
-        debugPrint('🔍 User data loaded - UserName: $_userName, UserID: $_userId, GroupId/BranchCode: $_branchCode');
-        
+        debugPrint(
+            '🔍 User data loaded - UserName: $_userName, UserID: $_userId, GroupId/BranchCode: $_branchCode');
+
         // Debug: Print all user data keys and values
         userData.forEach((key, value) {
           debugPrint('🔍 UserData[$key] = $value');
         });
-        
+
         // Load pengurangan data after user data is loaded
         _loadPenguranganData();
       }
@@ -115,54 +118,57 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
       debugPrint('Error loading user data: $e');
     }
   }
-  
+
   // Format date for API
   String _formatDateForApi(DateTime date) {
     return DateFormat('dd-MM-yyyy').format(date);
   }
-  
+
   // Load pengurangan data from API
   Future<void> _loadPenguranganData() async {
     if (_isLoading) return;
-    
+
     // Check token expiry sebelum API call
     final isTokenValid = await checkTokenBeforeApiCall();
     if (!isTokenValid) return;
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
       final fromDateStr = _formatDateForApi(fromDate);
       final toDateStr = _formatDateForApi(toDate);
-      
+
       // If branchCode (which is actually groupId) is empty, use a default value
       if (_branchCode.isEmpty) {
         debugPrint('⚠️ Warning: GroupId is empty! Using default value "1"');
         _branchCode = "1"; // Default group ID
       }
-      
-      debugPrint('🔍 Loading pengurangan data with parameters: groupId=$_branchCode, fromDate=$fromDateStr, toDate=$toDateStr');
-      
-      final data = await safeApiCall(() => _konsolApiService.getPenguranganAndroidList(
-        branchCode: _branchCode, // This parameter name is still branchCode in the API service
-        fromDate: fromDateStr,
-        toDate: toDateStr,
-      ));
-      
+
+      debugPrint(
+          '🔍 Loading pengurangan data with parameters: groupId=$_branchCode, fromDate=$fromDateStr, toDate=$toDateStr');
+
+      final data =
+          await safeApiCall(() => _konsolApiService.getPenguranganAndroidList(
+                branchCode:
+                    _branchCode, // This parameter name is still branchCode in the API service
+                fromDate: fromDateStr,
+                toDate: toDateStr,
+              ));
+
       if (data != null) {
         setState(() {
           _penguranganDataList = data;
           _isLoading = false;
-          
+
           // Filter by search query if provided
           if (searchQuery.isNotEmpty) {
             _filterDataBySearchQuery();
           }
         });
-        
+
         debugPrint('🔍 Loaded ${data.length} pengurangan records');
       } else {
         setState(() {
@@ -170,15 +176,13 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
           _isLoading = false;
         });
       }
-      
-
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage = 'Failed to load data: ${e.toString()}';
       });
       debugPrint('🔍 Error loading pengurangan data: $e');
-      
+
       // Show error in modal
       if (mounted) {
         CustomModals.showFailedModal(
@@ -188,20 +192,19 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
       }
     }
   }
-  
+
   // Filter data by search query
   void _filterDataBySearchQuery() {
     if (searchQuery.isEmpty) return;
-    
+
     final query = searchQuery.toLowerCase();
     setState(() {
       _penguranganDataList = _penguranganDataList.where((item) {
-        return 
-          (item.jenis?.toLowerCase().contains(query) ?? false) ||
-          (item.bank?.toLowerCase().contains(query) ?? false) ||
-          (item.mesin?.toLowerCase().contains(query) ?? false) ||
-          (item.userInput?.toLowerCase().contains(query) ?? false) ||
-          (item.keterangan?.toLowerCase().contains(query) ?? false);
+        return (item.jenis?.toLowerCase().contains(query) ?? false) ||
+            (item.bank?.toLowerCase().contains(query) ?? false) ||
+            (item.mesin?.toLowerCase().contains(query) ?? false) ||
+            (item.userInput?.toLowerCase().contains(query) ?? false) ||
+            (item.keterangan?.toLowerCase().contains(query) ?? false);
       }).toList();
     });
   }
@@ -212,9 +215,10 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
     _orientationLockTimer?.cancel();
     super.dispose();
   }
-  
+
   // Show add pengurangan dialog
-  Future<void> _showAddPenguranganDialog(BuildContext context, bool isTablet) async {
+  Future<void> _showAddPenguranganDialog(
+      BuildContext context, bool isTablet) async {
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -222,7 +226,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
         return const AddPenguranganDialog();
       },
     );
-    
+
     // If dialog returns true, refresh data
     if (result == true) {
       // Show success message
@@ -230,7 +234,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
         context: context,
         message: 'Data berhasil ditambahkan',
       );
-      
+
       // Refresh data
       _loadPenguranganData();
     }
@@ -242,7 +246,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       resizeToAvoidBottomInset: false,
@@ -315,7 +319,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
             ),
           ),
           SizedBox(width: isTablet ? 20 : 16),
-          
+
           // Title
           Text(
             'Konsol Mode',
@@ -326,9 +330,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               letterSpacing: -0.5,
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Location info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -352,9 +356,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                   builder: (context, snapshot) {
                     String meja = '';
                     if (snapshot.hasData && snapshot.data != null) {
-                      meja = snapshot.data!['noMeja'] ?? 
-                            snapshot.data!['NoMeja'] ?? 
-                            '010101';
+                      meja = snapshot.data!['noMeja'] ??
+                          snapshot.data!['NoMeja'] ??
+                          '010101';
                     } else {
                       meja = '010101';
                     }
@@ -379,9 +383,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               ),
             ],
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // CRF_KONSOL button
           Container(
             padding: EdgeInsets.symmetric(
@@ -402,9 +406,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Refresh button
           GestureDetector(
             onTap: () {
@@ -429,9 +433,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // User info
           Row(
             children: [
@@ -457,8 +461,8 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                     builder: (context, snapshot) {
                       String nik = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                                              nik = snapshot.data!['userId'] ?? 
-                            snapshot.data!['userID'] ?? 
+                        nik = snapshot.data!['userId'] ??
+                            snapshot.data!['userID'] ??
                             '';
                       } else {
                         nik = _userId;
@@ -478,7 +482,8 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               SizedBox(width: isTablet ? 12 : 10),
               GestureDetector(
                 onTap: () async {
-                  final shouldNavigate = await CustomModals.showConfirmationModal(
+                  final shouldNavigate =
+                      await CustomModals.showConfirmationModal(
                     context: context,
                     message: 'Apakah Anda ingin membuka halaman Profile Menu?',
                     confirmText: 'Ya',
@@ -558,7 +563,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Data Return
           _buildNavTab(
             title: 'Data Return',
@@ -568,9 +573,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               Navigator.pushReplacementNamed(context, '/konsol_data_return');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Konsol
           _buildNavTab(
             title: 'Data Konsol',
@@ -580,9 +585,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               Navigator.pushReplacementNamed(context, '/konsol_mode');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Pengurangan - Active
           _buildNavTab(
             title: 'Data Pengurangan',
@@ -592,9 +597,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
               // Already on this page
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Closing
           _buildNavTab(
             title: 'Data Closing',
@@ -625,10 +630,12 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFE5E7EB) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: isActive ? null : Border.all(
-            color: const Color(0xFFD1D5DB),
-            width: 1,
-          ),
+          border: isActive
+              ? null
+              : Border.all(
+                  color: const Color(0xFFD1D5DB),
+                  width: 1,
+                ),
         ),
         child: Text(
           title,
@@ -663,7 +670,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
           ),
         ),
         SizedBox(height: isTablet ? 16 : 12),
-        
+
         // Tanggal filter row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -700,15 +707,15 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                   ),
                 ),
                 SizedBox(width: isTablet ? 16 : 12),
-                
+
                 // From date
                 _buildDateField(fromDate, isTablet, (date) {
                   setState(() => fromDate = date);
                   _loadPenguranganData(); // Auto-refresh when date changes
                 }),
-                
+
                 SizedBox(width: isTablet ? 16 : 12),
-                
+
                 // To label
                 Text(
                   'To',
@@ -718,9 +725,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                     color: Colors.black,
                   ),
                 ),
-                
+
                 SizedBox(width: isTablet ? 16 : 12),
-                
+
                 // To date
                 _buildDateField(toDate, isTablet, (date) {
                   setState(() => toDate = date);
@@ -728,7 +735,7 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                 }),
               ],
             ),
-            
+
             // Right side - search field
             Row(
               children: [
@@ -764,9 +771,11 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                       _filterDataBySearchQuery(); // Auto-filter when search query changes
                     },
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12),
                       border: InputBorder.none,
-                      suffixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                      suffixIcon:
+                          Icon(Icons.search, color: Colors.grey.shade600),
                       hintText: 'Search...',
                       hintStyle: TextStyle(color: Colors.grey.shade400),
                     ),
@@ -780,7 +789,8 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
     );
   }
 
-  Widget _buildDateField(DateTime date, bool isTablet, Function(DateTime) onChanged) {
+  Widget _buildDateField(
+      DateTime date, bool isTablet, Function(DateTime) onChanged) {
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -830,14 +840,14 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
       'Tanggal Proses',
       'Bank',
       'Mesin',
-      'A1',
-      'A2',
-      'A5',
-      'A10',
-      'A20',
-      'A50',
-      'A75',
       'A100',
+      'A75',
+      'A50',
+      'A20',
+      'A10',
+      'A5',
+      'A2',
+      'A1',
       'User Input',
       'Keterangan'
     ];
@@ -916,7 +926,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
       final sample = longestTextByColumn[column] ?? column;
       final headerWidth = measureTextWidth(column, headerTextStyle);
       final cellWidth = measureTextWidth(sample, cellTextStyle);
-      final width = (headerWidth > cellWidth ? headerWidth : cellWidth) + cellPadding.horizontal + 8;
+      final width = (headerWidth > cellWidth ? headerWidth : cellWidth) +
+          cellPadding.horizontal +
+          8;
       columnWidths[column] = width < 60 ? 60 : width;
     }
 
@@ -969,7 +981,8 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                                     Container(
                                       decoration: BoxDecoration(
                                         border: Border(
-                                          bottom: BorderSide(color: Colors.grey.shade300),
+                                          bottom: BorderSide(
+                                              color: Colors.grey.shade300),
                                         ),
                                       ),
                                       child: Row(
@@ -982,7 +995,9 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                                               border: Border(
                                                 right: isLast
                                                     ? BorderSide.none
-                                                    : BorderSide(color: Colors.grey.shade300),
+                                                    : BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
                                               ),
                                             ),
                                             child: Text(
@@ -1001,11 +1016,14 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                                       child: ListView.builder(
                                         itemCount: _penguranganDataList.length,
                                         itemBuilder: (context, index) {
-                                          final item = _penguranganDataList[index];
+                                          final item =
+                                              _penguranganDataList[index];
                                           return Container(
                                             decoration: BoxDecoration(
                                               border: Border(
-                                                bottom: BorderSide(color: Colors.grey.shade300),
+                                                bottom: BorderSide(
+                                                    color:
+                                                        Colors.grey.shade300),
                                               ),
                                               color: index % 2 == 0
                                                   ? Colors.white
@@ -1013,8 +1031,10 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                                             ),
                                             child: Row(
                                               children: columns.map((column) {
-                                                final isLast = column == columns.last;
-                                                final value = getValue(item, column);
+                                                final isLast =
+                                                    column == columns.last;
+                                                final value =
+                                                    getValue(item, column);
                                                 return Container(
                                                   width: columnWidths[column],
                                                   padding: cellPadding,
@@ -1022,18 +1042,22 @@ class _KonsolDataPenguranganPageState extends State<KonsolDataPenguranganPage> w
                                                     border: Border(
                                                       right: isLast
                                                           ? BorderSide.none
-                                                          : BorderSide(color: Colors.grey.shade300),
+                                                          : BorderSide(
+                                                              color: Colors.grey
+                                                                  .shade300),
                                                     ),
                                                   ),
                                                   child: Text(
                                                     value,
                                                     style: cellTextStyle,
-                                                    textAlign: column.startsWith('A')
-                                                        ? TextAlign.right
-                                                        : TextAlign.left,
+                                                    textAlign:
+                                                        column.startsWith('A')
+                                                            ? TextAlign.right
+                                                            : TextAlign.left,
                                                     softWrap: false,
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.visible,
+                                                    overflow:
+                                                        TextOverflow.visible,
                                                   ),
                                                 );
                                               }).toList(),

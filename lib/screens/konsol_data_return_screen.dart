@@ -19,7 +19,8 @@ class KonsolDataReturnPage extends StatefulWidget {
   State<KonsolDataReturnPage> createState() => _KonsolDataReturnPageState();
 }
 
-class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLogoutMixin, WidgetsBindingObserver {
+class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
+    with AutoLogoutMixin, WidgetsBindingObserver {
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
   String searchQuery = '';
@@ -27,19 +28,19 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
   final AuthService _authService = AuthService();
   final ReturnApiService _returnApiService = ReturnApiService();
   final ProfileService _profileService = ProfileService();
-  String _userName = ''; 
+  String _userName = '';
   String _branchName = '';
   String _userId = '';
   String _branchCode = '';
-  
+
   // List to store return data from API
   List<ReturnData> _returnDataList = [];
   bool _isLoading = false;
   String _errorMessage = '';
-  
+
   // Selected return data
   ReturnData? _selectedReturnData;
-  
+
   // Scroll controller for horizontal alignment
   final ScrollController _horizontalScrollController = ScrollController();
   Timer? _orientationLockTimer;
@@ -98,47 +99,48 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
           _userName = userData['userName'] ?? userData['name'] ?? '';
           _userId = userData['userId'] ?? userData['userID'] ?? '';
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
-          _branchCode = userData['groupId'] ?? userData['branchCode'] ?? '1'; // Menggunakan groupId
+          _branchCode = userData['groupId'] ??
+              userData['branchCode'] ??
+              '1'; // Menggunakan groupId
         });
-        debugPrint('ðŸ” User data loaded - Branch Code: $_branchCode, UserName: $_userName, UserID: $_userId');
+        debugPrint(
+            'ðŸ” User data loaded - Branch Code: $_branchCode, UserName: $_userName, UserID: $_userId');
       }
     } catch (e) {
       debugPrint('Error loading user data: $e');
     }
   }
-  
+
   // Load return data from API
   Future<void> _loadReturnData() async {
     // Check token expiry sebelum API call
     final isTokenValid = await checkTokenBeforeApiCall();
     if (!isTokenValid) return;
-    
+
     // Pastikan user data sudah dimuat terlebih dahulu
     if (_branchCode.isEmpty) {
       await _loadUserData();
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
       // Selalu gunakan branch code untuk filter data
       debugPrint('ðŸ” Fetching return data with BranchCode: $_branchCode');
-      final returnData = await safeApiCall(() => _returnApiService.getReturnList(
-        branchCode: _branchCode,
-        typeReturn: typeReturn
-      ));
-      
+      final returnData = await safeApiCall(() => _returnApiService
+          .getReturnList(branchCode: _branchCode, typeReturn: typeReturn));
+
       if (returnData != null) {
         setState(() {
           _returnDataList = returnData;
           _isLoading = false;
         });
-        
+
         debugPrint('ðŸ” Loaded ${returnData.length} return data items');
-        
+
         // Filter data based on current date range
         _filterAndUpdateData();
       } else {
@@ -155,10 +157,10 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
       debugPrint('Error loading return data: $e');
     }
   }
-  
+
   // Filter return data based on date range
   List<ReturnData> _filteredData = [];
-  
+
   void _filterAndUpdateData() {
     if (_returnDataList.isEmpty) {
       setState(() {
@@ -166,32 +168,33 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
       });
       return;
     }
-    
+
     final filtered = _returnDataList.where((data) {
       // Parse dateSTReturn date (konsisten dengan tampilan)
       if (data.dateSTReturn == null) return false;
-      
+
       DateTime? returnDate;
       try {
         returnDate = DateTime.parse(data.dateSTReturn!);
       } catch (e) {
         return false;
       }
-      
+
       // Check if date is within range
-      final inRange = (returnDate.isAfter(fromDate.subtract(const Duration(days: 1))) || 
-                      returnDate.isAtSameMomentAs(fromDate)) && 
-                      (returnDate.isBefore(toDate.add(const Duration(days: 1))) || 
-                      returnDate.isAtSameMomentAs(toDate));
-      
+      final inRange =
+          (returnDate.isAfter(fromDate.subtract(const Duration(days: 1))) ||
+                  returnDate.isAtSameMomentAs(fromDate)) &&
+              (returnDate.isBefore(toDate.add(const Duration(days: 1))) ||
+                  returnDate.isAtSameMomentAs(toDate));
+
       return inRange;
     }).toList();
-    
+
     setState(() {
       _filteredData = filtered;
     });
   }
-  
+
   List<ReturnData> get filteredReturnData {
     return _filteredData;
   }
@@ -220,7 +223,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
@@ -237,7 +240,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                     isTablet ? 16.0 : 12.0,
                     isTablet ? 16.0 : 12.0,
                     isTablet ? 16.0 : 12.0,
-                    (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                    (isTablet ? 16.0 : 12.0) +
+                        MediaQuery.viewInsetsOf(context).bottom,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -297,7 +301,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
             ),
           ),
           SizedBox(width: isTablet ? 20 : 16),
-          
+
           // lalu
           Text(
             'Konsol Mode',
@@ -308,9 +312,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               letterSpacing: -0.5,
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Location info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -334,9 +338,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                   builder: (context, snapshot) {
                     String meja = '';
                     if (snapshot.hasData && snapshot.data != null) {
-                      meja = snapshot.data!['noMeja'] ?? 
-                            snapshot.data!['NoMeja'] ?? 
-                            '010101';
+                      meja = snapshot.data!['noMeja'] ??
+                          snapshot.data!['NoMeja'] ??
+                          '010101';
                     } else {
                       meja = '010101';
                     }
@@ -361,9 +365,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               ),
             ],
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // CRF_KONSOL button
           Container(
             padding: EdgeInsets.symmetric(
@@ -384,9 +388,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Refresh button
           GestureDetector(
             onTap: () {
@@ -406,9 +410,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // User info
           Row(
             children: [
@@ -434,8 +438,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                     builder: (context, snapshot) {
                       String nik = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                                              nik = snapshot.data!['userId'] ?? 
-                            snapshot.data!['userID'] ?? 
+                        nik = snapshot.data!['userId'] ??
+                            snapshot.data!['userID'] ??
                             '';
                       } else {
                         nik = _userId;
@@ -455,7 +459,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               SizedBox(width: isTablet ? 12 : 10),
               GestureDetector(
                 onTap: () async {
-                  final shouldNavigate = await CustomModals.showConfirmationModal(
+                  final shouldNavigate =
+                      await CustomModals.showConfirmationModal(
                     context: context,
                     message: 'Apakah Anda ingin membuka halaman Profile Menu?',
                     confirmText: 'Ya',
@@ -535,7 +540,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Data Return - Active
           _buildNavTab(
             title: 'Data Return',
@@ -545,9 +550,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               // Already on this page
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Konsol
           _buildNavTab(
             title: 'Data Konsol',
@@ -557,21 +562,22 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               Navigator.pushReplacementNamed(context, '/konsol_mode');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Pengurangan
           _buildNavTab(
             title: 'Data Pengurangan',
             isActive: false,
             isTablet: isTablet,
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/konsol_data_pengurangan');
+              Navigator.pushReplacementNamed(
+                  context, '/konsol_data_pengurangan');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Closing
           _buildNavTab(
             title: 'Data Closing',
@@ -602,10 +608,12 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFE5E7EB) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: isActive ? null : Border.all(
-            color: const Color(0xFFD1D5DB),
-            width: 1,
-          ),
+          border: isActive
+              ? null
+              : Border.all(
+                  color: const Color(0xFFD1D5DB),
+                  width: 1,
+                ),
         ),
         child: Text(
           title,
@@ -640,7 +648,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
           ),
         ),
         SizedBox(height: isTablet ? 16 : 12),
-        
+
         // Tanggal filter row - make it scrollable
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -675,15 +683,15 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                 ),
               ),
               SizedBox(width: isTablet ? 16 : 12),
-              
+
               // From date
               _buildDateField(fromDate, isTablet, (date) {
                 setState(() => fromDate = date);
                 _filterAndUpdateData();
               }),
-              
+
               SizedBox(width: isTablet ? 16 : 12),
-              
+
               // To label
               Text(
                 'To',
@@ -693,17 +701,17 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                   color: Colors.black,
                 ),
               ),
-              
+
               SizedBox(width: isTablet ? 16 : 12),
-              
+
               // To date
               _buildDateField(toDate, isTablet, (date) {
                 setState(() => toDate = date);
                 _filterAndUpdateData();
               }),
-              
+
               SizedBox(width: isTablet ? 32 : 24),
-              
+
               // Type Return filter
               Text(
                 'Type Return',
@@ -713,9 +721,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                   color: Colors.black,
                 ),
               ),
-              
+
               SizedBox(width: isTablet ? 16 : 12),
-              
+
               Text(
                 ':',
                 style: TextStyle(
@@ -724,9 +732,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                   color: Colors.black,
                 ),
               ),
-              
+
               SizedBox(width: isTablet ? 16 : 12),
-              
+
               // Type Return dropdown
               Container(
                 width: isTablet ? 180 : 150,
@@ -765,7 +773,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
     );
   }
 
-  Widget _buildDateField(DateTime date, bool isTablet, Function(DateTime) onChanged) {
+  Widget _buildDateField(
+      DateTime date, bool isTablet, Function(DateTime) onChanged) {
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -817,25 +826,26 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
       'Tanggal Return',
       'WSID',
       'Lokasi',
-      'A1',
-      'A2',
-      'A5',
-      'A10',
-      'A20',
-      'A50',
-      'A75',
       'A100',
+      'A75',
+      'A50',
+      'A20',
+      'A10',
+      'A5',
+      'A2',
+      'A1',
       'Total Lembar',
       'Total Value'
     ];
 
-    // 
+    //
     final screenWidth = MediaQuery.of(context).size.width;
-    final availableWidth = screenWidth - (isTablet ? 32.0 : 24.0); // Account for padding
-    
+    final availableWidth =
+        screenWidth - (isTablet ? 32.0 : 24.0); // Account for padding
+
     // Calculate base column width
     final baseColumnWidth = availableWidth / columns.length;
-    
+
     // Adjust column widths proportionally
     Map<String, double> columnWidths = {};
     for (var column in columns) {
@@ -895,310 +905,392 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                 ),
               ),
             ),
-            
+
             // Table body with data or loading indicator
             Expanded(
-              child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage.isNotEmpty
-                  ? Center(
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          color: Colors.red,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    )
-                  : filteredReturnData.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No data available for selected date range',
-                          style: TextStyle(
-                            fontSize: isTablet ? 16 : 14,
-                            color: Colors.grey.shade500,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      )
-                      : SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          controller: _horizontalScrollController,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              children: filteredReturnData.map((data) {
-                                final isSelected = _selectedReturnData?.id == data.id;
-                                
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedReturnData = data;
-                                    });
-                                  },
-                                  child: Container(
-                                    color: isSelected ? Colors.blue.shade50 : Colors.transparent,
-                                    child: Row(
-                                  children: [
-                                    // Tanggal Return
-                                    Container(
-                                      width: columnWidths['Tanggal Return'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        _formatTanggalReturn(data.dateSTReturn),
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // WSID
-                                    Container(
-                                      width: columnWidths['WSID'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.atmCode ?? 'N/A',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // Lokasi
-                                    Container(
-                                      width: columnWidths['Lokasi'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.name ?? 'N/A',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A1
-                                    Container(
-                                      width: columnWidths['A1'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a1?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A2
-                                    Container(
-                                      width: columnWidths['A2'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a2?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A5
-                                    Container(
-                                      width: columnWidths['A5'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a5?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A10
-                                    Container(
-                                      width: columnWidths['A10'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a10?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A20
-                                    Container(
-                                      width: columnWidths['A20'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a20?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A50
-                                    Container(
-                                      width: columnWidths['A50'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a50?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A75
-                                    Container(
-                                      width: columnWidths['A75'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a75?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // A100
-                                    Container(
-                                      width: columnWidths['A100'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.a100?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // Total Lembar
-                                    Container(
-                                      width: columnWidths['Total Lembar'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          right: BorderSide(color: Colors.grey.shade300),
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        data.tQty?.toString() ?? '0',
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    // Total Value
-                                    Container(
-                                      width: columnWidths['Total Value'],
-                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                      decoration: BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(color: Colors.grey.shade300),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        NumberFormat.currency(
-                                          locale: 'id',
-                                          symbol: '',
-                                          decimalDigits: 0,
-                                        ).format(data.tValue ?? 0),
-                                        style: TextStyle(
-                                          fontSize: isTablet ? 11 : 8,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _errorMessage.isNotEmpty
+                        ? Center(
+                            child: Text(
+                              _errorMessage,
+                              style: TextStyle(
+                                fontSize: isTablet ? 16 : 14,
+                                color: Colors.red,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
-                          ),
-                        )
-            ),
+                          )
+                        : filteredReturnData.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No data available for selected date range',
+                                  style: TextStyle(
+                                    fontSize: isTablet ? 16 : 14,
+                                    color: Colors.grey.shade500,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              )
+                            : SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                controller: _horizontalScrollController,
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    children: filteredReturnData.map((data) {
+                                      final isSelected =
+                                          _selectedReturnData?.id == data.id;
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedReturnData = data;
+                                          });
+                                        },
+                                        child: Container(
+                                          color: isSelected
+                                              ? Colors.blue.shade50
+                                              : Colors.transparent,
+                                          child: Row(
+                                            children: [
+                                              // Tanggal Return
+                                              Container(
+                                                width: columnWidths[
+                                                    'Tanggal Return'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  _formatTanggalReturn(
+                                                      data.dateSTReturn),
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // WSID
+                                              Container(
+                                                width: columnWidths['WSID'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.atmCode ?? 'N/A',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // Lokasi
+                                              Container(
+                                                width: columnWidths['Lokasi'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.name ?? 'N/A',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A100
+                                              Container(
+                                                width: columnWidths['A100'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a100?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A75
+                                              Container(
+                                                width: columnWidths['A75'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a75?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A50
+                                              Container(
+                                                width: columnWidths['A50'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a50?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A20
+                                              Container(
+                                                width: columnWidths['A20'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a20?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A10
+                                              Container(
+                                                width: columnWidths['A10'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a10?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A5
+                                              Container(
+                                                width: columnWidths['A5'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a5?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A2
+                                              Container(
+                                                width: columnWidths['A2'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a2?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // A1
+                                              Container(
+                                                width: columnWidths['A1'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.a1?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // Total Lembar
+                                              Container(
+                                                width: columnWidths[
+                                                    'Total Lembar'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    right: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  data.tQty?.toString() ?? '0',
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              // Total Value
+                                              Container(
+                                                width:
+                                                    columnWidths['Total Value'],
+                                                padding: EdgeInsets.all(
+                                                    isTablet ? 8 : 4),
+                                                decoration: BoxDecoration(
+                                                  border: Border(
+                                                    bottom: BorderSide(
+                                                        color: Colors
+                                                            .grey.shade300),
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  NumberFormat.currency(
+                                                    locale: 'id',
+                                                    symbol: '',
+                                                    decimalDigits: 0,
+                                                  ).format(data.tValue ?? 0),
+                                                  style: TextStyle(
+                                                    fontSize: isTablet ? 11 : 8,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              )),
           ],
         ),
       ),
@@ -1212,46 +1304,52 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
         children: [
           // Edit Data button
           GestureDetector(
-            onTap: _selectedReturnData != null 
-              ? () {
-                  // Navigate to edit page with selected data and refresh data on return
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => EditReturnScreen(
-                        returnData: _selectedReturnData!,
+            onTap: _selectedReturnData != null
+                ? () {
+                    // Navigate to edit page with selected data and refresh data on return
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditReturnScreen(
+                          returnData: _selectedReturnData!,
+                        ),
                       ),
-                    ),
-                  ).then((result) {
-                    // If returned with success result, refresh data
-                    if (result == true) {
-                      _loadReturnData();
-                    }
-                  });
-                }
-              : null,
+                    ).then((result) {
+                      // If returned with success result, refresh data
+                      if (result == true) {
+                        _loadReturnData();
+                      }
+                    });
+                  }
+                : null,
             child: Container(
               padding: EdgeInsets.symmetric(
                 horizontal: isTablet ? 24 : 20,
                 vertical: isTablet ? 12 : 10,
               ),
               decoration: BoxDecoration(
-                color: _selectedReturnData != null ? Colors.yellow.shade200 : Colors.grey.shade300,
+                color: _selectedReturnData != null
+                    ? Colors.yellow.shade200
+                    : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: _selectedReturnData != null ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ] : null,
+                boxShadow: _selectedReturnData != null
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.edit,
                     size: isTablet ? 20 : 18,
-                    color: _selectedReturnData != null ? Colors.black87 : Colors.grey.shade600,
+                    color: _selectedReturnData != null
+                        ? Colors.black87
+                        : Colors.grey.shade600,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -1259,14 +1357,16 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                     style: TextStyle(
                       fontSize: isTablet ? 16 : 14,
                       fontWeight: FontWeight.bold,
-                      color: _selectedReturnData != null ? Colors.black87 : Colors.grey.shade600,
+                      color: _selectedReturnData != null
+                          ? Colors.black87
+                          : Colors.grey.shade600,
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          
+
           // Total section
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -1280,20 +1380,24 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                 ),
               ),
               SizedBox(height: isTablet ? 12 : 8),
-              
-              // Denomination rows
+
+              // Denomination rows (descending)
               Row(
                 children: [
                   _buildDenominationField(
-                    'A100', 
+                    'A100',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a100 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a100 ?? 0}'
+                        : '0',
                   ),
                   SizedBox(width: isTablet ? 16 : 12),
                   _buildDenominationField(
-                    'A10', 
+                    'A75',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a10 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a75 ?? 0}'
+                        : '0',
                   ),
                 ],
               ),
@@ -1301,15 +1405,19 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               Row(
                 children: [
                   _buildDenominationField(
-                    'A75', 
+                    'A50',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a75 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a50 ?? 0}'
+                        : '0',
                   ),
                   SizedBox(width: isTablet ? 16 : 12),
                   _buildDenominationField(
-                    'A5', 
+                    'A20',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a5 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a20 ?? 0}'
+                        : '0',
                   ),
                 ],
               ),
@@ -1317,15 +1425,19 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               Row(
                 children: [
                   _buildDenominationField(
-                    'A50', 
+                    'A10',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a50 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a10 ?? 0}'
+                        : '0',
                   ),
                   SizedBox(width: isTablet ? 16 : 12),
                   _buildDenominationField(
-                    'A2', 
+                    'A5',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a2 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a5 ?? 0}'
+                        : '0',
                   ),
                 ],
               ),
@@ -1333,20 +1445,24 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
               Row(
                 children: [
                   _buildDenominationField(
-                    'A20', 
+                    'A2',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a20 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a2 ?? 0}'
+                        : '0',
                   ),
                   SizedBox(width: isTablet ? 16 : 12),
                   _buildDenominationField(
-                    'A1', 
+                    'A1',
                     isTablet,
-                    value: _selectedReturnData != null ? '${_selectedReturnData!.a1 ?? 0}' : '0'
+                    value: _selectedReturnData != null
+                        ? '${_selectedReturnData!.a1 ?? 0}'
+                        : '0',
                   ),
                 ],
               ),
               SizedBox(height: isTablet ? 12 : 8),
-              
+
               // Totals
               Row(
                 children: [
@@ -1359,7 +1475,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                   ),
                   SizedBox(width: isTablet ? 12 : 8),
                   Text(
-                    _selectedReturnData != null ? '${_selectedReturnData!.tQty ?? 0}' : '0',
+                    _selectedReturnData != null
+                        ? '${_selectedReturnData!.tQty ?? 0}'
+                        : '0',
                     style: TextStyle(
                       fontSize: isTablet ? 16 : 14,
                       fontWeight: FontWeight.bold,
@@ -1379,9 +1497,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
                   ),
                   SizedBox(width: isTablet ? 12 : 8),
                   Text(
-                    _selectedReturnData != null 
-                      ? 'Rp ${NumberFormat('#,###').format(_selectedReturnData!.tValue ?? 0)}'
-                      : 'Rp 0',
+                    _selectedReturnData != null
+                        ? 'Rp ${NumberFormat('#,###').format(_selectedReturnData!.tValue ?? 0)}'
+                        : 'Rp 0',
                     style: TextStyle(
                       fontSize: isTablet ? 16 : 14,
                       fontWeight: FontWeight.bold,
@@ -1396,7 +1514,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage> with AutoLo
     );
   }
 
-  Widget _buildDenominationField(String denom, bool isTablet, {String value = '0'}) {
+  Widget _buildDenominationField(String denom, bool isTablet,
+      {String value = '0'}) {
     return Row(
       children: [
         SizedBox(

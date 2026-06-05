@@ -16,14 +16,15 @@ class KonsolDataClosingPage extends StatefulWidget {
   State<KonsolDataClosingPage> createState() => _KonsolDataClosingPageState();
 }
 
-class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with WidgetsBindingObserver {
+class _KonsolDataClosingPageState extends State<KonsolDataClosingPage>
+    with WidgetsBindingObserver {
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
   String searchQuery = '';
   final AuthService _authService = AuthService();
   final KonsolApiService _konsolApiService = KonsolApiService();
   final ProfileService _profileService = ProfileService();
-  String _userName = ''; 
+  String _userName = '';
   String _branchName = '';
   String _userId = '';
   String _branchCode = '';
@@ -76,7 +77,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
     });
   }
 
-  // Load user data from login 
+  // Load user data from login
   Future<void> _loadUserData() async {
     try {
       final userData = await _authService.getUserData();
@@ -86,14 +87,14 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
           _userId = userData['userId'] ?? userData['userID'] ?? '';
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
           _branchCode = (userData['groupId'] ??
-                  userData['GroupId'] ??
-                  userData['GroupID'] ??
-                  userData['groupid'] ??
-                  userData['groupID'] ??
-                  userData['branchCode'] ??
-                  userData['BranchCode'])
-              ?.toString()
-              .trim() ??
+                      userData['GroupId'] ??
+                      userData['GroupID'] ??
+                      userData['groupid'] ??
+                      userData['groupID'] ??
+                      userData['branchCode'] ??
+                      userData['BranchCode'])
+                  ?.toString()
+                  .trim() ??
               '';
         });
         await _loadClosingData();
@@ -128,7 +129,8 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
     try {
       final fromStr = DateFormat('dd-MM-yyyy').format(fromDate);
       final toStr = DateFormat('dd-MM-yyyy').format(toDate);
-      debugPrint('🔍 Loading closing list: branchCode=$_branchCode, fromDate=$fromStr, toDate=$toStr, userId=$_userId');
+      debugPrint(
+          '🔍 Loading closing list: branchCode=$_branchCode, fromDate=$fromStr, toDate=$toStr, userId=$_userId');
 
       final data = await _konsolApiService.getClosingAndroidList(
         branchCode: _branchCode,
@@ -170,7 +172,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isTablet = screenWidth >= 768;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       resizeToAvoidBottomInset: false,
@@ -254,7 +256,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
             ),
           ),
           SizedBox(width: isTablet ? 20 : 16),
-          
+
           // Title
           Text(
             'Konsol Mode',
@@ -265,9 +267,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
               letterSpacing: -0.5,
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Location info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -291,9 +293,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                   builder: (context, snapshot) {
                     String meja = '';
                     if (snapshot.hasData && snapshot.data != null) {
-                      meja = snapshot.data!['noMeja'] ?? 
-                            snapshot.data!['NoMeja'] ?? 
-                            '010101';
+                      meja = snapshot.data!['noMeja'] ??
+                          snapshot.data!['NoMeja'] ??
+                          '010101';
                     } else {
                       meja = '010101';
                     }
@@ -318,9 +320,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
               ),
             ],
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // CRF_KONSOL button
           Container(
             padding: EdgeInsets.symmetric(
@@ -341,9 +343,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Refresh button
           GestureDetector(
             onTap: () {
@@ -371,9 +373,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // User info
           Row(
             children: [
@@ -399,9 +401,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                     builder: (context, snapshot) {
                       String nik = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                        nik = snapshot.data!['userId'] ?? 
-                              snapshot.data!['userID'] ?? 
-                              '';
+                        nik = snapshot.data!['userId'] ??
+                            snapshot.data!['userID'] ??
+                            '';
                       } else {
                         nik = _userId;
                       }
@@ -420,7 +422,8 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
               SizedBox(width: isTablet ? 12 : 10),
               GestureDetector(
                 onTap: () async {
-                  final shouldNavigate = await CustomModals.showConfirmationModal(
+                  final shouldNavigate =
+                      await CustomModals.showConfirmationModal(
                     context: context,
                     message: 'Apakah Anda ingin membuka halaman Profile Menu?',
                     confirmText: 'Ya',
@@ -500,7 +503,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
             ),
           ),
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Data Return
           _buildNavTab(
             title: 'Data Return',
@@ -510,9 +513,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
               Navigator.pushReplacementNamed(context, '/konsol_data_return');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Konsol
           _buildNavTab(
             title: 'Data Konsol',
@@ -522,21 +525,22 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
               Navigator.pushReplacementNamed(context, '/konsol_mode');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Pengurangan
           _buildNavTab(
             title: 'Data Pengurangan',
             isActive: false,
             isTablet: isTablet,
             onTap: () {
-              Navigator.pushReplacementNamed(context, '/konsol_data_pengurangan');
+              Navigator.pushReplacementNamed(
+                  context, '/konsol_data_pengurangan');
             },
           ),
-          
+
           SizedBox(width: isTablet ? 12 : 8),
-          
+
           // Data Closing - Active
           _buildNavTab(
             title: 'Data Closing',
@@ -567,10 +571,12 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFE5E7EB) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
-          border: isActive ? null : Border.all(
-            color: const Color(0xFFD1D5DB),
-            width: 1,
-          ),
+          border: isActive
+              ? null
+              : Border.all(
+                  color: const Color(0xFFD1D5DB),
+                  width: 1,
+                ),
         ),
         child: Text(
           title,
@@ -605,7 +611,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
           ),
         ),
         SizedBox(height: isTablet ? 16 : 12),
-        
+
         // Tanggal filter row
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -644,15 +650,15 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                     ),
                   ),
                   SizedBox(width: isTablet ? 16 : 12),
-                  
+
                   // From date
                   _buildDateField(fromDate, isTablet, (date) {
                     setState(() => fromDate = date);
                     _loadClosingData();
                   }),
-                  
+
                   SizedBox(width: isTablet ? 16 : 12),
-                  
+
                   // To label
                   Text(
                     'To',
@@ -662,9 +668,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                       color: Colors.black,
                     ),
                   ),
-                  
+
                   SizedBox(width: isTablet ? 16 : 12),
-                  
+
                   // To date
                   _buildDateField(toDate, isTablet, (date) {
                     setState(() => toDate = date);
@@ -673,7 +679,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                 ],
               ),
             ),
-            
+
             // Green Pengurangan button
             Container(
               padding: EdgeInsets.symmetric(
@@ -693,7 +699,7 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                 ),
               ),
             ),
-            
+
             // Right side - search field
             Row(
               children: [
@@ -726,9 +732,11 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                   child: TextField(
                     onChanged: (value) => setState(() => searchQuery = value),
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12),
                       border: InputBorder.none,
-                      suffixIcon: Icon(Icons.search, color: Colors.grey.shade600),
+                      suffixIcon:
+                          Icon(Icons.search, color: Colors.grey.shade600),
                     ),
                   ),
                 ),
@@ -740,7 +748,8 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
     );
   }
 
-  Widget _buildDateField(DateTime date, bool isTablet, Function(DateTime) onChanged) {
+  Widget _buildDateField(
+      DateTime date, bool isTablet, Function(DateTime) onChanged) {
     return GestureDetector(
       onTap: () async {
         final picked = await showDatePicker(
@@ -789,20 +798,22 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
       'Tanggal Closing',
       'Code Bank',
       'Jenis Mesin',
-      'A1',
-      'A2',
-      'A5',
-      'A10',
-      'A20',
-      'A50',
-      'A75',
       'A100',
+      'A75',
+      'A50',
+      'A20',
+      'A10',
+      'A5',
+      'A2',
+      'A1',
       'User Closing'
     ];
 
     int columnFlex(String column) {
       if (column == 'Tanggal Closing') return 13;
-      if (column == 'ID Closing' || column == 'Code Bank' || column == 'Jenis Mesin') return 12;
+      if (column == 'ID Closing' ||
+          column == 'Code Bank' ||
+          column == 'Jenis Mesin') return 12;
       if (column == 'User Closing') return 11;
       return 8;
     }
@@ -837,7 +848,9 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                       padding: EdgeInsets.all(isTablet ? 8 : 4),
                       decoration: BoxDecoration(
                         border: Border(
-                          right: isLast ? BorderSide.none : BorderSide(color: Colors.grey.shade300),
+                          right: isLast
+                              ? BorderSide.none
+                              : BorderSide(color: Colors.grey.shade300),
                         ),
                       ),
                       child: Text(
@@ -855,86 +868,91 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
                 }).toList(),
               ),
             ),
-            
+
             // Empty table body
             Expanded(
               child: _closingLoadError != null
+                  ? Center(
+                      child: Text(
+                        _closingLoadError!,
+                        style: TextStyle(
+                          fontSize: isTablet ? 14 : 12,
+                          color: Colors.red.shade400,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  : rows.isEmpty
                       ? Center(
                           child: Text(
-                            _closingLoadError!,
+                            'No data available',
                             style: TextStyle(
-                              fontSize: isTablet ? 14 : 12,
-                              color: Colors.red.shade400,
+                              fontSize: isTablet ? 16 : 14,
+                              color: Colors.grey.shade500,
+                              fontStyle: FontStyle.italic,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         )
-                      : rows.isEmpty
-                          ? Center(
-                              child: Text(
-                                'No data available',
-                                style: TextStyle(
-                                  fontSize: isTablet ? 16 : 14,
-                                  color: Colors.grey.shade500,
-                                  fontStyle: FontStyle.italic,
+                      : ListView.builder(
+                          itemCount: rows.length,
+                          itemBuilder: (context, index) {
+                            final item = rows[index];
+                            final values = <String, String?>{
+                              'ID Closing': item.id,
+                              'Tanggal Closing': item.tanggalClosing,
+                              'Code Bank': item.codeBank,
+                              'Jenis Mesin': item.jenisMesin,
+                              'A1': item.a1?.toString(),
+                              'A2': item.a2?.toString(),
+                              'A5': item.a5?.toString(),
+                              'A10': item.a10?.toString(),
+                              'A20': item.a20?.toString(),
+                              'A50': item.a50?.toString(),
+                              'A75': item.a75?.toString(),
+                              'A100': item.a100?.toString(),
+                              'User Closing': item.userClosing,
+                            };
+
+                            return Container(
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  bottom:
+                                      BorderSide(color: Colors.grey.shade200),
                                 ),
                               ),
-                            )
-                          : ListView.builder(
-                              itemCount: rows.length,
-                              itemBuilder: (context, index) {
-                                final item = rows[index];
-                                final values = <String, String?>{
-                                  'ID Closing': item.id,
-                                  'Tanggal Closing': item.tanggalClosing,
-                                  'Code Bank': item.codeBank,
-                                  'Jenis Mesin': item.jenisMesin,
-                                  'A1': item.a1?.toString(),
-                                  'A2': item.a2?.toString(),
-                                  'A5': item.a5?.toString(),
-                                  'A10': item.a10?.toString(),
-                                  'A20': item.a20?.toString(),
-                                  'A50': item.a50?.toString(),
-                                  'A75': item.a75?.toString(),
-                                  'A100': item.a100?.toString(),
-                                  'User Closing': item.userClosing,
-                                };
+                              child: Row(
+                                children: columns.asMap().entries.map((entry) {
+                                  final idx = entry.key;
+                                  final column = entry.value;
+                                  final isLast = idx == columns.length - 1;
 
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      bottom: BorderSide(color: Colors.grey.shade200),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: columns.asMap().entries.map((entry) {
-                                      final idx = entry.key;
-                                      final column = entry.value;
-                                      final isLast = idx == columns.length - 1;
-
-                                      return Expanded(
-                                        flex: columnFlex(column),
-                                        child: Container(
-                                          padding: EdgeInsets.all(isTablet ? 8 : 4),
-                                          decoration: BoxDecoration(
-                                            border: Border(
-                                              right: isLast ? BorderSide.none : BorderSide(color: Colors.grey.shade200),
-                                            ),
-                                          ),
-                                          child: Text(
-                                            values[column] ?? '',
-                                            style: TextStyle(fontSize: isTablet ? 12 : 9),
-                                            textAlign: TextAlign.center,
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 2,
-                                          ),
+                                  return Expanded(
+                                    flex: columnFlex(column),
+                                    child: Container(
+                                      padding: EdgeInsets.all(isTablet ? 8 : 4),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          right: isLast
+                                              ? BorderSide.none
+                                              : BorderSide(
+                                                  color: Colors.grey.shade200),
                                         ),
-                                      );
-                                    }).toList(),
-                                  ),
-                                );
-                              },
-                            ),
+                                      ),
+                                      child: Text(
+                                        values[column] ?? '',
+                                        style: TextStyle(
+                                            fontSize: isTablet ? 12 : 9),
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 2,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            );
+                          },
+                        ),
             ),
           ],
         ),
@@ -950,7 +968,8 @@ class _KonsolDataClosingPageState extends State<KonsolDataClosingPage> with Widg
           // Add Data button
           GestureDetector(
             onTap: () async {
-              final result = await Navigator.pushNamed(context, '/konsol_data_closing_form');
+              final result = await Navigator.pushNamed(
+                  context, '/konsol_data_closing_form');
               if (result == true) {
                 await _loadClosingData();
               }

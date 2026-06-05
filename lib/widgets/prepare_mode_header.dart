@@ -25,7 +25,7 @@ class PrepareModeHeader extends StatefulWidget {
 class _PrepareModeHeaderState extends State<PrepareModeHeader> {
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
-  
+
   // Cache untuk data yang sudah di-load
   String? _cachedMeja;
   String? _cachedNik;
@@ -112,7 +112,7 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
     final isTabletOrLandscapeMobile = MediaQuery.of(context).size.width >= 768;
     final isTablet = MediaQuery.of(context).size.width >= 768;
     final minHeight = isTabletOrLandscapeMobile ? 80.0 : 70.0;
-    
+
     return Container(
       constraints: BoxConstraints(minHeight: minHeight),
       padding: EdgeInsets.symmetric(
@@ -152,7 +152,7 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
             ),
           ),
           SizedBox(width: isTabletOrLandscapeMobile ? 20 : 16),
-          
+
           // Title
           Text(
             'Prepare Mode',
@@ -163,9 +163,9 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
               letterSpacing: -0.5,
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Location info
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -203,9 +203,9 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
               ),
             ],
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // CRF_KONSOL button
           Container(
             padding: EdgeInsets.symmetric(
@@ -226,9 +226,9 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 16 : 12),
-          
+
           // Refresh button
           GestureDetector(
             onTap: _handleRefreshWithConfirmation,
@@ -241,14 +241,14 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
               ),
               child: const Icon(
                 Icons.refresh,
-                color: Colors.white,
+                color: Colors.red,
                 size: 22,
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // User info
           Row(
             children: [
@@ -284,7 +284,8 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
                 onTap: () async {
                   final confirmed = await CustomModals.showConfirmationModal(
                     context: context,
-                    message: "Apakah kamu yakin ingin pergi ke halaman profile?",
+                    message:
+                        "Apakah kamu yakin ingin pergi ke halaman profile?",
                     confirmText: "Ya",
                     cancelText: "Tidak",
                   );

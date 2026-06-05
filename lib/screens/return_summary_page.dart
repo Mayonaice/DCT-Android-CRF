@@ -33,7 +33,8 @@ class ReturnSummaryPage extends StatefulWidget {
   State<ReturnSummaryPage> createState() => _ReturnSummaryPageState();
 }
 
-class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindingObserver {
+class _ReturnSummaryPageState extends State<ReturnSummaryPage>
+    with WidgetsBindingObserver {
   final ApiService _apiService = ApiService();
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
@@ -47,7 +48,14 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
   Timer? _orientationLockTimer;
 
   static const List<String> _denominationLabels = [
-    '1K', '2K', '5K', '10K', '20K', '50K', '75K', '100K'
+    '1K',
+    '2K',
+    '5K',
+    '10K',
+    '20K',
+    '50K',
+    '75K',
+    '100K'
   ];
 
   Map<String, int> _calculateOverallTotals() {
@@ -68,7 +76,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
 
   int _calculateJumlahKasetCatridgeOnly() {
     return widget.cartridgeData.where((cartridge) {
-      final type = cartridge['typeCatridgeTrx']?.toString().toUpperCase() ?? 'C';
+      final type =
+          cartridge['typeCatridgeTrx']?.toString().toUpperCase() ?? 'C';
       return type == 'C';
     }).length;
   }
@@ -123,7 +132,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
         setState(() {
           _userData = userData;
           _userName = userData['userName'] ?? userData['username'] ?? 'User';
-          _branchName = userData['branchName'] ?? userData['branch'] ?? 'Branch';
+          _branchName =
+              userData['branchName'] ?? userData['branch'] ?? 'Branch';
         });
       }
     } catch (e) {
@@ -143,7 +153,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
   List<ReturnCatridgeQRData> _prepareReturnQRData() {
     print('🔧 [QR_DATA] Preparing return QR data for RETURN...');
     List<ReturnCatridgeQRData> qrDataList = [];
-    
+
     for (var cartridge in widget.cartridgeData) {
       final qrData = ReturnCatridgeQRData(
         IdTool: widget.returnData?.header?.atmCode ?? '0',
@@ -164,8 +174,9 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
       qrDataList.add(qrData);
       print('   - Added return cartridge: ${cartridge['noCatridge']}');
     }
-    
-    print('✅ [QR_DATA] Prepared ${qrDataList.length} return catridge QR data items');
+
+    print(
+        '✅ [QR_DATA] Prepared ${qrDataList.length} return catridge QR data items');
     return qrDataList;
   }
 
@@ -211,18 +222,23 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
 
   ReturnDetailsQRData _prepareReturnDetailsQRData() {
     print('🔧 [QR_DETAILS] Preparing details QR data for RETURN...');
-    
+
     final details = ReturnDetailsQRData(
       wsid: widget.returnData?.header?.atmCode ?? '',
-      bank: widget.returnData?.header?.codeBank ?? widget.returnData?.header?.namaBank ?? '',
+      bank: widget.returnData?.header?.codeBank ??
+          widget.returnData?.header?.namaBank ??
+          '',
       lokasi: widget.returnData?.header?.lokasi ?? '',
       jenisMesin: widget.returnData?.header?.jnsMesin ?? '',
-      atmType: widget.returnData?.header?.idTypeAtm ?? widget.returnData?.header?.typeATM ?? '',
+      atmType: widget.returnData?.header?.idTypeAtm ??
+          widget.returnData?.header?.typeATM ??
+          '',
       tglUnload: widget.returnData?.header?.timeSTReturn ?? '',
       jumlahKaset: (widget.returnData?.data.length ?? 0).toString(),
     );
-    
-    print('✅ [QR_DETAILS] Prepared return details: WSID=${details.wsid}, Bank=${details.bank}, Lokasi=${details.lokasi}');
+
+    print(
+        '✅ [QR_DETAILS] Prepared return details: WSID=${details.wsid}, Bank=${details.bank}, Lokasi=${details.lokasi}');
     return details;
   }
 
@@ -231,21 +247,23 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
       await _showErrorDialog('NIK dan Password TL harus diisi');
       return;
     }
-    
-    setState(() { _isSubmitting = true; });
-    
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
     try {
       // Validate TL credentials
       final tlResponse = await _apiService.validateTLSupervisor(
         nik: _tlNikController.text,
         password: _tlPasswordController.text,
       );
-      
+
       if (tlResponse.success) {
         try {
           // Update Planning RTN first
           await _updatePlanningRTN();
-          
+
           // Then submit return data
           await _submitReturnData();
         } catch (e) {
@@ -257,38 +275,41 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
     } catch (e) {
       await _showErrorDialog('Error validasi TL: ${e.toString()}');
     } finally {
-      setState(() { _isSubmitting = false; });
+      setState(() {
+        _isSubmitting = false;
+      });
     }
   }
 
   Future<void> _updatePlanningRTN() async {
     try {
       print('Updating Planning RTN...');
-      
+
       // Get idTool from widget parameter
       String idTool = widget.idTool;
-      
+
       if (idTool.isEmpty) {
         throw Exception('ID Tool tidak ditemukan');
       }
-      
+
       final updateParams = {
         "idTool": idTool,
         "CashierReturnCode": _userData?['nik'] ?? '',
         "TableReturnCode": _userData?['tableCode'] ?? '',
-        "DateStartReturn": widget.dateStartReturn ?? DateTime.now().toIso8601String(),
+        "DateStartReturn":
+            widget.dateStartReturn ?? DateTime.now().toIso8601String(),
         "WarehouseCode": _userData?['warehouseCode'] ?? 'Cideng',
         "UserATMReturn": _tlNikController.text,
         "SPVBARusak": _tlNikController.text,
         "IsManual": "N"
       };
-      
+
       final updateResponse = await _apiService.updatePlanningRTN(updateParams);
-      
+
       if (!updateResponse.success) {
         throw Exception('Gagal update planning RTN: ${updateResponse.message}');
       }
-      
+
       print('Planning RTN updated successfully!');
     } catch (e) {
       throw Exception('Error update planning RTN: ${e.toString()}');
@@ -319,7 +340,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
         } else if (_userData!.containsKey('ID')) {
           userNIK = _userData!['ID'].toString();
         }
-        
+
         // Log the NIK value for debugging
         print('DEBUG - Using UserInput NIK: $userNIK');
         print('DEBUG - Available userData keys: ${_userData!.keys.toList()}');
@@ -327,20 +348,21 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
       } else {
         print('ERROR - userData is null, cannot get NIK');
       }
-      
+
       // If NIK is still empty, show error
       if (userNIK.isEmpty) {
-        await _showErrorDialog('NIK pengguna tidak ditemukan. Silakan login ulang.');
+        await _showErrorDialog(
+            'NIK pengguna tidak ditemukan. Silakan login ulang.');
         return;
       }
-      
+
       // Get idTool from widget parameter
       String idTool = widget.idTool;
       if (idTool.isEmpty) {
         await _showErrorDialog('ID Tool tidak ditemukan');
         return;
       }
-      
+
       try {
         final idToolInt = int.tryParse(idTool) ?? 0;
         if (idToolInt <= 0) {
@@ -360,7 +382,6 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
       } catch (e) {
         await _showErrorDialog('Error submit data: ${e.toString()}');
       }
-      
     } catch (e) {
       print('CRITICAL ERROR - Submit failed: $e');
       await _showErrorDialog('Error submit data: ${e.toString()}');
@@ -382,8 +403,9 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
   }
 
   String _getCartridgeSectionTitle(Map<String, dynamic> cartridge, int index) {
-    final typeCatridgeTrx = cartridge['typeCatridgeTrx']?.toString().toUpperCase() ?? 'C';
-    
+    final typeCatridgeTrx =
+        cartridge['typeCatridgeTrx']?.toString().toUpperCase() ?? 'C';
+
     switch (typeCatridgeTrx) {
       case 'D':
         return 'Divert ${index + 1}';
@@ -422,8 +444,10 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
               Expanded(
                 child: Column(
                   children: [
-                    _buildCartridgeField('No. Cartridge', cartridge['noCatridge'] ?? ''),
-                    _buildCartridgeField('Seal Cartridge', cartridge['sealCatridge'] ?? ''),
+                    _buildCartridgeField(
+                        'No. Cartridge', cartridge['noCatridge'] ?? ''),
+                    _buildCartridgeField(
+                        'Seal Cartridge', cartridge['sealCatridge'] ?? ''),
                   ],
                 ),
               ),
@@ -440,10 +464,13 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                     _buildCartridgeField(
                       'Cartridge Fisik',
                       cartridge['catridgeFisik'] ?? '',
-                      manualStatus: cartridge['scanCatStatus']?.toString() ?? '',
-                      manualRemark: cartridge['scanCatStatusRemark']?.toString() ?? '',
+                      manualStatus:
+                          cartridge['scanCatStatus']?.toString() ?? '',
+                      manualRemark:
+                          cartridge['scanCatStatusRemark']?.toString() ?? '',
                     ),
-                    _buildCartridgeField('Bag Code', cartridge['bagCode'] ?? ''),
+                    _buildCartridgeField(
+                        'Bag Code', cartridge['bagCode'] ?? ''),
                   ],
                 ),
               ),
@@ -457,9 +484,12 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
               Expanded(
                 child: Column(
                   children: [
-                    _buildCartridgeField('Seal Code', cartridge['sealCode'] ?? ''),
-                    _buildCartridgeField('Kondisi Seal', cartridge['kondisiSeal'] ?? ''),
-                    _buildCartridgeField('Kondisi Catridge', cartridge['kondisiCatridge'] ?? ''),
+                    _buildCartridgeField(
+                        'Seal Code', cartridge['sealCode'] ?? ''),
+                    _buildCartridgeField(
+                        'Kondisi Seal', cartridge['kondisiSeal'] ?? ''),
+                    _buildCartridgeField(
+                        'Kondisi Catridge', cartridge['kondisiCatridge'] ?? ''),
                   ],
                 ),
               ),
@@ -481,8 +511,10 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                     ),
                     const SizedBox(height: 8),
                     ..._denominationLabels.where((denom) {
-                      final lembar = int.tryParse(cartridge['lembar_$denom'] ?? '0') ?? 0;
-                      return lembar > 0; // Only show denominations with input > 0
+                      final lembar =
+                          int.tryParse(cartridge['lembar_$denom'] ?? '0') ?? 0;
+                      return lembar >
+                          0; // Only show denominations with input > 0
                     }).map((denom) {
                       final lembar = cartridge['lembar_$denom'] ?? '0';
                       final lembarInt = int.tryParse(lembar) ?? 0;
@@ -600,19 +632,42 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
           ),
           const SizedBox(height: 8),
           _buildLabelValue('WSID', widget.returnData?.header?.atmCode ?? ''),
-          _buildLabelValue('Bank', widget.returnData?.header?.codeBank ?? widget.returnData?.header?.namaBank ?? ''),
+          _buildLabelValue(
+              'Bank',
+              widget.returnData?.header?.codeBank ??
+                  widget.returnData?.header?.namaBank ??
+                  ''),
           _buildLabelValue('Lokasi', widget.returnData?.header?.lokasi ?? ''),
-          _buildLabelValue('Jenis Mesin', widget.returnData?.header?.jnsMesin ?? ''),
-          _buildLabelValue('ATM Type', widget.returnData?.header?.idTypeAtm ?? widget.returnData?.header?.typeATM ?? ''),
-          _buildLabelValue('Tgl. Unload', widget.returnData?.header?.timeSTReturn ?? ''),
+          _buildLabelValue(
+              'Jenis Mesin', widget.returnData?.header?.jnsMesin ?? ''),
+          _buildLabelValue(
+              'ATM Type',
+              widget.returnData?.header?.idTypeAtm ??
+                  widget.returnData?.header?.typeATM ??
+                  ''),
+          _buildLabelValue(
+              'Tgl. Unload', widget.returnData?.header?.timeSTReturn ?? ''),
         ],
       ),
     );
   }
 
-
-
   Widget _buildTLValidationForm() {
+    final bool hasManualMode = widget.cartridgeData.any((cartridge) {
+      final scanCatStatus = cartridge['scanCatStatus']?.toString().trim() ?? '';
+      final scanCatStatusRemark =
+          cartridge['scanCatStatusRemark']?.toString().trim() ?? '';
+      final scanSealStatus =
+          cartridge['scanSealStatus']?.toString().trim() ?? '';
+      final scanSealStatusRemark =
+          cartridge['scanSealStatusRemark']?.toString().trim() ?? '';
+
+      return scanCatStatus.isNotEmpty ||
+          scanCatStatusRemark.isNotEmpty ||
+          scanSealStatus.isNotEmpty ||
+          scanSealStatusRemark.isNotEmpty;
+    });
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -631,52 +686,6 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'NIK TL SPV',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
-            ),
-            child: TextField(
-              controller: _tlNikController,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
-                suffixIcon: Icon(Icons.person_outline, color: Colors.grey),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Password',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
-            ),
-            child: TextField(
-              controller: _tlPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
-                suffixIcon: Icon(Icons.visibility, color: Colors.grey),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Grand Total
           Row(
             children: [
               const Text(
@@ -686,150 +695,183 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
               const SizedBox(width: 8),
               Text(
                 _formatCurrencyWithPrefix(_calculateGrandTotal()),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 24),
-          // Submit button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _validateTLAndSubmit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          if (!hasManualMode) ...[
+            const Text(
+              'NIK TL SPV',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
+              ),
+              child: TextField(
+                controller: _tlNikController,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  suffixIcon: Icon(Icons.person_outline, color: Colors.grey),
                 ),
               ),
-              child: _isSubmitting
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      'Submit Data',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
             ),
-          ),
-          const SizedBox(height: 24),
-          // Divider ATAU
-          Row(
-            children: [
-              Expanded(child: Divider(color: Colors.grey[400])),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'ATAU',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
+            const SizedBox(height: 16),
+            const Text(
+              'Password',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
+              ),
+              child: TextField(
+                controller: _tlPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 8),
+                  suffixIcon: Icon(Icons.visibility, color: Colors.grey),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _validateTLAndSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                child: _isSubmitting
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
+                        'Submit Data',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
               ),
-              Expanded(child: Divider(color: Colors.grey[400])),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // QR Code Section
-          const Text(
-            'Scan QR Code untuk Approval',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Menunggu Approval TL',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.orange,
-                ),
+          ],
+          if (hasManualMode) ...[
+            const Text(
+              'Scan QR Code untuk Approval',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
-              IconButton(
-                onPressed: () async {
-                  if (_isSubmitting) return;
-                  final idToolInt = int.tryParse(widget.idTool) ?? 0;
-                  if (idToolInt <= 0) {
-                    await _showErrorDialog('ID Tool tidak valid');
-                    return;
-                  }
-                  setState(() {
-                    _isSubmitting = true;
-                  });
-                  try {
-                    final res = await _apiService.checkIsDone(idTool: idToolInt);
-                    final status = res.status?.toUpperCase() ?? '';
-                    if (status == 'DONE') {
-                      await CustomModals.showSuccessModal(
-                        context: context,
-                        message: 'Approval TL sudah berhasil',
-                      );
-                      if (mounted) {
-                        Navigator.of(context).popUntil((route) => route.isFirst);
-                      }
-                    } else {
-                      final confirmed = await CustomModals.showConfirmationModal(
-                        context: context,
-                        message: 'Masih belum dilakukan approve oleh TL, atau apakah kamu ingin mengulangi langkah submit ini?',
-                        confirmText: 'Ya',
-                        cancelText: 'Tidak',
-                      );
-                      if (confirmed && mounted) {
-                        setState(() {});
-                      }
-                    }
-                  } finally {
-                    if (mounted) {
-                      setState(() {
-                        _isSubmitting = false;
-                      });
-                    }
-                  }
-                },
-                icon: const Icon(Icons.refresh, color: Colors.orange),
-              ),
-            ],
-          ),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
             ),
-            child: Column(
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'TL dapat scan QR code ini untuk approval tanpa memasukkan NIK',
+                const Text(
+                  'Menunggu Approval TL',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                    color: Colors.orange,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
-                Builder(builder: (context) {
-                  final totals = _calculateOverallTotals();
-                  final jumlahKasetCatridge = _calculateJumlahKasetCatridgeOnly();
-                  return QRCodeGeneratorWidget(
-                    action: 'RETURN',
-                    idTool: widget.idTool,
-                    returnCatridgeData: _prepareReturnQRData(),
-                    returnDetails: _prepareReturnDetailsQRData(),
-                    totalLembar: totals['totalLembar'],
-                    totalNominal: totals['totalNominal'],
-                    jumlahKasetCatridge: jumlahKasetCatridge,
-                    dateStart: widget.dateStartReturn,
-                  );
-                }),
+                IconButton(
+                  onPressed: () async {
+                    if (_isSubmitting) return;
+                    final idToolInt = int.tryParse(widget.idTool) ?? 0;
+                    if (idToolInt <= 0) {
+                      await _showErrorDialog('ID Tool tidak valid');
+                      return;
+                    }
+                    setState(() {
+                      _isSubmitting = true;
+                    });
+                    try {
+                      final res =
+                          await _apiService.checkIsDone(idTool: idToolInt);
+                      final status = res.status?.toUpperCase() ?? '';
+                      if (status == 'DONE') {
+                        await CustomModals.showSuccessModal(
+                          context: context,
+                          message: 'Approval TL sudah berhasil',
+                        );
+                        if (mounted) {
+                          Navigator.of(context)
+                              .popUntil((route) => route.isFirst);
+                        }
+                      } else {
+                        final confirmed =
+                            await CustomModals.showConfirmationModal(
+                          context: context,
+                          message:
+                              'Masih belum dilakukan approve oleh TL, atau apakah kamu ingin mengulangi langkah submit ini?',
+                          confirmText: 'Ya',
+                          cancelText: 'Tidak',
+                        );
+                        if (confirmed && mounted) {
+                          setState(() {});
+                        }
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isSubmitting = false;
+                        });
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.refresh, color: Colors.orange),
+                ),
               ],
             ),
-          ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'TL dapat scan QR code ini untuk approval tanpa memasukkan NIK',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Builder(builder: (context) {
+                    final totals = _calculateOverallTotals();
+                    final jumlahKasetCatridge =
+                        _calculateJumlahKasetCatridgeOnly();
+                    return QRCodeGeneratorWidget(
+                      action: 'RETURN',
+                      idTool: widget.idTool,
+                      returnCatridgeData: _prepareReturnQRData(),
+                      returnDetails: _prepareReturnDetailsQRData(),
+                      totalLembar: totals['totalLembar'],
+                      totalNominal: totals['totalNominal'],
+                      jumlahKasetCatridge: jumlahKasetCatridge,
+                      dateStart: widget.dateStartReturn,
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -863,24 +905,33 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
   // Helper method to get denomination value
   int _getDenomValue(String denom) {
     switch (denom) {
-      case '1K': return 1000;
-      case '2K': return 2000;
-      case '5K': return 5000;
-      case '10K': return 10000;
-      case '20K': return 20000;
-      case '50K': return 50000;
-      case '75K': return 75000;
-      case '100K': return 100000;
-      default: return 0;
+      case '1K':
+        return 1000;
+      case '2K':
+        return 2000;
+      case '5K':
+        return 5000;
+      case '10K':
+        return 10000;
+      case '20K':
+        return 20000;
+      case '50K':
+        return 50000;
+      case '75K':
+        return 75000;
+      case '100K':
+        return 100000;
+      default:
+        return 0;
     }
   }
 
   // Helper method to format currency
   String _formatCurrency(int amount) {
     return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
   }
 
   Widget _buildCartridgeTotal(Map<String, dynamic> cartridge) {
@@ -1051,7 +1102,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                   ),
                 ),
                 SizedBox(width: isTabletOrLandscapeMobile ? 20 : 16),
-                
+
                 // Title
                 Text(
                   'Summary Return',
@@ -1062,9 +1113,9 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                     letterSpacing: -0.5,
                   ),
                 ),
-                
+
                 const Spacer(),
-                
+
                 // Location info
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -1082,15 +1133,16 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                       maxLines: 1,
                     ),
                     ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: isTablet ? 200 : 160),
+                      constraints:
+                          BoxConstraints(maxWidth: isTablet ? 200 : 160),
                       child: FutureBuilder<Map<String, dynamic>?>(
                         future: _authService.getUserData(),
                         builder: (context, snapshot) {
                           String meja = '';
                           if (snapshot.hasData && snapshot.data != null) {
-                            meja = snapshot.data!['noMeja'] ?? 
-                                  snapshot.data!['NoMeja'] ?? 
-                                  '010101';
+                            meja = snapshot.data!['noMeja'] ??
+                                snapshot.data!['NoMeja'] ??
+                                '010101';
                           } else {
                             meja = '010101';
                           }
@@ -1115,9 +1167,9 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                     ),
                   ],
                 ),
-                
+
                 SizedBox(width: isTablet ? 24 : 20),
-                
+
                 // CRF_KONSOL button
                 Container(
                   padding: EdgeInsets.symmetric(
@@ -1138,9 +1190,9 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                     ),
                   ),
                 ),
-                
+
                 SizedBox(width: isTablet ? 16 : 12),
-                
+
                 // User info
                 Row(
                   children: [
@@ -1149,7 +1201,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          constraints: BoxConstraints(maxWidth: isTablet ? 150 : 120),
+                          constraints:
+                              BoxConstraints(maxWidth: isTablet ? 150 : 120),
                           child: Text(
                             _userName,
                             style: TextStyle(
@@ -1166,11 +1219,14 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                           builder: (context, snapshot) {
                             String nik = '';
                             if (snapshot.hasData && snapshot.data != null) {
-                              nik = snapshot.data!['userId'] ?? 
-                                    snapshot.data!['userID'] ?? 
-                                    '';
+                              nik = snapshot.data!['userId'] ??
+                                  snapshot.data!['userID'] ??
+                                  '';
                             } else {
-                              nik = _userData != null && _userData!.containsKey('userId') ? _userData!['userId'] : '';
+                              nik = _userData != null &&
+                                      _userData!.containsKey('userId')
+                                  ? _userData!['userId']
+                                  : '';
                             }
                             return Text(
                               nik,
@@ -1187,9 +1243,11 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                     SizedBox(width: isTablet ? 12 : 10),
                     GestureDetector(
                       onTap: () async {
-                        final confirmed = await CustomModals.showConfirmationModal(
+                        final confirmed =
+                            await CustomModals.showConfirmationModal(
                           context: context,
-                          message: "Apakah kamu yakin ingin pergi ke halaman profile?",
+                          message:
+                              "Apakah kamu yakin ingin pergi ke halaman profile?",
                           confirmText: "Ya",
                           cancelText: "Tidak",
                         );
@@ -1214,7 +1272,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                           child: FutureBuilder<ImageProvider>(
                             future: _profileService.getProfilePhoto(),
                             builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.done && 
+                              if (snapshot.connectionState ==
+                                      ConnectionState.done &&
                                   snapshot.hasData) {
                                 return Image(
                                   image: snapshot.data!,
@@ -1260,7 +1319,12 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                       // Left side - Scrollable cartridge data (takes full width)
                       Positioned.fill(
                         child: SingleChildScrollView(
-                          padding: EdgeInsets.only(left: 16, top: 16, bottom: 16, right: MediaQuery.of(context).size.width * 0.35), // Add right padding to avoid overlap
+                          padding: EdgeInsets.only(
+                              left: 16,
+                              top: 16,
+                              bottom: 16,
+                              right: MediaQuery.of(context).size.width *
+                                  0.35), // Add right padding to avoid overlap
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -1275,8 +1339,12 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                               ),
                               const SizedBox(height: 16),
                               // Cartridge sections
-                              ...widget.cartridgeData.asMap().entries.map((entry) {
-                                return _buildCartridgeSection(entry.value, entry.key);
+                              ...widget.cartridgeData
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
+                                return _buildCartridgeSection(
+                                    entry.value, entry.key);
                               }).toList(),
                               const SizedBox(height: 16),
                               // Total Value dan Total
@@ -1296,7 +1364,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border(
-                              left: BorderSide(color: Colors.grey.shade300, width: 1),
+                              left: BorderSide(
+                                  color: Colors.grey.shade300, width: 1),
                             ),
                           ),
                           child: Column(
@@ -1358,7 +1427,8 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
     widget.detailReturnNominalControllers.forEach((denom, controller) {
       if (controller.text.isNotEmpty) {
         // Remove "Rp. " and dots, then parse to int
-        String cleanText = controller.text.replaceAll('Rp. ', '').replaceAll('.', '');
+        String cleanText =
+            controller.text.replaceAll('Rp. ', '').replaceAll('.', '');
         try {
           total += int.parse(cleanText);
         } catch (e) {
@@ -1372,17 +1442,17 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage> with WidgetsBindi
   // Format currency with Rp. prefix and thousand separators (updated version)
   String _formatCurrencyWithPrefix(int amount) {
     if (amount == 0) return 'Rp. 0';
-    
+
     String formatted = amount.toString();
     String result = '';
-    
+
     for (int i = 0; i < formatted.length; i++) {
       if (i > 0 && (formatted.length - i) % 3 == 0) {
         result += '.';
       }
       result += formatted[i];
     }
-    
+
     return 'Rp. $result';
   }
 }
