@@ -10,17 +10,19 @@ import '../services/auth_service.dart';
 import '../widgets/tl_supervisor_dialog.dart';
 import '../widgets/custom_modals.dart';
 import '../mixins/auto_logout_mixin.dart';
+import 'konsol_return_edit_approval_summary_page.dart';
 
 class EditReturnScreen extends StatefulWidget {
   final ReturnData returnData;
-  
+
   const EditReturnScreen({super.key, required this.returnData});
 
   @override
   State<EditReturnScreen> createState() => _EditReturnScreenState();
 }
 
-class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixin, WidgetsBindingObserver {
+class _EditReturnScreenState extends State<EditReturnScreen>
+    with AutoLogoutMixin, WidgetsBindingObserver {
   // Controllers for text fields
   final TextEditingController _a1Controller = TextEditingController();
   final TextEditingController _a2Controller = TextEditingController();
@@ -30,15 +32,15 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
   final TextEditingController _a50Controller = TextEditingController();
   final TextEditingController _a75Controller = TextEditingController();
   final TextEditingController _a100Controller = TextEditingController();
-  
+
   // Total values
   int _totalLembar = 0;
   int _totalNominal = 0;
-  
+
   // API services
   final ReturnApiService _returnApiService = ReturnApiService();
   final AuthService _authService = AuthService();
-  
+
   // State variables
   bool _isSubmitting = false;
   String _errorMessage = '';
@@ -54,7 +56,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     WidgetsBinding.instance.addObserver(this);
     _enforceLandscapeOrientation();
     _startOrientationLockWatchdog();
-    
+
     // Initialize controllers with data
     _a1Controller.text = '${widget.returnData.a1 ?? 0}';
     _a2Controller.text = '${widget.returnData.a2 ?? 0}';
@@ -64,10 +66,10 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     _a50Controller.text = '${widget.returnData.a50 ?? 0}';
     _a75Controller.text = '${widget.returnData.a75 ?? 0}';
     _a100Controller.text = '${widget.returnData.a100 ?? 0}';
-    
+
     // Calculate initial totals
     _calculateTotals();
-    
+
     // Load user data
     _loadUserData();
   }
@@ -105,7 +107,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       _enforceLandscapeOrientation();
     });
   }
-  
+
   // Load user data from shared preferences
   Future<void> _loadUserData() async {
     try {
@@ -113,27 +115,30 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       if (userData != null) {
         setState(() {
           // Try multiple possible field names for NIK
-          _userNik = userData['nik'] ?? 
-                    userData['userID'] ?? 
-                    userData['NIK'] ?? 
-                    userData['UserID'] ?? 
-                    userData['userId'] ?? 
-                    userData['UserNIK'] ?? 
-                    userData['userNIK'] ?? '';
+          _userNik = userData['nik'] ??
+              userData['userID'] ??
+              userData['NIK'] ??
+              userData['UserID'] ??
+              userData['userId'] ??
+              userData['UserNIK'] ??
+              userData['userNIK'] ??
+              '';
           _branchName = userData['branchName'] ??
-                    userData['BranchName'] ??
-                    userData['branch'] ??
-                    userData['Branch'] ??
-                    userData['groupName'] ??
-                    userData['GroupName'] ?? '';
+              userData['BranchName'] ??
+              userData['branch'] ??
+              userData['Branch'] ??
+              userData['groupName'] ??
+              userData['GroupName'] ??
+              '';
         });
         debugPrint('ðŸ” User NIK loaded: $_userNik');
         debugPrint('ðŸ” User noMeja: ${userData['noMeja']}');
         debugPrint('ðŸ” Full user data: ${userData.toString()}');
-        
+
         // Check if NIK is empty
         if (_userNik.isEmpty) {
-          debugPrint('âš ï¸ WARNING: User NIK is empty! Checking all user data keys:');
+          debugPrint(
+              'âš ï¸ WARNING: User NIK is empty! Checking all user data keys:');
           for (var key in userData.keys) {
             debugPrint('ðŸ” Key: $key = ${userData[key]}');
           }
@@ -159,16 +164,16 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     _a50Controller.dispose();
     _a75Controller.dispose();
     _a100Controller.dispose();
-    
+
     super.dispose();
   }
-  
+
   // Format date to dd MMM yyyy format
   String _formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) {
       return 'N/A';
     }
-    
+
     try {
       final date = DateTime.parse(dateStr);
       return DateFormat('dd MMM yyyy').format(date);
@@ -176,7 +181,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       return dateStr; // Return original if parsing fails
     }
   }
-  
+
   // Calculate totals based on current values
   void _calculateTotals() {
     final a1 = int.tryParse(_a1Controller.text) ?? 0;
@@ -187,12 +192,76 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     final a50 = int.tryParse(_a50Controller.text) ?? 0;
     final a75 = int.tryParse(_a75Controller.text) ?? 0;
     final a100 = int.tryParse(_a100Controller.text) ?? 0;
-    
+
     setState(() {
       _totalLembar = a1 + a2 + a5 + a10 + a20 + a50 + a75 + a100;
-      _totalNominal = a1 * 1000 + a2 * 2000 + a5 * 5000 + a10 * 10000 + 
-                     a20 * 20000 + a50 * 50000 + a75 * 75000 + a100 * 100000;
+      _totalNominal = a1 * 1000 +
+          a2 * 2000 +
+          a5 * 5000 +
+          a10 * 10000 +
+          a20 * 20000 +
+          a50 * 50000 +
+          a75 * 75000 +
+          a100 * 100000;
     });
+  }
+
+  Map<String, int> _editedDenoms() {
+    return {
+      'A100': int.tryParse(_a100Controller.text) ?? 0,
+      'A75': int.tryParse(_a75Controller.text) ?? 0,
+      'A50': int.tryParse(_a50Controller.text) ?? 0,
+      'A20': int.tryParse(_a20Controller.text) ?? 0,
+      'A10': int.tryParse(_a10Controller.text) ?? 0,
+      'A5': int.tryParse(_a5Controller.text) ?? 0,
+      'A2': int.tryParse(_a2Controller.text) ?? 0,
+      'A1': int.tryParse(_a1Controller.text) ?? 0,
+    };
+  }
+
+  Future<String> _loadTableCode() async {
+    try {
+      final userData = await _authService.getUserData();
+      if (userData == null) return '';
+      return userData['noMeja']?.toString() ??
+          userData['idMeja']?.toString() ??
+          userData['tableCode']?.toString() ??
+          '';
+    } catch (e) {
+      debugPrint('Error loading table code for QR approval: $e');
+      return '';
+    }
+  }
+
+  Future<void> _openApprovalSummary() async {
+    if (_isSubmitting) return;
+    final isTokenValid = await checkTokenBeforeApiCall();
+    if (!isTokenValid) return;
+
+    if (_userNik.trim().isEmpty) {
+      await CustomModals.showFailedModal(
+        context: context,
+        message: 'User kasir tidak ditemukan, silakan login ulang',
+      );
+      return;
+    }
+
+    final tableCode = await _loadTableCode();
+    if (!mounted) return;
+    final approved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => KonsolReturnEditApprovalSummaryPage(
+          returnData: widget.returnData,
+          editedDenoms: _editedDenoms(),
+          cashierCode: _userNik,
+          tableCode: tableCode,
+        ),
+      ),
+    );
+
+    if (approved == true && mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   // Show TL Supervisor validation dialog
@@ -208,7 +277,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ),
     );
   }
-  
+
   // Validate TL Supervisor credentials
   Future<void> _validateTLSupervisor(String nik, String password) async {
     final cleanNik = nik.trim();
@@ -217,47 +286,52 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     // Check token expiry sebelum API call
     final isTokenValid = await checkTokenBeforeApiCall();
     if (!isTokenValid) return;
-    
+
     try {
-      final response = await safeApiCall(() => _returnApiService.validateTLSupervisor(cleanNik, cleanPassword));
-      
+      final response = await safeApiCall(() =>
+          _returnApiService.validateTLSupervisor(cleanNik, cleanPassword));
+
       // Log the full response for debugging
       debugPrint('TL Supervisor validation response: $response');
-      
+
       if (response != null && response['success'] == true) {
         // Close the dialog
         Navigator.of(context).pop();
-        
+
         // Submit data with validated TL Supervisor
         _submitData(cleanNik);
       } else {
         // Extract specific error message from the response
         String errorMessage = response?['message'] ?? 'Validasi gagal';
-        
+
         // Check for specific validation errors from the SP
         if (response?['data'] != null) {
           final validationData = response?['data'];
-          final validationStatus = validationData['validationStatus']?.toString().toUpperCase() ?? '';
-          final specificError = validationData['errorMessage']?.toString() ?? '';
-          
+          final validationStatus =
+              validationData['validationStatus']?.toString().toUpperCase() ??
+                  '';
+          final specificError =
+              validationData['errorMessage']?.toString() ?? '';
+
           if (specificError.isNotEmpty) {
             errorMessage = specificError;
           }
-          
+
           if (validationStatus == 'FAILED') {
             if (specificError.contains('NIK tidak ditemukan')) {
               errorMessage = 'NIK TL Supervisor tidak ditemukan dalam sistem';
             } else if (specificError.contains('Password tidak sesuai')) {
               errorMessage = 'Password TL Supervisor tidak sesuai';
-            } else if (specificError.contains('tidak memiliki role yang sesuai')) {
+            } else if (specificError
+                .contains('tidak memiliki role yang sesuai')) {
               errorMessage = 'User tidak memiliki role TL Supervisor';
             }
           }
         }
-        
+
         // Show error in modal
         Navigator.of(context).pop(); // Close the dialog first
-        
+
         // Show error modal
         await CustomModals.showFailedModal(
           context: context,
@@ -266,10 +340,10 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       }
     } catch (e) {
       debugPrint('Error validating TL Supervisor: $e');
-      
+
       // Show error in modal
       Navigator.of(context).pop(); // Close the dialog first
-      
+
       // Show error modal
       await CustomModals.showFailedModal(
         context: context,
@@ -277,7 +351,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       );
     }
   }
-  
+
   // Submit data to API
   Future<void> _submitData(String spvTLCode) async {
     setState(() {
@@ -285,7 +359,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       _errorMessage = '';
       _successMessage = '';
     });
-    
+
     try {
       // Get table code from shared preferences
       String tableCode = '';
@@ -294,20 +368,22 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
         if (userData != null) {
           tableCode = userData['noMeja'] ?? '';
           debugPrint('ðŸ” Table code loaded: $tableCode');
-          
+
           if (tableCode.isEmpty) {
-            debugPrint('âš ï¸ WARNING: Table code is empty! Checking all user data keys:');
+            debugPrint(
+                'âš ï¸ WARNING: Table code is empty! Checking all user data keys:');
             for (var key in userData.keys) {
               debugPrint('ðŸ” Key: $key = ${userData[key]}');
             }
           }
         } else {
-          debugPrint('âš ï¸ WARNING: User data is null when loading table code!');
+          debugPrint(
+              'âš ï¸ WARNING: User data is null when loading table code!');
         }
       } catch (e) {
         debugPrint('âŒ Error loading table code: $e');
       }
-      
+
       // Create request object
       final request = UpdateQtyCatridgeRequest(
         idTool: widget.returnData.id ?? '',
@@ -323,22 +399,22 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
         spvTLCode: spvTLCode,
         tableCode: tableCode, // Pass table code from login
       );
-      
+
       // Log the request for debugging
       debugPrint('Submitting update request: ${request.toJson()}');
-      
+
       // Call API
       final response = await _returnApiService.updateQtyCatridge(request);
-      
+
       // Log the full response for debugging
       debugPrint('Update qty catridge response: $response');
-      
+
       if (response['success'] == true) {
         setState(() {
           _successMessage = response['message'] ?? 'Data berhasil disimpan';
           _isSubmitting = false;
         });
-        
+
         // Show success message
         await CustomModals.showSuccessModal(
           context: context,
@@ -353,25 +429,26 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       } else {
         // Extract specific error message
         String errorMessage = response['message'] ?? 'Gagal menyimpan data';
-        
+
         // Check for specific error codes
         if (response['errorCode'] != null) {
           final errorCode = response['errorCode'].toString();
-          
+
           if (errorCode == 'SPVTL_REQUIRED') {
             errorMessage = 'Perlu validasi dari SPVTL terlebih dahulu';
           } else if (errorCode == 'INVALID_RETURN_ID') {
             errorMessage = 'ID Return tidak valid';
           } else if (errorCode == 'EOD_RESTRICTION') {
-            errorMessage = 'Tidak bisa dilakukan pengeditan ketika bank sudah di EOD';
+            errorMessage =
+                'Tidak bisa dilakukan pengeditan ketika bank sudah di EOD';
           }
         }
-        
+
         setState(() {
           _errorMessage = errorMessage;
           _isSubmitting = false;
         });
-        
+
         // Show error message
         await CustomModals.showFailedModal(
           context: context,
@@ -383,7 +460,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
         _errorMessage = 'Error: $e';
         _isSubmitting = false;
       });
-      
+
       // Show error message
       await CustomModals.showFailedModal(
         context: context,
@@ -397,7 +474,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
     _scheduleLandscapeEnforcement();
     final screenWidth = MediaQuery.of(context).size.width;
     final isTablet = screenWidth >= 768;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
@@ -437,7 +514,8 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                     color: Colors.green.shade50,
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle_outline, color: Colors.green),
+                        const Icon(Icons.check_circle_outline,
+                            color: Colors.green),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -457,7 +535,8 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                         isTablet ? 16.0 : 12.0,
                         isTablet ? 16.0 : 12.0,
                         isTablet ? 16.0 : 12.0,
-                        (isTablet ? 16.0 : 12.0) + MediaQuery.viewInsetsOf(context).bottom,
+                        (isTablet ? 16.0 : 12.0) +
+                            MediaQuery.viewInsetsOf(context).bottom,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -487,7 +566,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ),
     );
   }
-  
+
   Widget _buildHeader(bool isTablet) {
     final minHeight = isTablet ? 80.0 : 70.0;
     return Container(
@@ -526,7 +605,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
             ),
           ),
           SizedBox(width: isTablet ? 20 : 16),
-          
+
           // Title
           Text(
             'Kembali',
@@ -537,9 +616,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
               letterSpacing: -0.5,
             ),
           ),
-          
+
           const Spacer(),
-          
+
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -559,8 +638,8 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                   String meja = '';
                   if (snapshot.hasData && snapshot.data != null) {
                     meja = snapshot.data!['noMeja'] ??
-                           snapshot.data!['NoMeja'] ??
-                           '';
+                        snapshot.data!['NoMeja'] ??
+                        '';
                   }
                   return Text(
                     meja.isEmpty ? '' : 'Meja : $meja',
@@ -574,9 +653,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
               ),
             ],
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // CRF_KONSOL button
           Container(
             padding: EdgeInsets.symmetric(
@@ -597,9 +676,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
               ),
             ),
           ),
-          
+
           SizedBox(width: isTablet ? 24 : 20),
-          
+
           // User info
           Row(
             children: [
@@ -612,9 +691,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                     builder: (context, snapshot) {
                       String userName = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                        userName = snapshot.data!['userName'] ?? 
-                                  snapshot.data!['name'] ?? 
-                                  '';
+                        userName = snapshot.data!['userName'] ??
+                            snapshot.data!['name'] ??
+                            '';
                       }
                       return Text(
                         userName,
@@ -633,9 +712,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                     builder: (context, snapshot) {
                       String userId = '';
                       if (snapshot.hasData && snapshot.data != null) {
-                        userId = snapshot.data!['userId'] ?? 
-                                snapshot.data!['userID'] ?? 
-                                '';
+                        userId = snapshot.data!['userId'] ??
+                            snapshot.data!['userID'] ??
+                            '';
                       }
                       return Text(
                         userId,
@@ -675,7 +754,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ),
     );
   }
-  
+
   Widget _buildTitleSection(bool isTablet) {
     return Container(
       padding: const EdgeInsets.only(bottom: 8),
@@ -694,7 +773,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ),
     );
   }
-  
+
   Widget _buildInfoSection(bool isTablet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -715,9 +794,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
             ),
           ),
         ),
-        
+
         SizedBox(height: isTablet ? 16 : 12),
-        
+
         // Info row
         Row(
           children: [
@@ -750,7 +829,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                 ],
               ),
             ),
-            
+
             // Tanggal Return
             Row(
               children: [
@@ -783,7 +862,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ],
     );
   }
-  
+
   Widget _buildEditSection(bool isTablet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -812,21 +891,29 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildOriginalDenomRow('A100', '${widget.returnData.a100 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A100', '${widget.returnData.a100 ?? 0}', isTablet),
                     const SizedBox(height: 8),
-                    _buildOriginalDenomRow('A75', '${widget.returnData.a75 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A75', '${widget.returnData.a75 ?? 0}', isTablet),
                     const SizedBox(height: 8),
-                    _buildOriginalDenomRow('A50', '${widget.returnData.a50 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A50', '${widget.returnData.a50 ?? 0}', isTablet),
                     const SizedBox(height: 8),
-                    _buildOriginalDenomRow('A20', '${widget.returnData.a20 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A20', '${widget.returnData.a20 ?? 0}', isTablet),
                     const SizedBox(height: 8),
-                    _buildOriginalDenomRow('A10', '${widget.returnData.a10 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A10', '${widget.returnData.a10 ?? 0}', isTablet),
                     const SizedBox(height: 8),
-                    _buildOriginalDenomRow('A5', '${widget.returnData.a5 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A5', '${widget.returnData.a5 ?? 0}', isTablet),
                     const SizedBox(height: 8),
-                    _buildOriginalDenomRow('A2', '${widget.returnData.a2 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A2', '${widget.returnData.a2 ?? 0}', isTablet),
                     const SizedBox(height: 8),
-                    _buildOriginalDenomRow('A1', '${widget.returnData.a1 ?? 0}', isTablet),
+                    _buildOriginalDenomRow(
+                        'A1', '${widget.returnData.a1 ?? 0}', isTablet),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -914,13 +1001,17 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              _buildDenomEditField('A100', _a100Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A100', _a100Controller, isTablet),
                               const SizedBox(height: 8),
-                              _buildDenomEditField('A75', _a75Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A75', _a75Controller, isTablet),
                               const SizedBox(height: 8),
-                              _buildDenomEditField('A50', _a50Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A50', _a50Controller, isTablet),
                               const SizedBox(height: 8),
-                              _buildDenomEditField('A20', _a20Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A20', _a20Controller, isTablet),
                             ],
                           ),
                         ),
@@ -928,13 +1019,17 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              _buildDenomEditField('A10', _a10Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A10', _a10Controller, isTablet),
                               const SizedBox(height: 8),
-                              _buildDenomEditField('A5', _a5Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A5', _a5Controller, isTablet),
                               const SizedBox(height: 8),
-                              _buildDenomEditField('A2', _a2Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A2', _a2Controller, isTablet),
                               const SizedBox(height: 8),
-                              _buildDenomEditField('A1', _a1Controller, isTablet),
+                              _buildDenomEditField(
+                                  'A1', _a1Controller, isTablet),
                             ],
                           ),
                         ),
@@ -1007,7 +1102,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
           child: Align(
             alignment: Alignment.centerRight,
             child: GestureDetector(
-              onTap: _isSubmitting ? null : _showTLSupervisorDialog,
+              onTap: _isSubmitting ? null : _openApprovalSummary,
               child: Container(
                 padding: EdgeInsets.symmetric(
                   horizontal: isTablet ? 32 : 24,
@@ -1050,7 +1145,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ],
     );
   }
-  
+
   Widget _buildOriginalDenomRow(String denom, String value, bool isTablet) {
     return Row(
       children: [
@@ -1089,8 +1184,9 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ],
     );
   }
-  
-  Widget _buildDenomEditField(String denom, TextEditingController controller, bool isTablet) {
+
+  Widget _buildDenomEditField(
+      String denom, TextEditingController controller, bool isTablet) {
     return Row(
       children: [
         SizedBox(
@@ -1133,7 +1229,7 @@ class _EditReturnScreenState extends State<EditReturnScreen> with AutoLogoutMixi
       ],
     );
   }
-  
+
   Widget _buildFooter(bool isTablet) {
     return Container(
       height: isTablet ? 40 : 35,

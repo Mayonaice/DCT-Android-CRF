@@ -31,9 +31,9 @@ class ClosingAndroidResponse {
 
   factory ClosingAndroidResponse.fromJson(Map<String, dynamic> json) {
     return ClosingAndroidResponse(
-      success: json['success'] ?? false,
-      message: json['message'] ?? '',
-      insertedID: json['insertedID'],
+      success: json['success'] ?? json['Success'] ?? false,
+      message: json['message']?.toString() ?? json['Message']?.toString() ?? '',
+      insertedID: json['insertedID'] ?? json['InsertedID'],
     );
   }
 }
@@ -140,7 +140,7 @@ class ClosingPreviewItem {
     }
 
     return ClosingPreviewItem(
-      id: json['Id']?.toString() ?? '',
+      id: json['ConsoleIdTool']?.toString() ?? json['Id']?.toString() ?? '',
       codeBank: json['CodeBank']?.toString() ?? '',
       atmCode: json['AtmCode']?.toString() ?? '',
       jnsMesin: json['JnsMesin']?.toString() ?? '',
@@ -179,8 +179,8 @@ class ClosingPreviewItem {
       a75Penambahan: parseInt(json['A75Penambahan']),
       a100Penambahan: parseInt(json['A100Penambahan']),
       tQtyEdit: parseInt(json['TQtyEdit']),
-      tValueEdit: json['TValueEdit'] is double 
-          ? json['TValueEdit'] 
+      tValueEdit: json['TValueEdit'] is double
+          ? json['TValueEdit']
           : double.tryParse(json['TValueEdit']?.toString() ?? '0.0') ?? 0.0,
       timeStart: json['TimeStart']?.toString() ?? '',
       timeFinish: json['TimeFinish']?.toString() ?? '',

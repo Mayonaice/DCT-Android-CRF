@@ -24,6 +24,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
   DateTime fromDate = DateTime.now();
   DateTime toDate = DateTime.now();
   String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   String? typeReturn;
   final AuthService _authService = AuthService();
   final ReturnApiService _returnApiService = ReturnApiService();
@@ -41,8 +42,11 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
   // Selected return data
   ReturnData? _selectedReturnData;
 
-  // Scroll controller for horizontal alignment
-  final ScrollController _horizontalScrollController = ScrollController();
+  // Separate controllers keep header/body independently attached while a
+  // listener mirrors their horizontal offset.
+  final ScrollController _headerHorizontalScrollController = ScrollController();
+  final ScrollController _bodyHorizontalScrollController = ScrollController();
+  bool _syncingHorizontalScroll = false;
   Timer? _orientationLockTimer;
   bool _orientationEnforceScheduled = false;
 
@@ -52,6 +56,8 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
     WidgetsBinding.instance.addObserver(this);
     _enforceLandscapeOrientation();
     _startOrientationLockWatchdog();
+    _headerHorizontalScrollController.addListener(_syncHeaderToBody);
+    _bodyHorizontalScrollController.addListener(_syncBodyToHeader);
     _loadUserData();
     _loadReturnData();
   }
@@ -88,6 +94,32 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
       if (!mounted) return;
       _enforceLandscapeOrientation();
     });
+  }
+
+  void _syncHeaderToBody() {
+    if (_syncingHorizontalScroll || !_bodyHorizontalScrollController.hasClients)
+      return;
+    _syncingHorizontalScroll = true;
+    _bodyHorizontalScrollController.jumpTo(
+      _headerHorizontalScrollController.offset.clamp(
+        0.0,
+        _bodyHorizontalScrollController.position.maxScrollExtent,
+      ),
+    );
+    _syncingHorizontalScroll = false;
+  }
+
+  void _syncBodyToHeader() {
+    if (_syncingHorizontalScroll ||
+        !_headerHorizontalScrollController.hasClients) return;
+    _syncingHorizontalScroll = true;
+    _headerHorizontalScrollController.jumpTo(
+      _bodyHorizontalScrollController.offset.clamp(
+        0.0,
+        _headerHorizontalScrollController.position.maxScrollExtent,
+      ),
+    );
+    _syncingHorizontalScroll = false;
   }
 
   // Load user data from login
@@ -188,6 +220,22 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
                   returnDate.isAtSameMomentAs(toDate));
 
       return inRange;
+    }).where((data) {
+      final query = searchQuery.trim().toLowerCase();
+      if (query.isEmpty) return true;
+      final searchable = [
+        data.id,
+        data.codeBank,
+        data.atmCode,
+        data.jnsMesin,
+        data.name,
+        data.branchCode,
+        data.typeData ?? '',
+        data.typeDataReturn ?? '',
+        data.dateSTReturn ?? '',
+        data.tglPrepare ?? '',
+      ].join(' ').toLowerCase();
+      return searchable.contains(query);
     }).toList();
 
     setState(() {
@@ -213,7 +261,11 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _orientationLockTimer?.cancel();
-    _horizontalScrollController.dispose();
+    _headerHorizontalScrollController.removeListener(_syncHeaderToBody);
+    _bodyHorizontalScrollController.removeListener(_syncBodyToHeader);
+    _headerHorizontalScrollController.dispose();
+    _bodyHorizontalScrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -766,6 +818,50 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
                   ),
                 ),
               ),
+
+              SizedBox(width: isTablet ? 24 : 16),
+
+              // Search stays at the far right, matching Konsol Mode.
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Search',
+                    style: TextStyle(
+                      fontSize: isTablet ? 16 : 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(width: isTablet ? 12 : 8),
+                  const Text(':',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  SizedBox(width: isTablet ? 12 : 8),
+                  SizedBox(
+                    width: isTablet ? 250 : 200,
+                    height: isTablet ? 44 : 40,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() => searchQuery = value);
+                        _filterAndUpdateData();
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Cari data return...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: searchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () => _searchController.clear(),
+                              ),
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -846,13 +942,25 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
     // Calculate base column width
     final baseColumnWidth = availableWidth / columns.length;
 
+    final longestLocation = filteredReturnData.fold<int>(
+      'Lokasi'.length,
+      (longest, item) => ((item.name ?? 'N/A').length > longest)
+          ? (item.name ?? 'N/A').length
+          : longest,
+    );
+    final locationWidth =
+        (longestLocation * (isTablet ? 9.0 : 7.5) + (isTablet ? 24.0 : 16.0))
+            .clamp(baseColumnWidth * 1.2, isTablet ? 420.0 : 320.0)
+            .toDouble();
+
     // Adjust column widths proportionally
     Map<String, double> columnWidths = {};
     for (var column in columns) {
       if (column == 'Tanggal Return') {
         columnWidths[column] = baseColumnWidth * 1.3;
       } else if (column == 'WSID' || column == 'Lokasi') {
-        columnWidths[column] = baseColumnWidth * 1.2;
+        columnWidths[column] =
+            column == 'Lokasi' ? locationWidth : baseColumnWidth * 1.2;
       } else if (column == 'Total Lembar' || column == 'Total Value') {
         columnWidths[column] = baseColumnWidth * 1.1;
       } else {
@@ -879,7 +987,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                controller: _horizontalScrollController,
+                controller: _headerHorizontalScrollController,
                 child: Row(
                   children: columns.map((column) {
                     return Container(
@@ -934,7 +1042,7 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
                               )
                             : SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
-                                controller: _horizontalScrollController,
+                                controller: _bodyHorizontalScrollController,
                                 child: SingleChildScrollView(
                                   child: Column(
                                     children: filteredReturnData.map((data) {
@@ -1026,8 +1134,9 @@ class _KonsolDataReturnPageState extends State<KonsolDataReturnPage>
                                                     fontSize: isTablet ? 11 : 8,
                                                   ),
                                                   textAlign: TextAlign.center,
+                                                  softWrap: false,
                                                   overflow:
-                                                      TextOverflow.ellipsis,
+                                                      TextOverflow.visible,
                                                 ),
                                               ),
                                               // A100

@@ -10,8 +10,10 @@ class QRCodeGeneratorWidget extends StatefulWidget {
   final String action; // 'PREPARE' atau 'RETURN'
   final String idTool;
   final VoidCallback? onExpired;
-  final List<PrepareCatridgeQRData>? prepareCatridgeData; // Data catridge untuk PREPARE
-  final List<ReturnCatridgeQRData>? returnCatridgeData; // Data catridge untuk RETURN
+  final List<PrepareCatridgeQRData>?
+      prepareCatridgeData; // Data catridge untuk PREPARE
+  final List<ReturnCatridgeQRData>?
+      returnCatridgeData; // Data catridge untuk RETURN
   final PrepareDetailsQRData? prepareDetails; // Details untuk PREPARE
   final ReturnDetailsQRData? returnDetails; // Details untuk RETURN
   final bool? isManual;
@@ -19,6 +21,8 @@ class QRCodeGeneratorWidget extends StatefulWidget {
   final int? totalLembar;
   final int? jumlahKasetCatridge;
   final String? dateStart; // Captured timestamp dari kasir saat ID CRF valid
+  final String? source;
+  final Map<String, dynamic>? extraData;
 
   const QRCodeGeneratorWidget({
     Key? key,
@@ -34,6 +38,8 @@ class QRCodeGeneratorWidget extends StatefulWidget {
     this.totalLembar,
     this.jumlahKasetCatridge,
     this.dateStart,
+    this.source,
+    this.extraData,
   }) : super(key: key);
 
   @override
@@ -53,7 +59,7 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
     super.initState();
     _initializeQRCode();
   }
-  
+
   Future<void> _initializeQRCode() async {
     await _generateQRCode();
     _startTimer();
@@ -65,15 +71,16 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
       // Convert to JSON string
       final jsonString = json.encode(data);
       print('🗜️ [COMPRESSION] Original JSON size: ${jsonString.length} chars');
-      
+
       // Compress using gzip
       final bytes = utf8.encode(jsonString);
       final compressed = gzip.encode(bytes);
-      
+
       // Convert to base64 for QR code compatibility
       final compressedBase64 = base64.encode(compressed);
-      print('🗜️ [COMPRESSION] Compressed size: ${compressedBase64.length} chars (${((1 - compressedBase64.length / jsonString.length) * 100).toStringAsFixed(1)}% reduction)');
-      
+      print(
+          '🗜️ [COMPRESSION] Compressed size: ${compressedBase64.length} chars (${((1 - compressedBase64.length / jsonString.length) * 100).toStringAsFixed(1)}% reduction)');
+
       return compressedBase64;
     } catch (e) {
       print('❌ [COMPRESSION] Failed to compress data: $e');
@@ -87,11 +94,11 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
     try {
       // Try to decode as base64 first
       final compressedBytes = base64.decode(compressedData);
-      
+
       // Decompress using gzip
       final decompressed = gzip.decode(compressedBytes);
       final jsonString = utf8.decode(decompressed);
-      
+
       // Parse JSON
       return json.decode(jsonString) as Map<String, dynamic>;
     } catch (e) {
@@ -109,16 +116,23 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
   Future<void> _generateQRCode() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     _expiryTime = DateTime.now().add(const Duration(minutes: 5));
-    
+
     final userData = await _authService.getUserData();
     final cashierCode = userData != null
-        ? (userData['nik']?.toString() ?? userData['userId']?.toString() ?? userData['userID']?.toString() ?? '')
+        ? (userData['nik']?.toString() ??
+            userData['userId']?.toString() ??
+            userData['userID']?.toString() ??
+            '')
         : '';
     final tableCode = userData != null
-        ? (userData['noMeja']?.toString() ?? userData['idMeja']?.toString() ?? userData['tableCode']?.toString() ?? '')
+        ? (userData['noMeja']?.toString() ??
+            userData['idMeja']?.toString() ??
+            userData['tableCode']?.toString() ??
+            '')
         : '';
     final isManualStr = (widget.isManual == true) ? 'Y' : 'N';
-    final source = widget.action == 'RETURN' ? 'Return' : 'Prepare';
+    final source =
+        widget.source ?? (widget.action == 'RETURN' ? 'Return' : 'Prepare');
     Map<String, dynamic> qrDataMap = {
       'simplified': true,
       'source': source,
@@ -140,6 +154,9 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
     }
     if (widget.dateStart != null && widget.dateStart!.isNotEmpty) {
       qrDataMap['dateStart'] = widget.dateStart;
+    }
+    if (widget.extraData != null && widget.extraData!.isNotEmpty) {
+      qrDataMap.addAll(widget.extraData!);
     }
     if (widget.action == 'PREPARE' && widget.prepareDetails != null) {
       qrDataMap['wsid'] = widget.prepareDetails!.wsid;
@@ -212,7 +229,8 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'QR Code untuk Approve ${widget.action}',
+                    'Scan QR Code ini pada device TL',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -222,9 +240,9 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // QR Code or Expired Message
             if (_isExpired) ...[
               Container(
@@ -279,28 +297,32 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
                   size: 320.0, // Increased from 280.0 for better readability
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
-                  errorCorrectionLevel: QrErrorCorrectLevel.L, // Changed to Low for maximum data capacity
+                  errorCorrectionLevel: QrErrorCorrectLevel
+                      .L, // Changed to Low for maximum data capacity
                   embeddedImageStyle: const QrEmbeddedImageStyle(
                     size: Size(0, 0), // No embedded image to avoid interference
                   ),
                   dataModuleStyle: const QrDataModuleStyle(
-                    dataModuleShape: QrDataModuleShape.square, // Square modules for better scanning
+                    dataModuleShape: QrDataModuleShape
+                        .square, // Square modules for better scanning
                     color: Colors.black,
                   ),
                   eyeStyle: const QrEyeStyle(
-                    eyeShape: QrEyeShape.square, // Square eyes for better detection
+                    eyeShape:
+                        QrEyeShape.square, // Square eyes for better detection
                     color: Colors.black,
                   ),
                 ),
               ),
             ],
-            
+
             const SizedBox(height: 16),
-            
+
             // Timer and Info
             if (!_isExpired) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -326,9 +348,9 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Info text
               Text(
                 'ID Tool: ${widget.idTool}',
@@ -338,19 +360,8 @@ class _QRCodeGeneratorWidgetState extends State<QRCodeGeneratorWidget> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              
-              const SizedBox(height: 4),
-              
-              const Text(
-                'TL dapat scan QR Code ini untuk approve tanpa input NIK & Password',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey,
-                ),
-              ),
             ],
-            
+
             // Regenerate button
             if (_isExpired) ...[
               const SizedBox(height: 16),

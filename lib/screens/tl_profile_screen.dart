@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../widgets/custom_modals.dart';
-import '../screens/login_page.dart';
+import '../screens/login_option_page.dart';
 import '../utils/orientation_lock.dart';
 
 class TLProfileScreen extends StatefulWidget {
@@ -20,7 +20,8 @@ class _TLProfileScreenState extends State<TLProfileScreen> {
   String _userID = '';
   String _roleID = 'CRF_TL';
   String _branchName = '';
-  final String _employeeAddress = 'Jl. Kebangsaan Timur 12 No.98, Sawah Panjang,\nJakarta Pusat, DKI Jakarta';
+  final String _employeeAddress =
+      'Jl. Kebangsaan Timur 12 No.98, Sawah Panjang,\nJakarta Pusat, DKI Jakarta';
 
   @override
   void initState() {
@@ -35,7 +36,8 @@ class _TLProfileScreenState extends State<TLProfileScreen> {
       if (userData != null) {
         setState(() {
           _userName = userData['userName'] ?? userData['userID'] ?? '';
-          _userID = userData['userID'] ?? userData['userId'] ?? userData['nik'] ?? '';
+          _userID =
+              userData['userID'] ?? userData['userId'] ?? userData['nik'] ?? '';
           _roleID = userData['roleID'] ?? userData['role'] ?? 'CRF_TL';
           _branchName = userData['branchName'] ?? userData['branch'] ?? '';
         });
@@ -63,7 +65,7 @@ class _TLProfileScreenState extends State<TLProfileScreen> {
       if (mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
+          MaterialPageRoute(builder: (context) => const LoginOptionPage()),
           (Route<dynamic> route) => false,
         );
       }
@@ -109,163 +111,176 @@ class _TLProfileScreenState extends State<TLProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-                    // Foto profil di tengah atas (dari API)
-                    Center(
-                      child: Container(
-                        width: 160,
-                        height: 160,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.grey.shade400, width: 2),
-                        ),
-                        child: ClipOval(
-                          child: FutureBuilder<ImageProvider>(
-                            future: _profileService.getProfilePhoto(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                                return Image(image: snapshot.data!, fit: BoxFit.cover);
-                              }
-                              return Container(
-                                color: Colors.grey.shade200,
-                                child: const Icon(Icons.person, size: 72, color: Colors.grey),
-                              );
-                            },
+            // Foto profil di tengah atas (dari API)
+            Center(
+              child: Container(
+                width: 160,
+                height: 160,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.grey.shade400, width: 2),
+                ),
+                child: ClipOval(
+                  child: FutureBuilder<ImageProvider>(
+                    future: _profileService.getProfilePhoto(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.done &&
+                          snapshot.hasData) {
+                        return Image(image: snapshot.data!, fit: BoxFit.cover);
+                      }
+                      return Container(
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.person,
+                            size: 72, color: Colors.grey),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            // userName
+            Text(
+              _userName,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(height: 2, width: 180, color: Colors.black87),
+
+            const SizedBox(height: 16),
+
+            // userId
+            Text(
+              _userID,
+              style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Role ID label
+            const Text(
+              'Role ID',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(height: 2, width: 220, color: Colors.black54),
+
+            const SizedBox(height: 12),
+
+            // role value
+            Text(
+              _roleID,
+              style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Branch label
+            const Text(
+              'Branch',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(height: 2, width: 260, color: Colors.black54),
+
+            const SizedBox(height: 12),
+
+            // branchname value
+            Text(
+              _branchName,
+              style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.black87,
+                  fontWeight: FontWeight.w600),
+            ),
+
+            const SizedBox(height: 48),
+
+            // Employee Address label
+            const Text(
+              'Employee Address :',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(height: 2, width: 300, color: Colors.black54),
+
+            const SizedBox(height: 12),
+
+            // address value
+            Text(
+              _employeeAddress,
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+
+            const SizedBox(height: 40),
+
+            // Tombol Logout custom (pill, border merah, shadow)
+            Center(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: const Color(0xFFE53935), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(28),
+                  onTap: _showLogoutDialog,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.power_settings_new,
+                            color: Color(0xFFE53935)),
+                        SizedBox(width: 10),
+                        Text(
+                          'Logout',
+                          style: TextStyle(
+                            color: Color(0xFFE53935),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
                           ),
                         ),
-                      ),
+                      ],
                     ),
+                  ),
+                ),
+              ),
+            ),
 
-                    const SizedBox(height: 28),
-
-                    // userName
-                    Text(
-                      _userName,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(height: 2, width: 180, color: Colors.black87),
-
-                    const SizedBox(height: 16),
-
-                    // userId
-                    Text(
-                      _userID,
-                      style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Role ID label
-                    const Text(
-                      'Role ID',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(height: 2, width: 220, color: Colors.black54),
-
-                    const SizedBox(height: 12),
-
-                    // role value
-                    Text(
-                      _roleID,
-                      style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Branch label
-                    const Text(
-                      'Branch',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(height: 2, width: 260, color: Colors.black54),
-
-                    const SizedBox(height: 12),
-
-                    // branchname value
-                    Text(
-                      _branchName,
-                      style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w600),
-                    ),
-
-                    const SizedBox(height: 48),
-
-                    // Employee Address label
-                    const Text(
-                      'Employee Address :',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(height: 2, width: 300, color: Colors.black54),
-
-                    const SizedBox(height: 12),
-
-                    // address value
-                    Text(
-                      _employeeAddress,
-                      style: const TextStyle(fontSize: 14, color: Colors.black87),
-                    ),
-
-                    const SizedBox(height: 40),
-
-                    // Tombol Logout custom (pill, border merah, shadow)
-                    Center(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(28),
-                          border: Border.all(color: const Color(0xFFE53935), width: 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(28),
-                          onTap: _showLogoutDialog,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: const [
-                                Icon(Icons.power_settings_new, color: Color(0xFFE53935)),
-                                SizedBox(width: 10),
-                                Text(
-                                  'Logout',
-                                  style: TextStyle(
-                                    color: Color(0xFFE53935),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
+            const SizedBox(height: 24),
           ],
         ),
       ),

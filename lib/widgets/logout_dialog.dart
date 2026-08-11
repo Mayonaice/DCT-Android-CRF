@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
-import '../screens/login_page.dart';
+import '../screens/login_option_page.dart';
 import '../utils/orientation_lock.dart';
 
 class LogoutDialog {
   static void showLogoutConfirmation(BuildContext context) {
     if (!context.mounted) return;
-    
+
     HapticFeedback.lightImpact();
-    
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -124,10 +124,10 @@ class LogoutDialog {
       ),
     );
   }
-  
+
   static Future<void> _performLogout(BuildContext context) async {
     if (!context.mounted) return;
-    
+
     try {
       // Show loading dialog
       showDialog(
@@ -151,36 +151,35 @@ class LogoutDialog {
           ),
         ),
       );
-      
+
       // Perform logout
       final authService = AuthService();
       await authService.logout();
-      
+
       // Close loading dialog
       if (context.mounted) {
         Navigator.pop(context);
       }
-      
+
       await OrientationLock.unlock();
-      
+
       // Navigate to login page
       if (context.mounted) {
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
+          MaterialPageRoute(builder: (context) => const LoginOptionPage()),
           (route) => false,
         );
       }
-      
+
       // Success haptic feedback
       HapticFeedback.mediumImpact();
-      
     } catch (e) {
       // Close loading dialog if still open
       if (context.mounted) {
         Navigator.pop(context);
       }
-      
+
       // Show error dialog
       if (context.mounted) {
         showDialog(
@@ -232,4 +231,4 @@ class LogoutDialog {
       }
     }
   }
-} 
+}

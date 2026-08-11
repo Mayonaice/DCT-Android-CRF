@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../screens/profile_menu_screen.dart';
 import '../widgets/custom_modals.dart';
+import '../widgets/reset_refresh_icon.dart';
 
 class PrepareModeHeader extends StatefulWidget {
   final String branchName;
@@ -92,18 +93,6 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
           });
         }
       }
-    }
-  }
-
-  void _handleRefreshWithConfirmation() async {
-    final confirmed = await CustomModals.showConfirmationModal(
-      context: context,
-      message: "Apakah kamu yakin ingin refresh data?",
-      confirmText: "Ya",
-      cancelText: "Tidak",
-    );
-    if (confirmed) {
-      widget.onRefresh();
     }
   }
 
@@ -231,19 +220,11 @@ class _PrepareModeHeaderState extends State<PrepareModeHeader> {
 
           // Refresh button
           GestureDetector(
-            onTap: _handleRefreshWithConfirmation,
-            child: Container(
-              width: isTablet ? 44 : 40,
-              height: isTablet ? 44 : 40,
-              decoration: const BoxDecoration(
-                color: Color(0xFF10B981),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.refresh,
-                color: Colors.red,
-                size: 22,
-              ),
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onRefresh,
+            child: ResetRefreshIcon(
+              size: isTablet ? 48 : 44,
+              textSize: isTablet ? 8 : 7,
             ),
           ),
 

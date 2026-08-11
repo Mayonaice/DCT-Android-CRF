@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../models/return_model.dart';
 import '../widgets/custom_modals.dart';
+import '../widgets/reset_refresh_icon.dart';
 import '../mixins/auto_logout_mixin.dart';
 import 'dart:async'; // Import for Timer
 import '../widgets/barcode_scanner_widget.dart'; // Fix barcode scanner import
@@ -148,6 +149,10 @@ class _ReturnModePageState extends State<ReturnModePage>
       _jamMulaiController.clear();
       _tanggalReplenishController.clear();
     });
+  }
+
+  void _resetReturnPageToInitialState() {
+    _resetAfterInvalidFetch(clearIdTool: true);
   }
 
   // Helper method to get all bag codes from catridge data
@@ -2135,29 +2140,11 @@ class _ReturnModePageState extends State<ReturnModePage>
 
                 // Refresh button
                 GestureDetector(
-                  onTap: () {
-                    // Refresh data when clicked
-                    setState(() {
-                      _returnHeaderResponse = null;
-                      _idToolController.clear();
-                      _jamMulaiController.clear();
-                      _errorMessage = '';
-                      _capturedDateStartReturn = null;
-                      _formsLocked = true;
-                    });
-                  },
-                  child: Container(
-                    width: isTablet ? 44 : 40,
-                    height: isTablet ? 44 : 40,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.refresh,
-                      color: Colors.red,
-                      size: 22,
-                    ),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _resetReturnPageToInitialState,
+                  child: ResetRefreshIcon(
+                    size: isTablet ? 48 : 44,
+                    textSize: isTablet ? 8 : 7,
                   ),
                 ),
 
@@ -2618,6 +2605,8 @@ class _CartridgeSectionState extends State<CartridgeSection>
   bool _sealCodeManualMode = false; // For Seal Code field
   bool _catridgeFisikManualMode = false; // For Catridge Fisik field
   bool _isApplyingScannerValue = false;
+  bool _catridgeFisikExternalScannerMode = false;
+  StringBuffer _catridgeFisikExternalScannerBuffer = StringBuffer();
 
   final TextEditingController noCatridgeController = TextEditingController();
   final TextEditingController noSealController = TextEditingController();
@@ -4189,6 +4178,67 @@ class _CartridgeSectionState extends State<CartridgeSection>
     return isValid;
   }
 
+  void _toggleCatridgeFisikExternalScannerMode(FocusNode? focusNode) {
+    setState(() {
+      _catridgeFisikExternalScannerMode = !_catridgeFisikExternalScannerMode;
+      _catridgeFisikExternalScannerBuffer = StringBuffer();
+    });
+
+    if (_catridgeFisikExternalScannerMode) {
+      focusNode?.requestFocus();
+    }
+  }
+
+  KeyEventResult _handleCatridgeFisikExternalScannerKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.handled;
+
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.tab) {
+      _commitCatridgeFisikExternalScannerValue();
+      return KeyEventResult.handled;
+    }
+
+    if (key == LogicalKeyboardKey.backspace) {
+      if (_catridgeFisikExternalScannerBuffer.isNotEmpty) {
+        final text = _catridgeFisikExternalScannerBuffer.toString();
+        _catridgeFisikExternalScannerBuffer =
+            StringBuffer(text.substring(0, text.length - 1));
+      }
+      return KeyEventResult.handled;
+    }
+
+    final character = event.character;
+    if (character != null && character.isNotEmpty) {
+      _catridgeFisikExternalScannerBuffer.write(character);
+    }
+
+    return KeyEventResult.handled;
+  }
+
+  void _commitCatridgeFisikExternalScannerValue() {
+    final value = _catridgeFisikExternalScannerBuffer.toString().trim();
+    _catridgeFisikExternalScannerBuffer = StringBuffer();
+    if (value.isEmpty || !mounted) return;
+
+    setState(() {
+      _isApplyingScannerValue = true;
+      catridgeFisikController.text = value;
+      catridgeFisikController.selection =
+          TextSelection.collapsed(offset: value.length);
+      scannedFields['catridgeFisik'] = true;
+      _catridgeFisikManualMode = false;
+      _catridgeFisikAlasanController.clear();
+      _catridgeFisikRemarkController.clear();
+      _catridgeFisikRemarkFilled = false;
+      _isApplyingScannerValue = false;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _validateCatridgeFisikMatch(showResultModal: false);
+    });
+  }
+
   // NEW: Streamlined barcode scanner for validation using direct callback approach
   Future<void> _openBarcodeScanner(
       String label, TextEditingController controller, String fieldKey) async {
@@ -4269,7 +4319,7 @@ class _CartridgeSectionState extends State<CartridgeSection>
         if (fieldKey == 'catridgeFisik') {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
-            _validateCatridgeFisikMatch(showResultModal: true);
+            _validateCatridgeFisikMatch(showResultModal: false);
           });
         }
 
@@ -4845,6 +4895,9 @@ class _CartridgeSectionState extends State<CartridgeSection>
     final isSmallScreen = size.width < 600;
     final bool forceNonRedUi = fieldKey == 'catridgeFisik';
     final bool uiIsValid = forceNonRedUi ? true : isValid;
+    final bool externalScannerActive =
+        fieldKey == 'catridgeFisik' && _catridgeFisikExternalScannerMode;
+    final bool effectiveReadOnly = readOnly || externalScannerActive;
 
     final List<TextInputFormatter>? inputFormatters =
         (fieldKey == 'catridgeFisik')
@@ -4899,43 +4952,55 @@ class _CartridgeSectionState extends State<CartridgeSection>
                   child: Row(
                     children: [
                       Expanded(
-                        child: TextField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          readOnly: readOnly,
-                          obscureText: isPassword,
-                          inputFormatters: inputFormatters,
-                          onChanged: (value) {
-                            if (fieldKey == 'catridgeFisik') {
-                              if (_isApplyingScannerValue) {
+                        child: Focus(
+                          onKeyEvent: (node, event) {
+                            if (!externalScannerActive) {
+                              return KeyEventResult.ignored;
+                            }
+                            return _handleCatridgeFisikExternalScannerKey(
+                                event);
+                          },
+                          child: TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            readOnly: effectiveReadOnly,
+                            obscureText: isPassword,
+                            inputFormatters: inputFormatters,
+                            onChanged: (value) {
+                              if (externalScannerActive) {
                                 return;
                               }
-                              if (value.isNotEmpty) {
-                                setState(() {
-                                  scannedFields['catridgeFisik'] = false;
-                                });
-                                _activateCatridgeFisikManualMode();
+                              if (fieldKey == 'catridgeFisik') {
+                                if (_isApplyingScannerValue) {
+                                  return;
+                                }
+                                if (value.isNotEmpty) {
+                                  setState(() {
+                                    scannedFields['catridgeFisik'] = false;
+                                  });
+                                  _activateCatridgeFisikManualMode();
+                                }
+                              } else if (fieldKey == 'bagCode') {
+                                _validateBagCode();
+                              } else if (fieldKey == 'sealCode') {
+                                _validateSealCodeReturn();
                               }
-                            } else if (fieldKey == 'bagCode') {
-                              _validateBagCode();
-                            } else if (fieldKey == 'sealCode') {
-                              _validateSealCodeReturn();
-                            }
-                            // Note: catridgeFisik validation triggered on focus loss
-                            // Note: noCatridge dan noSeal adalah pre-filled
-                          },
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 12 : 14,
-                            color: uiIsValid ? Colors.black : Colors.red,
-                          ),
-                          decoration: InputDecoration(
-                            contentPadding: EdgeInsets.only(
-                              left: isSmallScreen ? 4 : 6,
-                              right: isSmallScreen ? 4 : 6,
-                              bottom: isSmallScreen ? 6 : 8,
+                              // Note: catridgeFisik validation triggered on focus loss
+                              // Note: noCatridge dan noSeal adalah pre-filled
+                            },
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 12 : 14,
+                              color: uiIsValid ? Colors.black : Colors.red,
                             ),
-                            border: InputBorder.none,
-                            isDense: true,
+                            decoration: InputDecoration(
+                              contentPadding: EdgeInsets.only(
+                                left: isSmallScreen ? 4 : 6,
+                                right: isSmallScreen ? 4 : 6,
+                                bottom: isSmallScreen ? 6 : 8,
+                              ),
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
                           ),
                         ),
                       ),
@@ -4976,6 +5041,37 @@ class _CartridgeSectionState extends State<CartridgeSection>
                         ),
 
                       // Scan button
+                      if (onScan != null)
+                        Container(
+                          width: isSmallScreen ? 30 : 40,
+                          height: isSmallScreen ? 30 : 40,
+                          margin: EdgeInsets.only(
+                            left: isSmallScreen ? 2 : 3,
+                            bottom: isSmallScreen ? 3 : 4,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.bluetooth,
+                              color: readOnly
+                                  ? Colors.grey.shade400
+                                  : (externalScannerActive
+                                      ? Colors.green
+                                      : Colors.blue),
+                              size: isSmallScreen ? 18 : 22,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: readOnly
+                                ? null
+                                : () => _toggleCatridgeFisikExternalScannerMode(
+                                      focusNode,
+                                    ),
+                            tooltip: externalScannerActive
+                                ? 'Scanner external aktif'
+                                : 'Scanner external mode',
+                          ),
+                        ),
+
                       if (onScan != null)
                         Container(
                           width: isSmallScreen ? 30 : 40,

@@ -10,6 +10,7 @@ import '../models/closing_android_request.dart';
 import '../models/bank_model.dart';
 import '../widgets/custom_modals.dart';
 import '../mixins/auto_logout_mixin.dart';
+import 'konsol_closing_approval_summary_page.dart';
 import 'profile_menu_screen.dart';
 
 class KonsolDataClosingFormScreen extends StatefulWidget {
@@ -30,6 +31,62 @@ class _KonsolDataClosingFormScreenState
   String? selectedBank;
   String? selectedMesinType;
   List<Bank> bankList = [];
+  Future<String?> _pickBank() async {
+    final controller = TextEditingController();
+    var filtered = List<Bank>.from(bankList);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Pilih Bank'),
+          content: SizedBox(
+            width: 420,
+            height: 420,
+            child: Column(
+              children: [
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Cari kode atau nama bank...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (query) {
+                    final q = query.trim().toLowerCase();
+                    setDialogState(() {
+                      filtered = bankList
+                          .where((bank) =>
+                              bank.code.toLowerCase().contains(q) ||
+                              bank.name.toLowerCase().contains(q))
+                          .toList();
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (_, index) {
+                      final bank = filtered[index];
+                      return ListTile(
+                        title: Text(bank.name),
+                        subtitle: Text(bank.code),
+                        onTap: () => Navigator.pop(context, bank.code),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    controller.dispose();
+    return result;
+  }
+
   List<String> mesinTypes = ['ATM', 'CRM/CDM'];
 
   // Data for the form
@@ -98,6 +155,13 @@ class _KonsolDataClosingFormScreenState
     WidgetsBinding.instance.removeObserver(this);
     _orientationLockTimer?.cancel();
     super.dispose();
+  }
+
+  String _selectedBankName() {
+    for (final bank in bankList) {
+      if (bank.code == selectedBank) return bank.name;
+    }
+    return selectedBank ?? '';
   }
 
   Future<void> _loadBanks() async {
@@ -230,67 +294,29 @@ class _KonsolDataClosingFormScreenState
       return;
     }
 
-    // Show confirmation modal first
-    final confirmed = await CustomModals.showConfirmationModal(
-      context: context,
-      message: 'Apakah anda sudah Yakin untuk Closing Konsolidasi?',
-    );
-
-    if (!confirmed) {
-      return; // User canceled the operation
-    }
-
-    setState(() {
-      isLoading = true;
-      errorMessage = '';
-    });
-
-    try {
-      // Use the same parameters from the filter
-      final dateStr = DateFormat('dd-MM-yyyy').format(selectedDate);
-
-      // Call the API with the selected filter values
-      final response = await _apiService.insertClosingData(
-          selectedBank!, selectedMesinType!, dateStr);
-
-      setState(() {
-        isLoading = false;
-      });
-
-      if (response.success) {
-        // Show success modal
-        await CustomModals.showSuccessModal(
-          context: context,
-          message: 'Closing Konsolidasi sudah berhasil disimpan!',
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        );
-
-        if (!mounted) return;
-        Navigator.of(context).pop(true);
-      } else {
-        setState(() {
-          errorMessage = response.message;
-        });
-
-        // Show error modal
-        await CustomModals.showFailedModal(
-          context: context,
-          message: 'Gagal: ${response.message}',
-        );
-      }
-    } catch (e) {
-      setState(() {
-        errorMessage = 'Failed to submit closing data: $e';
-        isLoading = false;
-      });
-
-      // Show error modal
+    if (closingPreviewItems.isEmpty) {
       await CustomModals.showFailedModal(
         context: context,
-        message: 'Gagal menyimpan data: $e',
+        message: 'Tidak ada data closing untuk diajukan approval',
       );
+      return;
+    }
+
+    final dateStr = DateFormat('dd-MM-yyyy').format(selectedDate);
+    final approved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => KonsolClosingApprovalSummaryPage(
+          codeBank: selectedBank!,
+          bankName: _selectedBankName(),
+          jnsMesin: selectedMesinType!,
+          dateReplenish: dateStr,
+          previewItems: List<ClosingPreviewItem>.from(closingPreviewItems),
+        ),
+      ),
+    );
+
+    if (approved == true && mounted) {
+      Navigator.of(context).pop(true);
     }
   }
 
@@ -752,19 +778,10 @@ class _KonsolDataClosingFormScreenState
                     bottom: BorderSide(color: Colors.grey.shade400),
                   ),
                 ),
-                child: DropdownButton<String>(
-                  value: selectedBank,
-                  hint: const Text('Select Bank'),
-                  underline: const SizedBox(),
-                  isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down),
-                  items: bankList.map((bank) {
-                    return DropdownMenuItem<String>(
-                      value: bank.code,
-                      child: Text(bank.name),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
+                child: InkWell(
+                  onTap: () async {
+                    final value = await _pickBank();
+                    if (value == null) return;
                     setState(() {
                       selectedBank = value;
                       hasAppliedFilter = false;
@@ -780,6 +797,19 @@ class _KonsolDataClosingFormScreenState
                       errorMessage = '';
                     });
                   },
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          selectedBank == null
+                              ? 'Select Bank'
+                              : _selectedBankName(),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Icon(Icons.arrow_drop_down),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1211,16 +1241,16 @@ class _KonsolDataClosingFormScreenState
       ];
     }
 
-    int a1 = 0;
-    int a2 = 0;
-    int a5 = 0;
-    int a10 = 0;
-    int a20 = 0;
-    int a50 = 0;
-    int a75 = 0;
-    int a100 = 0;
-
     if (label == 'Pengurangan Untuk Prepare') {
+      int a1 = 0;
+      int a2 = 0;
+      int a5 = 0;
+      int a10 = 0;
+      int a20 = 0;
+      int a50 = 0;
+      int a75 = 0;
+      int a100 = 0;
+
       for (final item in closingPreviewItems) {
         a1 += item.a1Pengurangan;
         a2 += item.a2Pengurangan;
@@ -1235,6 +1265,15 @@ class _KonsolDataClosingFormScreenState
     }
 
     if (label == 'Penambahan Untuk Prepare') {
+      int a1 = 0;
+      int a2 = 0;
+      int a5 = 0;
+      int a10 = 0;
+      int a20 = 0;
+      int a50 = 0;
+      int a75 = 0;
+      int a100 = 0;
+
       for (final item in closingPreviewItems) {
         a1 += item.a1Penambahan;
         a2 += item.a2Penambahan;
@@ -1249,17 +1288,21 @@ class _KonsolDataClosingFormScreenState
     }
 
     if (label == 'Sisa Uang Proses (Closing Konsol)') {
-      for (final item in closingPreviewItems) {
-        a1 += (item.a1Default - item.a1Edit);
-        a2 += (item.a2Default - item.a2Edit);
-        a5 += (item.a5Default - item.a5Edit);
-        a10 += (item.a10Default - item.a10Edit);
-        a20 += (item.a20Default - item.a20Edit);
-        a50 += (item.a50Default - item.a50Edit);
-        a75 += (item.a75Default - item.a75Edit);
-        a100 += (item.a100Default - item.a100Edit);
-      }
-      return [a100, a75, a50, a20, a10, a5, a2, a1];
+      final penguranganTotals =
+          _getTotalsForRowLabel('Pengurangan Untuk Prepare');
+      final penambahanTotals =
+          _getTotalsForRowLabel('Penambahan Untuk Prepare');
+
+      return [
+        totalA100 - penguranganTotals[0] + penambahanTotals[0],
+        totalA75 - penguranganTotals[1] + penambahanTotals[1],
+        totalA50 - penguranganTotals[2] + penambahanTotals[2],
+        totalA20 - penguranganTotals[3] + penambahanTotals[3],
+        totalA10 - penguranganTotals[4] + penambahanTotals[4],
+        totalA5 - penguranganTotals[5] + penambahanTotals[5],
+        totalA2 - penguranganTotals[6] + penambahanTotals[6],
+        totalA1 - penguranganTotals[7] + penambahanTotals[7],
+      ];
     }
 
     return [0, 0, 0, 0, 0, 0, 0, 0];

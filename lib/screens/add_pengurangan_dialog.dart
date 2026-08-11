@@ -18,7 +18,7 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
   final _formKey = GlobalKey<FormState>();
   final KonsolApiService _apiService = KonsolApiService();
   final AuthService _authService = AuthService();
-  
+
   // Controllers
   final TextEditingController _bankController = TextEditingController();
   final TextEditingController _jenisMesinController = TextEditingController();
@@ -33,30 +33,31 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
   final TextEditingController _a5Controller = TextEditingController();
   final TextEditingController _a2Controller = TextEditingController();
   final TextEditingController _a1Controller = TextEditingController();
-  
+
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   String _errorMessage = '';
   String _userNik = '';
   String _branchCode = '';
-  
+
   // Bank data
   List<Bank> _bankList = [];
-  
+
   // Jenis Mesin options
   final List<String> _jenisMesinOptions = ['ATM', 'CRM', 'CDM'];
-  
+
   // Jenis Data options
   final List<String> _jenisDataOptions = ['PENGURANGAN', 'PENAMBAHAN'];
 
   @override
   void initState() {
     super.initState();
-    _tglPrepareController.text = DateFormat('dd MMM yyyy').format(_selectedDate);
+    _tglPrepareController.text =
+        DateFormat('dd MMM yyyy').format(_selectedDate);
     _loadUserData();
     _loadBankData();
   }
-  
+
   // Load bank data from API
   Future<void> _loadBankData() async {
     try {
@@ -67,6 +68,64 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
       debugPrint('🔍 Loaded ${banks.length} banks');
     } catch (e) {
       debugPrint('Error loading bank data: $e');
+    }
+  }
+
+  Future<void> _pickBank() async {
+    final searchController = TextEditingController();
+    var filteredBanks = List<Bank>.from(_bankList);
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Pilih Bank'),
+          content: SizedBox(
+            width: 420,
+            height: 420,
+            child: Column(
+              children: [
+                TextField(
+                  controller: searchController,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Cari kode atau nama bank...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (query) {
+                    final q = query.trim().toLowerCase();
+                    setDialogState(() {
+                      filteredBanks = _bankList
+                          .where((bank) =>
+                              bank.code.toLowerCase().contains(q) ||
+                              bank.name.toLowerCase().contains(q))
+                          .toList();
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredBanks.length,
+                    itemBuilder: (_, index) {
+                      final bank = filteredBanks[index];
+                      return ListTile(
+                        title: Text(bank.name),
+                        subtitle: Text(bank.code),
+                        onTap: () => Navigator.pop(dialogContext, bank.code),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    searchController.dispose();
+    if (selected != null && mounted) {
+      setState(() => _bankController.text = selected);
     }
   }
 
@@ -94,25 +153,36 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
       final userData = await _authService.getUserData();
       if (userData != null) {
         // Try multiple possible keys for NIK
-        final possibleNikKeys = ['nik', 'NIK', 'userID', 'UserID', 'userId', 'UserNIK', 'userNIK'];
+        final possibleNikKeys = [
+          'nik',
+          'NIK',
+          'userID',
+          'UserID',
+          'userId',
+          'UserNIK',
+          'userNIK'
+        ];
         String nikValue = '';
-        
+
         for (var key in possibleNikKeys) {
-          if (userData.containsKey(key) && userData[key] != null && userData[key].toString().isNotEmpty) {
+          if (userData.containsKey(key) &&
+              userData[key] != null &&
+              userData[key].toString().isNotEmpty) {
             nikValue = userData[key].toString();
             break;
           }
         }
-        
+
         setState(() {
           _userNik = nikValue;
           _branchCode = userData['groupId'] ?? userData['branchCode'] ?? '';
         });
-        
+
         debugPrint('🔍 User NIK: $_userNik, Branch Code: $_branchCode');
-        
+
         if (_userNik.isEmpty) {
-          debugPrint('⚠️ WARNING: User NIK is empty! Available keys: ${userData.keys.join(', ')}');
+          debugPrint(
+              '⚠️ WARNING: User NIK is empty! Available keys: ${userData.keys.join(', ')}');
           debugPrint('⚠️ User data: $userData');
         }
       }
@@ -132,7 +202,8 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
-        _tglPrepareController.text = DateFormat('dd MMM yyyy').format(_selectedDate);
+        _tglPrepareController.text =
+            DateFormat('dd MMM yyyy').format(_selectedDate);
       });
     }
   }
@@ -165,14 +236,14 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
       );
       return;
     }
-    
+
     // Show confirmation modal first
     final confirmed = await CustomModals.showConfirmationModal(
       context: context,
       message: 'Apakah anda yakin ingin menyimpan data ini?',
       confirmText: 'Simpan',
     );
-    
+
     if (!confirmed) {
       return; // User canceled the operation
     }
@@ -192,13 +263,14 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
       } else {
         jenisValue = _jenisDataController.text;
       }
-      
-      debugPrint('🔍 Converting jenis from "${_jenisDataController.text}" to "$jenisValue"');
-      
+
+      debugPrint(
+          '🔍 Converting jenis from "${_jenisDataController.text}" to "$jenisValue"');
+
       if (_userNik.isEmpty) {
         debugPrint('⚠️ WARNING: userInput is empty! This may cause issues.');
       }
-      
+
       final request = PenguranganInsertRequest(
         codeBank: _bankController.text,
         jnsMesin: _jenisMesinController.text,
@@ -226,7 +298,7 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
 
       if (response.success) {
         if (!mounted) return;
-        
+
         await CustomModals.showSuccessModal(
           context: context,
           message: 'Data berhasil disimpan!',
@@ -241,7 +313,7 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
         setState(() {
           _errorMessage = response.message;
         });
-        
+
         await CustomModals.showFailedModal(
           context: context,
           message: 'Gagal: ${response.message}',
@@ -252,7 +324,7 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
         _errorMessage = e.toString();
         _isLoading = false;
       });
-      
+
       await CustomModals.showFailedModal(
         context: context,
         message: 'Gagal menyimpan data: ${e.toString()}',
@@ -279,197 +351,198 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-            // Header with close button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Form Pengurangan/Penambahan Data',
-                  style: TextStyle(
-                    fontSize: isTablet ? 24 : 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
+                // Header with close button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Form Pengurangan/Penambahan Data',
+                      style: TextStyle(
+                        fontSize: isTablet ? 24 : 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.grey,
+                      ),
+                      tooltip: 'Tutup',
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
-                    Icons.close,
-                    color: Colors.grey,
-                  ),
-                  tooltip: 'Tutup',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            
-            // Form
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      // Main content with two columns
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 24),
+
+                // Form
+                Expanded(
+                  child: Form(
+                    key: _formKey,
+                    child: SingleChildScrollView(
+                      child: Column(
                         children: [
-                          // Left column - Main fields
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _bankList.isEmpty
-                                ? _buildDropdownField(
-                                    label: 'Bank',
-                                    controller: _bankController,
-                                    options: ['Loading...'],
-                                    isTablet: isTablet,
-                                  )
-                                : _buildBankDropdownField(
-                                    label: 'Bank',
-                                    controller: _bankController,
-                                    banks: _bankList,
-                                    isTablet: isTablet,
-                                  ),
-                                const SizedBox(height: 16),
-                                _buildDropdownField(
-                                  label: 'Jenis Mesin',
-                                  controller: _jenisMesinController,
-                                  options: _jenisMesinOptions,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildDropdownField(
-                                  label: 'Jenis Data',
-                                  controller: _jenisDataController,
-                                  options: _jenisDataOptions,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildDateField(
-                                  label: 'Tanggal Prepare',
-                                  controller: _tglPrepareController,
-                                  onTap: () => _selectDate(context),
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  'Keterangan :',
-                                  style: TextStyle(
-                                    fontSize: isTablet ? 16 : 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade400),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: TextFormField(
-                                    controller: _keteranganController,
-                                    maxLines: 4,
-                                    decoration: const InputDecoration(
-                                      contentPadding: EdgeInsets.all(12),
-                                      border: InputBorder.none,
+                          // Main content with two columns
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left column - Main fields
+                              Expanded(
+                                flex: 1,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _bankList.isEmpty
+                                        ? _buildDropdownField(
+                                            label: 'Bank',
+                                            controller: _bankController,
+                                            options: ['Loading...'],
+                                            isTablet: isTablet,
+                                          )
+                                        : _buildBankDropdownField(
+                                            label: 'Bank',
+                                            controller: _bankController,
+                                            banks: _bankList,
+                                            isTablet: isTablet,
+                                          ),
+                                    const SizedBox(height: 16),
+                                    _buildDropdownField(
+                                      label: 'Jenis Mesin',
+                                      controller: _jenisMesinController,
+                                      options: _jenisMesinOptions,
+                                      isTablet: isTablet,
                                     ),
-                                  ),
+                                    const SizedBox(height: 16),
+                                    _buildDropdownField(
+                                      label: 'Jenis Data',
+                                      controller: _jenisDataController,
+                                      options: _jenisDataOptions,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildDateField(
+                                      label: 'Tanggal Prepare',
+                                      controller: _tglPrepareController,
+                                      onTap: () => _selectDate(context),
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Text(
+                                      'Keterangan :',
+                                      style: TextStyle(
+                                        fontSize: isTablet ? 16 : 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                            color: Colors.grey.shade400),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: TextFormField(
+                                        controller: _keteranganController,
+                                        maxLines: 4,
+                                        decoration: const InputDecoration(
+                                          contentPadding: EdgeInsets.all(12),
+                                          border: InputBorder.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+
+                              const SizedBox(width: 24),
+
+                              // Right column - Denomination fields
+                              Expanded(
+                                flex: 1,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Jumlah (Lembar)',
+                                      style: TextStyle(
+                                        fontSize: isTablet ? 18 : 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildDenomField(
+                                      label: 'A100',
+                                      controller: _a100Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDenomField(
+                                      label: 'A75',
+                                      controller: _a75Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDenomField(
+                                      label: 'A50',
+                                      controller: _a50Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDenomField(
+                                      label: 'A20',
+                                      controller: _a20Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDenomField(
+                                      label: 'A10',
+                                      controller: _a10Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDenomField(
+                                      label: 'A5',
+                                      controller: _a5Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDenomField(
+                                      label: 'A2',
+                                      controller: _a2Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                    const SizedBox(height: 12),
+                                    _buildDenomField(
+                                      label: 'A1',
+                                      controller: _a1Controller,
+                                      isTablet: isTablet,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                          
-                          const SizedBox(width: 24),
-                          
-                          // Right column - Denomination fields
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Jumlah (Lembar)',
-                                  style: TextStyle(
-                                    fontSize: isTablet ? 18 : 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.green,
-                                  ),
+
+                          // Error message
+                          if (_errorMessage.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: Text(
+                                _errorMessage,
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 14,
                                 ),
-                                const SizedBox(height: 16),
-                                _buildDenomField(
-                                  label: 'A100',
-                                  controller: _a100Controller,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildDenomField(
-                                  label: 'A75',
-                                  controller: _a75Controller,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildDenomField(
-                                  label: 'A50',
-                                  controller: _a50Controller,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildDenomField(
-                                  label: 'A20',
-                                  controller: _a20Controller,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildDenomField(
-                                  label: 'A10',
-                                  controller: _a10Controller,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildDenomField(
-                                  label: 'A5',
-                                  controller: _a5Controller,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildDenomField(
-                                  label: 'A2',
-                                  controller: _a2Controller,
-                                  isTablet: isTablet,
-                                ),
-                                const SizedBox(height: 12),
-                                _buildDenomField(
-                                  label: 'A1',
-                                  controller: _a1Controller,
-                                  isTablet: isTablet,
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
                         ],
                       ),
-                      
-                      // Error message
-                      if (_errorMessage.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Text(
-                            _errorMessage,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-            
-            // Submit button
+
+                // Submit button
                 Align(
                   alignment: Alignment.centerRight,
                   child: ElevatedButton.icon(
@@ -579,7 +652,7 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
       ],
     );
   }
-  
+
   Widget _buildBankDropdownField({
     required String label,
     required TextEditingController controller,
@@ -618,30 +691,31 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
                 ),
               ),
             ),
-            child: DropdownButtonFormField<String>(
-              value: controller.text.isNotEmpty ? controller.text : null,
-              hint: Text('Pilih $label'),
-              isExpanded: true,
-              decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(vertical: 8),
-                border: InputBorder.none,
+            child: InkWell(
+              onTap: _pickBank,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        controller.text.isEmpty
+                            ? 'Pilih $label'
+                            : banks
+                                .firstWhere(
+                                  (bank) => bank.code == controller.text,
+                                  orElse: () => Bank(
+                                      code: controller.text,
+                                      name: controller.text),
+                                )
+                                .name,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
               ),
-              items: banks.map((Bank bank) {
-                return DropdownMenuItem<String>(
-                  value: bank.code,
-                  child: Text(
-                    bank.name,
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  controller.text = newValue;
-                }
-              },
-              // Validator removed - using custom modal validation
             ),
           ),
         ),
@@ -745,7 +819,8 @@ class _AddPenguranganDialogState extends State<AddPenguranganDialog> {
                 FilteringTextInputFormatter.digitsOnly,
               ],
               decoration: const InputDecoration(
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 border: InputBorder.none,
               ),
             ),

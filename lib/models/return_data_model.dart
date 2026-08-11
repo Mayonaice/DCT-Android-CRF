@@ -53,7 +53,7 @@ class ReturnData {
 
   factory ReturnData.fromJson(Map<String, dynamic> json) {
     return ReturnData(
-      id: json['Id']?.toString() ?? '',
+      id: json['ConsoleIdTool']?.toString() ?? json['Id']?.toString() ?? '',
       codeBank: json['CodeBank']?.toString() ?? '',
       atmCode: json['AtmCode']?.toString() ?? '',
       jnsMesin: json['JnsMesin']?.toString() ?? '',
@@ -66,9 +66,13 @@ class ReturnData {
       a20: json['A20'] != null ? int.tryParse(json['A20'].toString()) ?? 0 : 0,
       a50: json['A50'] != null ? int.tryParse(json['A50'].toString()) ?? 0 : 0,
       a75: json['A75'] != null ? int.tryParse(json['A75'].toString()) ?? 0 : 0,
-      a100: json['A100'] != null ? int.tryParse(json['A100'].toString()) ?? 0 : 0,
-      tQty: json['TQty'] != null ? int.tryParse(json['TQty'].toString()) ?? 0 : 0,
-      tValue: json['TValue'] != null ? int.tryParse(json['TValue'].toString()) ?? 0 : 0,
+      a100:
+          json['A100'] != null ? int.tryParse(json['A100'].toString()) ?? 0 : 0,
+      tQty:
+          json['TQty'] != null ? int.tryParse(json['TQty'].toString()) ?? 0 : 0,
+      tValue: json['TValue'] != null
+          ? int.tryParse(json['TValue'].toString()) ?? 0
+          : 0,
       branchCode: json['BranchCode']?.toString() ?? '',
       dateSTReturn: json['DateSTReturn']?.toString(),
       tglPrepare: json['TglPrepare']?.toString(),

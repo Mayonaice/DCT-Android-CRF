@@ -9,7 +9,9 @@ import '../widgets/barcode_scanner_widget.dart';
 import '../utils/orientation_lock.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  final String loginSebagai;
+
+  const LoginPage({Key? key, this.loginSebagai = 'OPR'}) : super(key: key);
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -20,12 +22,12 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _noMejaController = TextEditingController();
-  
+
   // Simple focus nodes for navigation
   final _usernameFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
   final _noMejaFocusNode = FocusNode();
-  
+
   String? _selectedBranch;
   bool _isLoading = false;
   bool _isPasswordVisible = false;
@@ -33,14 +35,17 @@ class _LoginPageState extends State<LoginPage> {
   String? _passwordError; // For manual validation to avoid TextFormField crash
   List<Map<String, dynamic>> _availableBranches = [];
   String _androidId = 'Loading...';
-  
+
   final AuthService _authService = AuthService();
+
+  String get _deviceIdLabel =>
+      widget.loginSebagai.toUpperCase() == 'OPR' ? 'IMEI' : 'Android ID';
 
   @override
   void initState() {
     super.initState();
     OrientationLock.unlock();
-    
+
     // Debug logging untuk web
     debugPrint('🎯 LOGIN_PAGE.DART INITIATED');
     debugPrint('  - kIsWeb: $kIsWeb');
@@ -51,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
 
     // CRITICAL FIX: Remove SystemChrome calls that cause crashes on SDK 34
     // SystemChrome.setSystemUIOverlayStyle interferes with keyboard input
-    
+
     // EMERGENCY INPUT STABILITY MODE
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _emergencyInputStabilityMode();
@@ -62,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
     _usernameFocusNode.addListener(_onFocusChanged);
     _passwordFocusNode.addListener(_onFocusChanged);
     _noMejaFocusNode.addListener(_onFocusChanged);
-    
+
     // Add listeners to clear branches when any field changes
     _usernameController.addListener(_clearBranchesOnFieldChange);
     _passwordController.addListener(_clearBranchesOnFieldChange);
@@ -77,7 +82,17 @@ class _LoginPageState extends State<LoginPage> {
       final userData = await _authService.getUserData();
       String userRole = '';
       if (userData != null) {
-        userRole = (userData['roleID'] ?? userData['RoleID'] ?? userData['role'] ?? userData['Role'] ?? userData['userRole'] ?? userData['UserRole'] ?? userData['position'] ?? userData['Position'] ?? '').toString().toUpperCase();
+        userRole = (userData['roleID'] ??
+                userData['RoleID'] ??
+                userData['role'] ??
+                userData['Role'] ??
+                userData['userRole'] ??
+                userData['UserRole'] ??
+                userData['position'] ??
+                userData['Position'] ??
+                '')
+            .toString()
+            .toUpperCase();
       }
 
       if (userRole == 'CRF_TL') {
@@ -100,7 +115,8 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _loadAndroidId() async {
     try {
       // Allow a bit more time to resolve stored/shared preferences
-      final deviceId = await DeviceService.getDeviceId().timeout(const Duration(seconds: 5), onTimeout: () {
+      final deviceId = await DeviceService.getDeviceId()
+          .timeout(const Duration(seconds: 5), onTimeout: () {
         // Safe fallback: 16-hex derived from timestamp hash (not prefixed)
         final ts = DateTime.now().millisecondsSinceEpoch.toString();
         // Simple hex from ascii bytes then trim to 16
@@ -121,21 +137,21 @@ class _LoginPageState extends State<LoginPage> {
     _usernameFocusNode.removeListener(_onFocusChanged);
     _passwordFocusNode.removeListener(_onFocusChanged);
     _noMejaFocusNode.removeListener(_onFocusChanged);
-    
+
     // Remove controller listeners
     _usernameController.removeListener(_clearBranchesOnFieldChange);
     _passwordController.removeListener(_clearBranchesOnFieldChange);
-    
+
     // Dispose controllers
     _usernameController.dispose();
     _passwordController.dispose();
     _noMejaController.dispose();
-    
+
     // Dispose focus nodes (only once)
     _usernameFocusNode.dispose();
     _passwordFocusNode.dispose();
     _noMejaFocusNode.dispose();
-    
+
     super.dispose();
   }
 
@@ -143,7 +159,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _inputChangedAfterModal = false;
 
   // Function removed - now using focus listener approach like prepare_mode
-  
+
   void _clearBranchesOnFieldChange() {
     if ((_availableBranches.isNotEmpty || _selectedBranch != null) && mounted) {
       setState(() {
@@ -152,39 +168,44 @@ class _LoginPageState extends State<LoginPage> {
       });
     }
   }
-  
+
   void _onFocusChanged() {
-    print('DEBUG: Focus changed - Username: ${_usernameFocusNode.hasFocus}, Password: ${_passwordFocusNode.hasFocus}, NoMeja: ${_noMejaFocusNode.hasFocus}');
-    
+    print(
+        'DEBUG: Focus changed - Username: ${_usernameFocusNode.hasFocus}, Password: ${_passwordFocusNode.hasFocus}, NoMeja: ${_noMejaFocusNode.hasFocus}');
+
     // Add small delay to ensure focus state is stable
     Future.delayed(const Duration(milliseconds: 100), () {
       if (!mounted) return;
-      
+
       // Check if no field is currently focused (user moved away from all fields)
-      bool noFieldFocused = !_usernameFocusNode.hasFocus && 
-                           !_passwordFocusNode.hasFocus && 
-                           !_noMejaFocusNode.hasFocus;
-      
+      bool noFieldFocused = !_usernameFocusNode.hasFocus &&
+          !_passwordFocusNode.hasFocus &&
+          !_noMejaFocusNode.hasFocus;
+
       print('DEBUG: noFieldFocused: $noFieldFocused (after delay)');
-      
+
       if (noFieldFocused) {
         // Check if all three fields are filled
         bool allFieldsFilled = _usernameController.text.trim().isNotEmpty &&
             _passwordController.text.trim().isNotEmpty &&
             _noMejaController.text.trim().isNotEmpty;
-        
-        print('DEBUG: Field values - Username: "${_usernameController.text.trim()}", Password: "${_passwordController.text.trim()}", NoMeja: "${_noMejaController.text.trim()}"');
-        print('DEBUG: allFieldsFilled: $allFieldsFilled, _isLoadingBranches: $_isLoadingBranches, _isModalShowing: $_isModalShowing');
-        
+
+        print(
+            'DEBUG: Field values - Username: "${_usernameController.text.trim()}", Password: "${_passwordController.text.trim()}", NoMeja: "${_noMejaController.text.trim()}"');
+        print(
+            'DEBUG: allFieldsFilled: $allFieldsFilled, _isLoadingBranches: $_isLoadingBranches, _isModalShowing: $_isModalShowing');
+
         if (allFieldsFilled && !_isLoadingBranches && !_isModalShowing) {
           // Clear existing branches when triggering new fetch
-          if ((_availableBranches.isNotEmpty || _selectedBranch != null) && mounted) {
+          if ((_availableBranches.isNotEmpty || _selectedBranch != null) &&
+              mounted) {
             setState(() {
               _availableBranches.clear();
               _selectedBranch = null;
             });
           }
-          print('DEBUG: ✅ ALL CONDITIONS MET - Triggering _fetchBranches() from FocusNode');
+          print(
+              'DEBUG: ✅ ALL CONDITIONS MET - Triggering _fetchBranches() from FocusNode');
           if (mounted) {
             _fetchBranches();
           }
@@ -213,11 +234,15 @@ class _LoginPageState extends State<LoginPage> {
         final branches = result['data'] as List<dynamic>;
 
         setState(() {
-          _availableBranches = branches.map((branch) => {
-            'branchName': branch['branchName'] ?? branch['BranchName'] ?? '',
-            'roleID': branch['roleID'] ?? branch['RoleID'] ?? '',
-            'displayText': '${branch['branchName'] ?? branch['BranchName'] ?? ''} (${branch['roleID'] ?? branch['RoleID'] ?? ''})',
-          }).toList();
+          _availableBranches = branches
+              .map((branch) => {
+                    'branchName':
+                        branch['branchName'] ?? branch['BranchName'] ?? '',
+                    'roleID': branch['roleID'] ?? branch['RoleID'] ?? '',
+                    'displayText':
+                        '${branch['branchName'] ?? branch['BranchName'] ?? ''} (${branch['roleID'] ?? branch['RoleID'] ?? ''})',
+                  })
+              .toList();
 
           if (_availableBranches.length == 1) {
             _selectedBranch = _availableBranches.first['displayText'];
@@ -235,7 +260,8 @@ class _LoginPageState extends State<LoginPage> {
           _isModalShowing = true;
           await CustomModals.showFailedModal(
             context: context,
-            message: result['message'] ?? 'Tidak dapat menemukan cabang untuk user ini. Periksa kembali username, password, dan nomor meja.',
+            message: result['message'] ??
+                'Tidak dapat menemukan cabang untuk user ini. Periksa kembali username, password, dan nomor meja.',
             onPressed: () {
               Navigator.of(context).pop();
               _isModalShowing = false;
@@ -264,7 +290,8 @@ class _LoginPageState extends State<LoginPage> {
         _isModalShowing = true;
         await CustomModals.showFailedModal(
           context: context,
-          message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+          message:
+              'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
           buttonText: 'Coba Lagi',
           onPressed: () {
             Navigator.of(context).pop();
@@ -286,19 +313,19 @@ class _LoginPageState extends State<LoginPage> {
   // FINAL EMERGENCY: Simple input stability mode
   void _emergencyInputStabilityMode() async {
     debugPrint('🚨 FINAL EMERGENCY INPUT STABILITY MODE');
-    
+
     try {
       // Multiple focus clearing attempts
       for (int i = 0; i < 3; i++) {
         FocusManager.instance.primaryFocus?.unfocus();
         await Future.delayed(const Duration(milliseconds: 100));
       }
-      
+
       // Clear focus scope if mounted
       if (mounted) {
         FocusScope.of(context).unfocus();
       }
-      
+
       debugPrint('🚨 Final emergency mode completed');
     } catch (e) {
       debugPrint('🚨 Emergency stability error: $e');
@@ -310,7 +337,7 @@ class _LoginPageState extends State<LoginPage> {
     try {
       // Clear any lingering focus issues
       FocusManager.instance.primaryFocus?.unfocus();
-      
+
       // Re-enable input after a brief delay
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) {
@@ -333,7 +360,7 @@ class _LoginPageState extends State<LoginPage> {
       );
       return false;
     }
-    
+
     // Check password second
     if (_passwordController.text.trim().isEmpty) {
       await CustomModals.showFailedModal(
@@ -342,7 +369,7 @@ class _LoginPageState extends State<LoginPage> {
       );
       return false;
     }
-    
+
     // Check table number third
     if (_noMejaController.text.trim().isEmpty) {
       await CustomModals.showFailedModal(
@@ -351,13 +378,13 @@ class _LoginPageState extends State<LoginPage> {
       );
       return false;
     }
-    
+
     return true;
   }
 
   Future<void> _performLogin() async {
     if (_isModalShowing) return;
-    
+
     // Use custom validation instead of form validation
     if (!await _validateLoginForm()) return;
 
@@ -365,7 +392,8 @@ class _LoginPageState extends State<LoginPage> {
       _isModalShowing = true;
       await CustomModals.showFailedModal(
         context: context,
-        message: 'Pastikan semua field sudah benar. Tidak ada cabang CRF yang tersedia untuk user ini.',
+        message:
+            'Pastikan semua field sudah benar. Tidak ada cabang CRF yang tersedia untuk user ini.',
         onPressed: () {
           Navigator.of(context).pop();
           _isModalShowing = false;
@@ -417,14 +445,16 @@ class _LoginPageState extends State<LoginPage> {
       debugPrint('  - NoMeja: ${_noMejaController.text.trim()}');
       debugPrint('  - Selected Branch: $branchName');
       debugPrint('  - Available Branches: ${_availableBranches.length}');
-      
+      debugPrint('  - LoginSebagai: ${widget.loginSebagai}');
+
       final result = await _authService.login(
         _usernameController.text.trim(),
         _passwordController.text.trim(),
         _noMejaController.text.trim(),
         selectedBranch: branchName,
+        loginSebagai: widget.loginSebagai,
       );
-      
+
       debugPrint('🌐 WEB LOGIN RESULT:');
       debugPrint('  - Success: ${result['success']}');
       debugPrint('  - Message: ${result['message']}');
@@ -432,10 +462,13 @@ class _LoginPageState extends State<LoginPage> {
       debugPrint('  - Full Result: $result');
 
       final token = await _authService.getToken();
-      debugPrint('Token after login: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
+      debugPrint(
+          'Token after login: ${token != null ? "Found (${token.length} chars)" : "NULL"}');
 
       if (result['success']) {
-        try { HapticFeedback.mediumImpact(); } catch (_) {}
+        try {
+          HapticFeedback.mediumImpact();
+        } catch (_) {}
         _isModalShowing = true;
         await CustomModals.showSuccessModal(
           context: context,
@@ -449,7 +482,17 @@ class _LoginPageState extends State<LoginPage> {
               final userData = await _authService.getUserData();
               String userRole = '';
               if (userData != null) {
-                userRole = (userData['roleID'] ?? userData['RoleID'] ?? userData['role'] ?? userData['Role'] ?? userData['userRole'] ?? userData['UserRole'] ?? userData['position'] ?? userData['Position'] ?? '').toString().toUpperCase();
+                userRole = (userData['roleID'] ??
+                        userData['RoleID'] ??
+                        userData['role'] ??
+                        userData['Role'] ??
+                        userData['userRole'] ??
+                        userData['UserRole'] ??
+                        userData['position'] ??
+                        userData['Position'] ??
+                        '')
+                    .toString()
+                    .toUpperCase();
               }
               if (userRole == 'CRF_TL') {
                 await OrientationLock.portrait();
@@ -473,7 +516,8 @@ class _LoginPageState extends State<LoginPage> {
         if (result['errorType'] == 'ANDROID_ID_ERROR') {
           await CustomModals.showFailedModal(
             context: context,
-            message: result['message'] ?? 'AndroidID belum terdaftar, silahkan hubungi tim COMSEC',
+            message: result['message'] ??
+                'AndroidID belum terdaftar, silahkan hubungi tim COMSEC',
             onPressed: () {
               Navigator.of(context).pop();
               _isModalShowing = false;
@@ -488,8 +532,9 @@ class _LoginPageState extends State<LoginPage> {
               });
             },
           );
-        } else if (result['message']?.toString().contains('Connection error') == true ||
-                   result['message']?.toString().contains('Timeout') == true) {
+        } else if (result['message']?.toString().contains('Connection error') ==
+                true ||
+            result['message']?.toString().contains('Timeout') == true) {
           await CustomModals.showFailedModal(
             context: context,
             message: result['message'] ?? 'Koneksi ke server bermasalah',
@@ -525,7 +570,8 @@ class _LoginPageState extends State<LoginPage> {
       _isModalShowing = true;
       await CustomModals.showFailedModal(
         context: context,
-        message: 'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
         buttonText: 'Coba Lagi',
         onPressed: () {
           Navigator.of(context).pop();
@@ -554,7 +600,7 @@ class _LoginPageState extends State<LoginPage> {
             final screenWidth = MediaQuery.of(context).size.width;
             final isLandscape = orientation == Orientation.landscape;
             final isTablet = screenWidth > 600;
-            
+
             return SingleChildScrollView(
               child: Container(
                 constraints: BoxConstraints(minHeight: screenHeight),
@@ -566,7 +612,9 @@ class _LoginPageState extends State<LoginPage> {
                     alignment: Alignment.center,
                   ),
                 ),
-                child: isLandscape ? _buildLandscapeLayout(screenWidth, screenHeight, isTablet) : _buildPortraitLayout(screenWidth, screenHeight, isTablet),
+                child: isLandscape
+                    ? _buildLandscapeLayout(screenWidth, screenHeight, isTablet)
+                    : _buildPortraitLayout(screenWidth, screenHeight, isTablet),
               ),
             );
           },
@@ -575,7 +623,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildPortraitLayout(double screenWidth, double screenHeight, bool isTablet) {
+  Widget _buildPortraitLayout(
+      double screenWidth, double screenHeight, bool isTablet) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -623,240 +672,263 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                              const Text(
-                                'User ID/Email/No.Hp',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              TextFormField(
-                                controller: _usernameController,
-                                focusNode: _usernameFocusNode,
-                                enabled: true, // FORCE: Always enabled
-                                readOnly: false, // FORCE: Not read-only
-                                autofillHints: kIsWeb ? null : null, // Keep null for both web and mobile 
-                                enableSuggestions: kIsWeb, // Enable suggestions on web for better UX
-                                autocorrect: false, // Keep disabled for both
-                                enableInteractiveSelection: true, // FORCE: Always enable for all platforms
-                                inputFormatters: [LengthLimitingTextInputFormatter(30)],
-                                decoration: InputDecoration(
-                                  hintText: 'Enter your User ID, Email or Phone Number',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,  // ✅ CRITICAL: Explicit white like crf-and1
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                                  suffixIcon: const Icon(Icons.person),
-                                ),
-                                keyboardType: TextInputType.text,
-                                textInputAction: TextInputAction.next,
-                                onEditingComplete: () => _passwordFocusNode.requestFocus(),
-                                validator: (value) {
-                                  // Remove built-in validation, use custom validation instead
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 15),
-                              const Text(
-                                'Password',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              TextFormField(
-                                controller: _passwordController,
-                                focusNode: _passwordFocusNode,
-                                enabled: true, // FORCE: Always enabled
-                                readOnly: false, // FORCE: Not read-only
-                                autofillHints: kIsWeb ? null : null, // Keep null for both web and mobile
-                                enableSuggestions: kIsWeb, // Enable suggestions on web for better UX 
-                                autocorrect: false, // Keep disabled for both
-                                enableInteractiveSelection: true, // FORCE: Always enable for all platforms
-                                obscureText: !_isPasswordVisible,
-                                inputFormatters: [LengthLimitingTextInputFormatter(30)],
-                                decoration: InputDecoration(
-                                  hintText: 'Enter your password',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,  // ✅ CRITICAL: Explicit white like crf-and1
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                                    ),
-                                    onPressed: () {
-                                      // CRITICAL FIX: Clear focus first to prevent GitHub Issue #33642 crash
-                                      FocusScope.of(context).unfocus();
-                                      Future.delayed(const Duration(milliseconds: 50), () {
-                                        if (mounted) {
-                                          setState(() {
-                                            _isPasswordVisible = !_isPasswordVisible;
-                                          });
-                                          // Add haptic feedback like crf-and1
-                                          HapticFeedback.lightImpact();
-                                        }
-                                      });
-                                    },
-                                  ),
-                                ),
-                                keyboardType: TextInputType.visiblePassword,
-                                textInputAction: TextInputAction.next,
-                                onEditingComplete: () => _noMejaFocusNode.requestFocus(),
-                                validator: (value) {
-                                  // Remove built-in validation, use custom validation instead
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 15),
-                              const Text(
-                                'No. Meja',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              TextFormField(
-                                controller: _noMejaController,
-                                focusNode: _noMejaFocusNode,
-                                enabled: true, // FORCE: Always enabled
-                                readOnly: false, // FORCE: Not read-only
-                                autofillHints: kIsWeb ? null : null, // Keep null for both web and mobile
-                                enableSuggestions: kIsWeb, // Enable suggestions on web for better UX
-                                autocorrect: false, // Keep disabled for both  
-                                enableInteractiveSelection: true, // FORCE: Always enable for all platforms
-                                keyboardType: TextInputType.number,
-                                inputFormatters: [
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(10),
-                                ],
-                                decoration: InputDecoration(
-                                  hintText: 'Enter table number',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.white,  // ✅ CRITICAL: Explicit white like crf-and1
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                                  suffixIcon: GestureDetector(
-                                    onTap: _openTableNumberScanner,
-                                    child: const Icon(Icons.qr_code_scanner),
-                                  ),
-                                ),
-                                textInputAction: TextInputAction.done,
-                                onEditingComplete: () => FocusScope.of(context).unfocus(),
-                                validator: (value) {
-                                  // Remove built-in validation, use custom validation instead
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 15),
-                              const Text(
-                                'Group',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              DropdownButtonFormField<String>(
-                                value: _selectedBranch,
-                                decoration: InputDecoration(
-                                  hintText: _isLoadingBranches
-                                      ? 'Loading branches...'
-                                      : _availableBranches.isEmpty
-                                          ? 'Isi semua Form diatas dahulu'
-                                          : 'Select branch & role',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  filled: true,
-                                  fillColor: _availableBranches.isEmpty ? Colors.grey.shade100 : Colors.white,  // ✅ Like crf-and1
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                                  suffixIcon: _isLoadingBranches 
-                                      ? const SizedBox(
-                                          width: 20,
-                                          height: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        )
-                                      : Icon(
-                                          _availableBranches.isNotEmpty ? Icons.business : Icons.info_outline,
-                                          color: _availableBranches.isNotEmpty ? null : Colors.grey,
-                                        ),
-                                ),
-                                items: _availableBranches.map((branch) {
-                                  try {
-                                    return DropdownMenuItem<String>(
-                                      value: branch['displayText'] as String,
-                                      child: Text((branch['displayText'] as String?) ?? ''),
-                                    );
-                                  } catch (_) {
-                                    return const DropdownMenuItem<String>(
-                                      value: '',
-                                      child: Text('Error'),
-                                    );
-                                  }
-                                }).toList(),
-                                onChanged: _availableBranches.isEmpty ? null : (String? value) {
-                                  setState(() {
-                                    _selectedBranch = value;
-                                  });
-                                  // Add haptic feedback like crf-and1
-                                  HapticFeedback.selectionClick();
-                                },
-                                validator: (value) {
-                                  if (_availableBranches.isEmpty) {
-                                    return 'No branches available. Check your credentials.';
-                                  }
-                                  if (_availableBranches.length > 1 && value == null) {
-                                    return 'Please select a branch';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              Container(
-                                width: double.infinity,
-                                height: 50,
-                                margin: const EdgeInsets.symmetric(vertical: 30),
-                                child: ElevatedButton(
-                                  onPressed: _isLoading ? null : _performLogin,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF2196F3),  // Like crf-and1
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                    elevation: 3,  // Like crf-and1
-                                  ),
-                                  child: _isLoading
-                                      ? const SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                          ),
-                                        )
-                                      : const Text(
-                                          'Login',
-                                          style: TextStyle(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                ),
-                              ),
+                const Text(
+                  'User ID/Email/No.Hp',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                TextFormField(
+                  controller: _usernameController,
+                  focusNode: _usernameFocusNode,
+                  enabled: true, // FORCE: Always enabled
+                  readOnly: false, // FORCE: Not read-only
+                  autofillHints:
+                      kIsWeb ? null : null, // Keep null for both web and mobile
+                  enableSuggestions:
+                      kIsWeb, // Enable suggestions on web for better UX
+                  autocorrect: false, // Keep disabled for both
+                  enableInteractiveSelection:
+                      true, // FORCE: Always enable for all platforms
+                  inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                  decoration: InputDecoration(
+                    hintText: 'Enter your User ID, Email or Phone Number',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    filled: true,
+                    fillColor: Colors
+                        .white, // ✅ CRITICAL: Explicit white like crf-and1
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    suffixIcon: const Icon(Icons.person),
+                  ),
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.next,
+                  onEditingComplete: () => _passwordFocusNode.requestFocus(),
+                  validator: (value) {
+                    // Remove built-in validation, use custom validation instead
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  'Password',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                TextFormField(
+                  controller: _passwordController,
+                  focusNode: _passwordFocusNode,
+                  enabled: true, // FORCE: Always enabled
+                  readOnly: false, // FORCE: Not read-only
+                  autofillHints:
+                      kIsWeb ? null : null, // Keep null for both web and mobile
+                  enableSuggestions:
+                      kIsWeb, // Enable suggestions on web for better UX
+                  autocorrect: false, // Keep disabled for both
+                  enableInteractiveSelection:
+                      true, // FORCE: Always enable for all platforms
+                  obscureText: !_isPasswordVisible,
+                  inputFormatters: [LengthLimitingTextInputFormatter(30)],
+                  decoration: InputDecoration(
+                    hintText: 'Enter your password',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    filled: true,
+                    fillColor: Colors
+                        .white, // ✅ CRITICAL: Explicit white like crf-and1
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed: () {
+                        // CRITICAL FIX: Clear focus first to prevent GitHub Issue #33642 crash
+                        FocusScope.of(context).unfocus();
+                        Future.delayed(const Duration(milliseconds: 50), () {
+                          if (mounted) {
+                            setState(() {
+                              _isPasswordVisible = !_isPasswordVisible;
+                            });
+                            // Add haptic feedback like crf-and1
+                            HapticFeedback.lightImpact();
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                  keyboardType: TextInputType.visiblePassword,
+                  textInputAction: TextInputAction.next,
+                  onEditingComplete: () => _noMejaFocusNode.requestFocus(),
+                  validator: (value) {
+                    // Remove built-in validation, use custom validation instead
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  'No. Meja',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                TextFormField(
+                  controller: _noMejaController,
+                  focusNode: _noMejaFocusNode,
+                  enabled: true, // FORCE: Always enabled
+                  readOnly: false, // FORCE: Not read-only
+                  autofillHints:
+                      kIsWeb ? null : null, // Keep null for both web and mobile
+                  enableSuggestions:
+                      kIsWeb, // Enable suggestions on web for better UX
+                  autocorrect: false, // Keep disabled for both
+                  enableInteractiveSelection:
+                      true, // FORCE: Always enable for all platforms
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  decoration: InputDecoration(
+                    hintText: 'Enter table number',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    filled: true,
+                    fillColor: Colors
+                        .white, // ✅ CRITICAL: Explicit white like crf-and1
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    suffixIcon: GestureDetector(
+                      onTap: _openTableNumberScanner,
+                      child: const Icon(Icons.qr_code_scanner),
+                    ),
+                  ),
+                  textInputAction: TextInputAction.done,
+                  onEditingComplete: () => FocusScope.of(context).unfocus(),
+                  validator: (value) {
+                    // Remove built-in validation, use custom validation instead
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  'Group',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                DropdownButtonFormField<String>(
+                  value: _selectedBranch,
+                  decoration: InputDecoration(
+                    hintText: _isLoadingBranches
+                        ? 'Loading branches...'
+                        : _availableBranches.isEmpty
+                            ? 'Isi semua Form diatas dahulu'
+                            : 'Select branch & role',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    filled: true,
+                    fillColor: _availableBranches.isEmpty
+                        ? Colors.grey.shade100
+                        : Colors.white, // ✅ Like crf-and1
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                    suffixIcon: _isLoadingBranches
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            _availableBranches.isNotEmpty
+                                ? Icons.business
+                                : Icons.info_outline,
+                            color: _availableBranches.isNotEmpty
+                                ? null
+                                : Colors.grey,
+                          ),
+                  ),
+                  items: _availableBranches.map((branch) {
+                    try {
+                      return DropdownMenuItem<String>(
+                        value: branch['displayText'] as String,
+                        child: Text((branch['displayText'] as String?) ?? ''),
+                      );
+                    } catch (_) {
+                      return const DropdownMenuItem<String>(
+                        value: '',
+                        child: Text('Error'),
+                      );
+                    }
+                  }).toList(),
+                  onChanged: _availableBranches.isEmpty
+                      ? null
+                      : (String? value) {
+                          setState(() {
+                            _selectedBranch = value;
+                          });
+                          // Add haptic feedback like crf-and1
+                          HapticFeedback.selectionClick();
+                        },
+                  validator: (value) {
+                    if (_availableBranches.isEmpty) {
+                      return 'No branches available. Check your credentials.';
+                    }
+                    if (_availableBranches.length > 1 && value == null) {
+                      return 'Please select a branch';
+                    }
+                    return null;
+                  },
+                ),
+                Container(
+                  width: double.infinity,
+                  height: 50,
+                  margin: const EdgeInsets.symmetric(vertical: 30),
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _performLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2196F3), // Like crf-and1
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      elevation: 3, // Like crf-and1
+                    ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
                 Center(
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 15),
                     child: Text(
-                      'Android ID = $_androidId',
+                      '$_deviceIdLabel = $_androidId',
                       style: const TextStyle(
                         fontSize: 13,
                         color: Colors.black54,
@@ -873,7 +945,8 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildLandscapeLayout(double screenWidth, double screenHeight, bool isTablet) {
+  Widget _buildLandscapeLayout(
+      double screenWidth, double screenHeight, bool isTablet) {
     // For mobile landscape, use single column layout to avoid cramped space
     if (!isTablet && screenHeight < 500) {
       return SingleChildScrollView(
@@ -935,7 +1008,7 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     }
-    
+
     // For tablet landscape, use centered layout without branding
     return Container(
       width: screenWidth,
@@ -956,7 +1029,8 @@ class _LoginPageState extends State<LoginPage> {
                 Container(
                   width: double.infinity,
                   constraints: BoxConstraints(
-                    maxWidth: screenWidth * 0.5, // Reasonable width for landscape
+                    maxWidth:
+                        screenWidth * 0.5, // Reasonable width for landscape
                     minWidth: 400,
                   ),
                   decoration: BoxDecoration(
@@ -995,7 +1069,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _openTableNumberScanner() async {
     try {
       print('Opening barcode scanner for table number');
-      
+
       // Navigate to barcode scanner
       final result = await Navigator.of(context).push<String>(
         MaterialPageRoute(
@@ -1003,8 +1077,9 @@ class _LoginPageState extends State<LoginPage> {
             title: 'Scan No. Meja',
             onBarcodeDetected: (String barcode) {
               print('Table number barcode detected: $barcode');
-              final sanitizedBarcode = barcode.replaceAll(RegExp(r'[^0-9]'), '');
-              
+              final sanitizedBarcode =
+                  barcode.replaceAll(RegExp(r'[^0-9]'), '');
+
               // Fill the field with scanned barcode
               setState(() {
                 _noMejaController.text = sanitizedBarcode.length > 10
@@ -1015,7 +1090,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       );
-      
     } catch (e) {
       print('Error opening barcode scanner: $e');
       CustomModals.showFailedModal(
@@ -1094,36 +1168,36 @@ class _LoginPageState extends State<LoginPage> {
           Row(
             children: [
               Expanded(
-                 child: TextFormField(
-                   controller: _noMejaController,
-                   keyboardType: TextInputType.number,
-                   inputFormatters: [
-                     FilteringTextInputFormatter.digitsOnly,
-                     LengthLimitingTextInputFormatter(10),
-                   ],
-                   decoration: InputDecoration(
-                     border: OutlineInputBorder(
-                       borderRadius: BorderRadius.circular(6.0),
-                     ),
-                     contentPadding: const EdgeInsets.symmetric(
-                       horizontal: 12.0,
-                       vertical: 10.0,
-                     ),
-                     hintText: 'No. Meja',
-                     hintStyle: const TextStyle(fontSize: 14),
-                     suffixIcon: IconButton(
-                       icon: const Icon(Icons.qr_code_scanner, size: 20),
-                       onPressed: _openTableNumberScanner,
-                     ),
-                   ),
-                   validator: (value) {
-                     if (value == null || value.isEmpty) {
-                       return 'No. Meja tidak boleh kosong';
-                     }
-                     return null;
-                   },
-                 ),
-               ),
+                child: TextFormField(
+                  controller: _noMejaController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6.0),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12.0,
+                      vertical: 10.0,
+                    ),
+                    hintText: 'No. Meja',
+                    hintStyle: const TextStyle(fontSize: 14),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner, size: 20),
+                      onPressed: _openTableNumberScanner,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'No. Meja tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<String>(
@@ -1140,20 +1214,20 @@ class _LoginPageState extends State<LoginPage> {
                     hintStyle: const TextStyle(fontSize: 14),
                   ),
                   items: _availableBranches.map((branch) {
-                      return DropdownMenuItem<String>(
-                        value: branch['displayText'] as String,
-                        child: Text(
-                          branch['displayText'] as String,
-                          style: const TextStyle(fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      );
-                    }).toList(),
-                   onChanged: (value) {
-                     setState(() {
-                       _selectedBranch = value;
-                     });
-                   },
+                    return DropdownMenuItem<String>(
+                      value: branch['displayText'] as String,
+                      child: Text(
+                        branch['displayText'] as String,
+                        style: const TextStyle(fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedBranch = value;
+                    });
+                  },
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Pilih cabang';
@@ -1197,9 +1271,9 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           const SizedBox(height: 12),
-          // IMEI display
+          // Device ID display
           Text(
-            'IMEI: $_androidId',
+            '$_deviceIdLabel: $_androidId',
             style: const TextStyle(
               fontSize: 11,
               color: Colors.grey,

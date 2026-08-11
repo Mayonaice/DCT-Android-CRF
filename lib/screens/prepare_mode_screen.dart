@@ -10,6 +10,7 @@ import '../widgets/barcode_scanner_widget.dart';
 import '../widgets/qr_code_generator_widget.dart';
 import '../widgets/custom_modals.dart';
 import '../widgets/prepare_mode_header.dart';
+import '../widgets/reset_refresh_icon.dart';
 import 'profile_menu_screen.dart';
 import 'prepare_summary_page.dart';
 import 'dart:async';
@@ -62,6 +63,11 @@ class _PrepareModePageState extends State<PrepareModePage>
   bool _isDuplicateModalShowing = false;
   bool _isOpeningBarcodeScanner = false;
   bool _isSealCodePairModalShowing = false;
+  bool _isApplyingExternalScannerValue = false;
+  final Set<TextEditingController> _externalScannerControllers =
+      <TextEditingController>{};
+  final Map<TextEditingController, StringBuffer> _externalScannerBuffers =
+      <TextEditingController, StringBuffer>{};
 
   // Flag to prevent duplicate API calls for Divert fields
   Map<String, bool> _divertApiCallInProgress = {};
@@ -2068,11 +2074,18 @@ class _PrepareModePageState extends State<PrepareModePage>
   //
   void _onCatridgeFieldChanged(int catridgeIndex, int fieldIndex) {
     if (catridgeIndex >= 0 && catridgeIndex < _catridgeControllers.length) {
+      final TextEditingController? controller = fieldIndex >= 0 &&
+              fieldIndex < _catridgeControllers[catridgeIndex].length
+          ? _catridgeControllers[catridgeIndex][fieldIndex]
+          : null;
+      final bool scannerControlled = controller != null &&
+          (_isApplyingExternalScannerValue ||
+              _externalScannerControllers.contains(controller));
       String fieldValue = _catridgeControllers[catridgeIndex][fieldIndex].text;
 
       setState(() {
         if (fieldIndex >= 2 && fieldIndex <= 4) {
-          if (fieldValue.isNotEmpty) {
+          if (fieldValue.isNotEmpty && !scannerControlled) {
             if (catridgeIndex < _catridgeManualMode.length) {
               _catridgeManualMode[catridgeIndex] = true;
             }
@@ -2144,7 +2157,7 @@ class _PrepareModePageState extends State<PrepareModePage>
           return;
         }
 
-        if (fieldValue.isNotEmpty) {
+        if (fieldValue.isNotEmpty && !scannerControlled) {
           // Set manual mode status when user starts typing
           // Set general manual mode status for the catridge section
           if (catridgeIndex < _catridgeManualMode.length) {
@@ -2580,15 +2593,7 @@ class _PrepareModePageState extends State<PrepareModePage>
       });
 
       if (response.success) {
-        if (showResultModal) {
-          _showSuccessModal(
-            response.message.isNotEmpty
-                ? response.message
-                : 'Validasi bag berhasil',
-          );
-        } else {
-          debugPrint('Bag code valid (scan): ${response.message}');
-        }
+        debugPrint('Bag code valid: ${response.message}');
         return;
       }
 
@@ -6002,7 +6007,7 @@ class _PrepareModePageState extends State<PrepareModePage>
               branchName: _branchName,
               userName: _userName,
               userData: _userData,
-              onRefresh: _handleRefreshWithConfirmation,
+              onRefresh: _resetPageToInitialState,
             ),
 
             // Error message if any
@@ -6410,22 +6415,14 @@ class _PrepareModePageState extends State<PrepareModePage>
 
           // Refresh button
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
-              // Show confirmation dialog before refreshing
-              _handleRefreshWithConfirmation();
+              // Reset data when clicked, same behavior as return_page.
+              _resetPageToInitialState();
             },
-            child: Container(
-              width: isTablet ? 44 : 40,
-              height: isTablet ? 44 : 40,
-              decoration: const BoxDecoration(
-                color: Color(0xFF10B981),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.refresh,
-                color: Colors.red,
-                size: 22,
-              ),
+            child: ResetRefreshIcon(
+              size: isTablet ? 48 : 44,
+              textSize: isTablet ? 8 : 7,
             ),
           ),
 
@@ -7105,6 +7102,15 @@ class _PrepareModePageState extends State<PrepareModePage>
         label == 'Seal Catridge' ||
         label == 'Seal Code' ||
         label == 'Seal Code Return');
+    // Bag Code pada section Divert/Pocket juga menerima input dari scanner
+    // external. Jangan bergantung pada daftar controller cartridge karena
+    // controller Bag Code section tersebut memang dikelola terpisah.
+    final bool supportsExternalScannerMode =
+        isManualModeField || label == 'Bag Code';
+    final bool externalScannerActive =
+        _externalScannerControllers.contains(controller);
+    final bool effectiveReadOnly = isReadOnly || externalScannerActive;
+    final bool visuallyDisabled = isReadOnly;
 
     final List<TextInputFormatter>? inputFormatters =
         (label == 'No. Catridge' ||
@@ -7154,30 +7160,78 @@ class _PrepareModePageState extends State<PrepareModePage>
               child: Row(
                 children: [
                   Expanded(
-                    child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      readOnly: isReadOnly,
-                      inputFormatters: inputFormatters,
-                      style: TextStyle(
-                        fontSize: isSmallScreen ? 10 : 12,
-                        color: isReadOnly ? Colors.grey.shade600 : null,
-                      ),
-                      decoration: InputDecoration(
-                        contentPadding: EdgeInsets.only(
-                          left: isSmallScreen ? 4 : 6,
-                          right: isSmallScreen ? 4 : 6,
-                          bottom: isSmallScreen ? 4 : 6,
+                    child: Focus(
+                      onKeyEvent: (node, event) {
+                        if (!externalScannerActive) {
+                          return KeyEventResult.ignored;
+                        }
+                        return _handleExternalScannerKey(
+                          event,
+                          label,
+                          controller,
+                        );
+                      },
+                      child: TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        readOnly: effectiveReadOnly,
+                        inputFormatters: inputFormatters,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 10 : 12,
+                          color: visuallyDisabled ? Colors.grey.shade600 : null,
                         ),
-                        border: InputBorder.none,
-                        isDense: true,
-                        fillColor: isReadOnly ? Colors.grey.shade100 : null,
-                        filled: isReadOnly,
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.only(
+                            left: isSmallScreen ? 4 : 6,
+                            right: isSmallScreen ? 4 : 6,
+                            bottom: isSmallScreen ? 4 : 6,
+                          ),
+                          border: InputBorder.none,
+                          isDense: true,
+                          fillColor:
+                              visuallyDisabled ? Colors.grey.shade100 : null,
+                          filled: visuallyDisabled,
+                        ),
+                        onChanged: externalScannerActive ||
+                                _isApplyingExternalScannerValue
+                            ? null
+                            : onChanged,
+                        onEditingComplete:
+                            externalScannerActive ? null : onEditingComplete,
                       ),
-                      onChanged: onChanged,
-                      onEditingComplete: onEditingComplete,
                     ),
                   ),
+                  if (supportsExternalScannerMode)
+                    Container(
+                      width: isSmallScreen ? 28 : 32,
+                      height: isSmallScreen ? 28 : 32,
+                      margin: EdgeInsets.only(
+                        left: isSmallScreen ? 4 : 6,
+                        bottom: isSmallScreen ? 2 : 3,
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.bluetooth,
+                          size: isSmallScreen ? 19 : 23,
+                          color: isReadOnly
+                              ? Colors.grey.shade400
+                              : (externalScannerActive
+                                  ? Colors.green
+                                  : Colors.blue.shade600),
+                        ),
+                        tooltip: externalScannerActive
+                            ? 'Scanner external aktif'
+                            : 'Scanner external mode',
+                        onPressed: isReadOnly
+                            ? null
+                            : () => _toggleExternalScannerMode(
+                                  controller,
+                                  focusNode,
+                                ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ),
                   // Scan barcode icon button - positioned on the underline
                   Container(
                     width: isSmallScreen ? 28 : 32,
@@ -8278,6 +8332,78 @@ class _PrepareModePageState extends State<PrepareModePage>
     );
   }
 
+  void _toggleExternalScannerMode(
+      TextEditingController controller, FocusNode? focusNode) {
+    setState(() {
+      if (_externalScannerControllers.contains(controller)) {
+        _externalScannerControllers.remove(controller);
+        _externalScannerBuffers.remove(controller);
+      } else {
+        _externalScannerControllers.add(controller);
+        _externalScannerBuffers[controller] = StringBuffer();
+      }
+    });
+
+    if (_externalScannerControllers.contains(controller)) {
+      focusNode?.requestFocus();
+    }
+  }
+
+  bool _isCatridgeBagCode(TextEditingController controller) {
+    for (final controllers in _catridgeControllers) {
+      if (controllers.length > 2 && controllers[2] == controller) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  KeyEventResult _handleExternalScannerKey(
+    KeyEvent event,
+    String label,
+    TextEditingController controller,
+  ) {
+    if (event is! KeyDownEvent) return KeyEventResult.handled;
+
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.tab) {
+      _commitExternalScannerValue(label, controller);
+      return KeyEventResult.handled;
+    }
+
+    if (key == LogicalKeyboardKey.backspace) {
+      final buffer = _externalScannerBuffers[controller];
+      if (buffer != null && buffer.isNotEmpty) {
+        final text = buffer.toString();
+        _externalScannerBuffers[controller] =
+            StringBuffer(text.substring(0, text.length - 1));
+      }
+      return KeyEventResult.handled;
+    }
+
+    final character = event.character;
+    if (character != null && character.isNotEmpty) {
+      final buffer =
+          _externalScannerBuffers.putIfAbsent(controller, () => StringBuffer());
+      buffer.write(character);
+    }
+
+    return KeyEventResult.handled;
+  }
+
+  void _commitExternalScannerValue(
+      String fieldLabel, TextEditingController controller) {
+    final buffer = _externalScannerBuffers[controller];
+    final value = buffer?.toString().trim() ?? '';
+    _externalScannerBuffers[controller] = StringBuffer();
+    if (value.isEmpty) return;
+
+    final cleanLabel = fieldLabel.replaceAll(' :', '').trim();
+    _isApplyingExternalScannerValue = true;
+    _applyScannedValueToField(cleanLabel, controller, value);
+    _isApplyingExternalScannerValue = false;
+  }
+
   void _resetManualModeAfterScan(
       String cleanLabel, TextEditingController controller) {
     if (!mounted) return;
@@ -8413,6 +8539,304 @@ class _PrepareModePageState extends State<PrepareModePage>
     }
   }
 
+  void _applyScannedValueToField(
+    String cleanLabel,
+    TextEditingController controller,
+    String result,
+  ) {
+    final scannedValue = result.trim();
+    if (scannedValue.isEmpty) return;
+
+    setState(() {
+      controller.text = scannedValue;
+      controller.selection =
+          TextSelection.collapsed(offset: scannedValue.length);
+    });
+
+    _resetManualModeAfterScan(cleanLabel, controller);
+
+    if (cleanLabel == 'ID CRF') {
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        _fetchPrepareData();
+      });
+    } else if (cleanLabel == 'No. Catridge') {
+      for (int i = 0; i < _catridgeControllers.length; i++) {
+        if (_catridgeControllers[i].isNotEmpty &&
+            _catridgeControllers[i][0] == controller) {
+          String fieldKey = 'catridge_${i}_no';
+          String fieldName = 'No. Catridge (Catridge ${i + 1})';
+          if (!_validateFieldForDuplicates(scannedValue, fieldKey, fieldName)) {
+            _resetCatridgeAndSealFields(i,
+                resetNoCatridge: true, resetSealCatridge: false);
+            debugPrint('Duplicate scan ignored for $fieldName: $scannedValue');
+            return;
+          }
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            _lookupCatridgeAndCreateDetail(i, scannedValue);
+          });
+          break;
+        }
+      }
+
+      for (int i = 0; i < _divertControllers.length; i++) {
+        if (_divertControllers[i].isNotEmpty &&
+            _divertControllers[i][0] == controller) {
+          String fieldKey = 'divert_${i}_no';
+          String fieldName = 'No. Catridge (Divert ${i + 1})';
+          String apiKey = 'divert_${i}_$scannedValue';
+
+          if (_divertApiCallInProgress[apiKey] == true) {
+            return;
+          }
+
+          if (!_validateFieldForDuplicates(scannedValue, fieldKey, fieldName)) {
+            _resetDivertAndSealFields(i,
+                resetNoCatridge: true, resetSealCatridge: false);
+            debugPrint('Duplicate scan ignored for $fieldName: $scannedValue');
+            return;
+          }
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            _lookupDivertCatridge(i, scannedValue);
+          });
+          break;
+        }
+      }
+
+      if (_pocketControllers.isNotEmpty &&
+          _pocketControllers[0] == controller) {
+        String apiKey = 'pocket_0_$scannedValue';
+        if (_pocketApiCallInProgress[apiKey] == true) {
+          return;
+        }
+
+        String fieldKey = 'pocket_0_no';
+        String fieldName = 'No. Catridge (Pocket)';
+        if (!_validateFieldForDuplicates(scannedValue, fieldKey, fieldName)) {
+          _resetPocketAndSealFields(
+              resetNoCatridge: true, resetSealCatridge: false);
+          debugPrint('Duplicate scan ignored for $fieldName: $scannedValue');
+          return;
+        }
+
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          _lookupPocketCatridge(scannedValue, showResultModal: false);
+        });
+      }
+    } else if (cleanLabel == 'Seal Catridge') {
+      for (int i = 0; i < _catridgeControllers.length; i++) {
+        if (_catridgeControllers[i].length > 1 &&
+            _catridgeControllers[i][1] == controller) {
+          String fieldKey = 'catridge_${i}_seal';
+          String fieldName = 'Seal Catridge (Catridge ${i + 1})';
+          if (!_validateFieldForDuplicates(scannedValue, fieldKey, fieldName)) {
+            _resetCatridgeAndSealFields(i,
+                resetNoCatridge: false, resetSealCatridge: true);
+            debugPrint('Duplicate scan ignored for $fieldName: $scannedValue');
+            return;
+          }
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            _validateSealAndUpdateDetail(i, scannedValue,
+                showResultModal: false);
+          });
+          break;
+        }
+      }
+
+      for (int i = 0; i < _divertControllers.length; i++) {
+        if (_divertControllers[i].length > 1 &&
+            _divertControllers[i][1] == controller) {
+          String fieldKey = 'divert_${i}_seal';
+          String fieldName = 'Seal Catridge (Divert ${i + 1})';
+          String validationKey = 'divert_${i}_seal_$scannedValue';
+
+          if (_divertSealValidationInProgress[validationKey] == true) {
+            return;
+          }
+
+          if (!_validateFieldForDuplicates(scannedValue, fieldKey, fieldName)) {
+            _resetDivertAndSealFields(i,
+                resetNoCatridge: false, resetSealCatridge: true);
+            debugPrint('Duplicate scan ignored for $fieldName: $scannedValue');
+            return;
+          }
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            _validateDivertSeal(i, scannedValue, showResultModal: false);
+          });
+          break;
+        }
+      }
+
+      if (_pocketControllers.length > 1 &&
+          _pocketControllers[1] == controller) {
+        String validationKey = 'pocket_0_seal_$scannedValue';
+        if (_pocketSealValidationInProgress[validationKey] == true) {
+          return;
+        }
+
+        String fieldKey = 'pocket_0_seal';
+        String fieldName = 'Seal Catridge (Pocket)';
+        if (!_validateFieldForDuplicates(scannedValue, fieldKey, fieldName)) {
+          _resetPocketAndSealFields(
+              resetNoCatridge: false, resetSealCatridge: true);
+          debugPrint('Duplicate scan ignored for $fieldName: $scannedValue');
+          return;
+        }
+
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          _validatePocketSeal(scannedValue, showResultModal: false);
+        });
+      }
+    } else if (cleanLabel == 'Bag Code') {
+      for (int i = 0; i < _catridgeControllers.length; i++) {
+        if (_catridgeControllers[i].length > 2 &&
+            _catridgeControllers[i][2] == controller) {
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            if (!mounted) return;
+            if (_prepareData?.isNoBag ?? false) return;
+            String validationKey = 'catridge_${i}_bag_$scannedValue';
+            if (_bagValidationInProgress[validationKey] == true) return;
+            _bagValidationInProgress[validationKey] = true;
+            _validateBagCode(
+              bagCode: scannedValue,
+              sectionType: 'catridge',
+              sectionIndex: i,
+            ).whenComplete(() {
+              _bagValidationInProgress[validationKey] = false;
+            });
+          });
+          break;
+        }
+      }
+
+      for (int i = 0; i < _divertControllers.length; i++) {
+        if (_divertControllers[i].length > 2 &&
+            _divertControllers[i][2] == controller) {
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            if (!mounted) return;
+            if (_prepareData?.isNoBag ?? false) return;
+            String validationKey = 'divert_${i}_bag_$scannedValue';
+            if (_bagValidationInProgress[validationKey] == true) return;
+            _bagValidationInProgress[validationKey] = true;
+            _validateBagCode(
+              bagCode: scannedValue,
+              sectionType: 'divert',
+              sectionIndex: i,
+            ).whenComplete(() {
+              _bagValidationInProgress[validationKey] = false;
+            });
+          });
+          break;
+        }
+      }
+
+      if (_pocketControllers.length > 2 &&
+          _pocketControllers[2] == controller) {
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          if (!mounted) return;
+          if (_prepareData?.isNoBag ?? false) return;
+          String validationKey = 'pocket_0_bag_$scannedValue';
+          if (_bagValidationInProgress[validationKey] == true) return;
+          _bagValidationInProgress[validationKey] = true;
+          _validateBagCode(
+            bagCode: scannedValue,
+            sectionType: 'pocket',
+          ).whenComplete(() {
+            _bagValidationInProgress[validationKey] = false;
+          });
+        });
+      }
+    } else if (cleanLabel == 'Seal Code' || cleanLabel == 'Seal Code Return') {
+      final bool isReturn = cleanLabel == 'Seal Code Return';
+      final String normalizedFieldType =
+          isReturn ? 'seal_code_return' : 'seal_code';
+
+      for (int i = 0; i < _catridgeControllers.length; i++) {
+        final int controllerIndex = isReturn ? 4 : 3;
+        if (_catridgeControllers[i].length > controllerIndex &&
+            _catridgeControllers[i][controllerIndex] == controller) {
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            if (!mounted) return;
+            if (_prepareData?.isNoBag ?? false) return;
+            final String validationValue = scannedValue.trim();
+            final String validationKey = isReturn
+                ? 'catridge_${i}_seal_code_return_$validationValue'
+                : 'catridge_${i}_seal_code_$validationValue';
+            if (_sealCodeValidationInProgress[validationKey] == true) return;
+            _sealCodeValidationInProgress[validationKey] = true;
+            final String sealCode = _catridgeControllers[i][3].text.trim();
+            final String sealCodeReturn =
+                _catridgeControllers[i][4].text.trim();
+            _validateSealCode(
+              sealCode: sealCode,
+              sealCodeReturn: sealCodeReturn,
+              fieldType: normalizedFieldType,
+              sectionType: 'catridge',
+              sectionIndex: i,
+            ).whenComplete(() {
+              _sealCodeValidationInProgress[validationKey] = false;
+            });
+          });
+          break;
+        }
+      }
+
+      for (int i = 0; i < _divertControllers.length; i++) {
+        final int controllerIndex = isReturn ? 4 : 3;
+        if (_divertControllers[i].length > controllerIndex &&
+            _divertControllers[i][controllerIndex] == controller) {
+          Future.delayed(const Duration(milliseconds: 2000), () {
+            if (!mounted) return;
+            if (_prepareData?.isNoBag ?? false) return;
+            final String validationValue = scannedValue.trim();
+            final String validationKey = isReturn
+                ? 'divert_${i}_seal_code_return_$validationValue'
+                : 'divert_${i}_seal_code_$validationValue';
+            if (_sealCodeValidationInProgress[validationKey] == true) return;
+            _sealCodeValidationInProgress[validationKey] = true;
+            final String sealCode = _divertControllers[i][3].text.trim();
+            final String sealCodeReturn = _divertControllers[i][4].text.trim();
+            _validateSealCode(
+              sealCode: sealCode,
+              sealCodeReturn: sealCodeReturn,
+              fieldType: normalizedFieldType,
+              sectionType: 'divert',
+              sectionIndex: i,
+            ).whenComplete(() {
+              _sealCodeValidationInProgress[validationKey] = false;
+            });
+          });
+          break;
+        }
+      }
+
+      final int pocketIndex = isReturn ? 4 : 3;
+      if (_pocketControllers.length > pocketIndex &&
+          _pocketControllers[pocketIndex] == controller) {
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          if (!mounted) return;
+          if (_prepareData?.isNoBag ?? false) return;
+          final String validationValue = scannedValue.trim();
+          final String validationKey = isReturn
+              ? 'pocket_0_seal_code_return_$validationValue'
+              : 'pocket_0_seal_code_$validationValue';
+          if (_sealCodeValidationInProgress[validationKey] == true) return;
+          _sealCodeValidationInProgress[validationKey] = true;
+          final String sealCode = _pocketControllers[3].text.trim();
+          final String sealCodeReturn = _pocketControllers[4].text.trim();
+          _validateSealCode(
+            sealCode: sealCode,
+            sealCodeReturn: sealCodeReturn,
+            fieldType: normalizedFieldType,
+            sectionType: 'pocket',
+            sectionIndex: 0,
+          ).whenComplete(() {
+            _sealCodeValidationInProgress[validationKey] = false;
+          });
+        });
+      }
+    }
+  }
+
   // Open barcode scanner for field input
   Future<void> _openBarcodeScanner(
       String fieldLabel, TextEditingController controller) async {
@@ -8527,7 +8951,7 @@ class _PrepareModePageState extends State<PrepareModePage>
             }
 
             Future.delayed(const Duration(milliseconds: 2000), () {
-              _lookupPocketCatridge(result);
+              _lookupPocketCatridge(result, showResultModal: false);
             });
           }
         } else if (cleanLabel == 'Seal Catridge') {
@@ -8544,7 +8968,7 @@ class _PrepareModePageState extends State<PrepareModePage>
                 return;
               }
               Future.delayed(const Duration(milliseconds: 2000), () {
-                _validateSealAndUpdateDetail(i, result);
+                _validateSealAndUpdateDetail(i, result, showResultModal: false);
               });
               break;
             }
@@ -8575,7 +8999,7 @@ class _PrepareModePageState extends State<PrepareModePage>
                 return;
               }
               Future.delayed(const Duration(milliseconds: 2000), () {
-                _validateDivertSeal(i, result);
+                _validateDivertSeal(i, result, showResultModal: false);
               });
               break;
             }
@@ -8604,7 +9028,7 @@ class _PrepareModePageState extends State<PrepareModePage>
             }
 
             Future.delayed(const Duration(milliseconds: 2000), () {
-              _validatePocketSeal(result);
+              _validatePocketSeal(result, showResultModal: false);
             });
           }
         } else if (cleanLabel == 'Bag Code') {
@@ -10825,21 +11249,6 @@ class _PrepareModePageState extends State<PrepareModePage>
       // Re-setup focus listeners
       _setupFocusListeners();
     });
-  }
-
-  // Function to handle refresh with confirmation
-  Future<void> _handleRefreshWithConfirmation() async {
-    final confirmed = await CustomModals.showConfirmationModal(
-      context: context,
-      message:
-          'Apakah Anda yakin ingin me-refresh halaman? Semua data yang telah diinput akan hilang.',
-      confirmText: 'Ya, Refresh',
-      cancelText: 'Batal',
-    );
-
-    if (confirmed) {
-      _resetPageToInitialState();
-    }
   }
 }
 

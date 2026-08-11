@@ -10,6 +10,8 @@ import '../widgets/custom_modals.dart';
 import '../widgets/face_recognition_widget.dart';
 import '../widgets/tl_header_widget.dart';
 import '../screens/tl_approval_summary_screen.dart';
+import '../screens/tl_konsol_closing_confirmation_page.dart';
+import '../screens/tl_konsol_return_edit_confirmation_page.dart';
 import '../screens/tl_prepare_confirmation_page.dart';
 import '../screens/tl_return_confirmation_page.dart';
 import '../utils/orientation_lock.dart';
@@ -31,7 +33,7 @@ class _TLHomePageState extends State<TLHomePage> {
   String _branchName = '';
   String? _groupId; // Store groupId from user login
   bool _isProcessingQR = false;
-  
+
   // State variables for dashboard counts
   int _belumPrepareCount = 0;
   int _belumReturnCount = 0;
@@ -56,7 +58,8 @@ class _TLHomePageState extends State<TLHomePage> {
         if (payload.containsKey(key)) return _asInt(payload[key]);
       }
       if (payload.containsKey('count')) return _asInt(payload['count']);
-      if (payload.containsKey('data')) return _extractCount(payload['data'], keys);
+      if (payload.containsKey('data'))
+        return _extractCount(payload['data'], keys);
     }
 
     return 0;
@@ -125,7 +128,8 @@ class _TLHomePageState extends State<TLHomePage> {
     if (RegExp(r'^\d{10}$').hasMatch(raw)) {
       final seconds = int.tryParse(raw);
       if (seconds != null) {
-        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000).toIso8601String();
+        return DateTime.fromMillisecondsSinceEpoch(seconds * 1000)
+            .toIso8601String();
       }
     }
 
@@ -161,7 +165,14 @@ class _TLHomePageState extends State<TLHomePage> {
         }
       }
 
-      for (final nestedKey in ['details', 'prepareDetails', 'returnDetails', 'data', 'payload', 'meta']) {
+      for (final nestedKey in [
+        'details',
+        'prepareDetails',
+        'returnDetails',
+        'data',
+        'payload',
+        'meta'
+      ]) {
         final nested = _getValueCaseInsensitive(payload, nestedKey);
         final found = _extractDateStartFromPayload(nested, depth + 1);
         if (found != null && found.isNotEmpty) return found;
@@ -201,18 +212,21 @@ class _TLHomePageState extends State<TLHomePage> {
         print('DEBUG: RoleID: ${userData['RoleID']}');
         print('DEBUG: role: ${userData['role']}');
         print('DEBUG: Role: ${userData['Role']}');
-        
-        final userRole = (userData['roleID'] ?? 
-                         userData['RoleID'] ?? 
-                         userData['role'] ?? 
-                         userData['Role'] ?? 
-                         userData['userRole'] ?? 
-                         userData['UserRole'] ?? 
-                         userData['position'] ?? 
-                         userData['Position'] ?? 
-                         '').toString().toUpperCase();
-        print('DEBUG: TLHomePage _loadUserData - normalized userRole: $userRole');
-        
+
+        final userRole = (userData['roleID'] ??
+                userData['RoleID'] ??
+                userData['role'] ??
+                userData['Role'] ??
+                userData['userRole'] ??
+                userData['UserRole'] ??
+                userData['position'] ??
+                userData['Position'] ??
+                '')
+            .toString()
+            .toUpperCase();
+        print(
+            'DEBUG: TLHomePage _loadUserData - normalized userRole: $userRole');
+
         // Extract groupId for API calls
         String? groupId;
         if (userData.containsKey('groupId') &&
@@ -228,15 +242,18 @@ class _TLHomePageState extends State<TLHomePage> {
             userData['BranchCode'].toString().isNotEmpty) {
           groupId = userData['BranchCode'].toString();
         }
-        
+
         setState(() {
-          _userName = userData['userName'] ?? userData['userID'] ?? 'Lorenzo Putra';
-          _branchName = userData['branchName'] ?? userData['branch'] ?? 'JAKARTA - CIDENG';
+          _userName =
+              userData['userName'] ?? userData['userID'] ?? 'Lorenzo Putra';
+          _branchName = userData['branchName'] ??
+              userData['branch'] ??
+              'JAKARTA - CIDENG';
           _groupId = groupId;
         });
-        
+
         print('🎯 TL HOME: Group ID for API calls: $_groupId');
-        
+
         // Load dashboard counts after getting groupId
         if (_groupId != null) {
           _loadCounts();
@@ -258,18 +275,18 @@ class _TLHomePageState extends State<TLHomePage> {
   // API method to fetch belum prepare count
   Future<int> _getBelumPrepareCount(String branchCode) async {
     try {
-      final String url = 
+      final String url =
           'https://dev.advantagescm.com/LocalCRF/api/CRF/belumprepare?branchCode=$branchCode';
-      
+
       print('🔍 TL HOME: Fetching belum prepare count from: $url');
       print('🔍 TL HOME: BranchCode parameter: $branchCode');
-      
+
       final response = await http.get(Uri.parse(url));
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         print('🎯 TL HOME: Belum prepare response: $data');
-        
+
         final count = _extractCount(data, const [
           'belumPrepare',
           'belum_prepare',
@@ -279,7 +296,8 @@ class _TLHomePageState extends State<TLHomePage> {
         print('🎯 TL HOME: Belum prepare extracted count: $count');
         return count;
       } else {
-        print('🚨 TL HOME: Failed to fetch belum prepare count: ${response.statusCode}');
+        print(
+            '🚨 TL HOME: Failed to fetch belum prepare count: ${response.statusCode}');
         return 0;
       }
     } catch (e) {
@@ -291,18 +309,18 @@ class _TLHomePageState extends State<TLHomePage> {
   // API method to fetch belum return count
   Future<int> _getBelumReturnCount(String branchCode) async {
     try {
-      final String url = 
+      final String url =
           'https://dev.advantagescm.com/LocalCRF/api/CRF/belumreturn?branchCode=$branchCode';
-      
+
       print('🔍 TL HOME: Fetching belum return count from: $url');
       print('🔍 TL HOME: BranchCode parameter: $branchCode');
-      
+
       final response = await http.get(Uri.parse(url));
-      
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         print('🎯 TL HOME: Belum return response: $data');
-        
+
         final count = _extractCount(data, const [
           'belumReturn',
           'belum_return',
@@ -312,7 +330,8 @@ class _TLHomePageState extends State<TLHomePage> {
         print('🎯 TL HOME: Belum return extracted count: $count');
         return count;
       } else {
-        print('🚨 TL HOME: Failed to fetch belum return count: ${response.statusCode}');
+        print(
+            '🚨 TL HOME: Failed to fetch belum return count: ${response.statusCode}');
         return 0;
       }
     } catch (e) {
@@ -337,7 +356,7 @@ class _TLHomePageState extends State<TLHomePage> {
 
     try {
       print('🔍 TL HOME: Loading counts with groupId: $_groupId');
-      
+
       // Call both API endpoints concurrently
       final results = await Future.wait([
         _getBelumPrepareCount(_groupId!),
@@ -350,7 +369,8 @@ class _TLHomePageState extends State<TLHomePage> {
         _isLoadingCounts = false;
       });
 
-      print('🎯 TL HOME: Counts loaded - Belum Prepare: $_belumPrepareCount, Belum Return: $_belumReturnCount');
+      print(
+          '🎯 TL HOME: Counts loaded - Belum Prepare: $_belumPrepareCount, Belum Return: $_belumReturnCount');
       return true;
     } catch (e) {
       print('🚨 TL HOME: Error loading counts: $e');
@@ -378,12 +398,13 @@ class _TLHomePageState extends State<TLHomePage> {
           color: const Color(0xFF4CAF50), // Green color to match theme
           backgroundColor: Colors.white,
           child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(), // Memungkinkan scroll meski konten tidak penuh
+            physics:
+                const AlwaysScrollableScrollPhysics(), // Memungkinkan scroll meski konten tidak penuh
             child: ConstrainedBox(
               constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height - 
-                          MediaQuery.of(context).padding.top - 
-                          kBottomNavigationBarHeight,
+                minHeight: MediaQuery.of(context).size.height -
+                    MediaQuery.of(context).padding.top -
+                    kBottomNavigationBarHeight,
               ),
               child: Column(
                 children: [
@@ -470,7 +491,8 @@ class _TLHomePageState extends State<TLHomePage> {
               // Belum Prepare
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
@@ -518,7 +540,8 @@ class _TLHomePageState extends State<TLHomePage> {
                                   height: 12,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 1.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.orange),
                                   ),
                                 )
                               : Text(
@@ -539,7 +562,8 @@ class _TLHomePageState extends State<TLHomePage> {
               // Belum Return
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(15),
@@ -587,7 +611,8 @@ class _TLHomePageState extends State<TLHomePage> {
                                   height: 12,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 1.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.orange),
                                   ),
                                 )
                               : Text(
@@ -632,7 +657,8 @@ class _TLHomePageState extends State<TLHomePage> {
             // Background navigation items
             Positioned.fill(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -686,7 +712,8 @@ class _TLHomePageState extends State<TLHomePage> {
                             color: Colors.grey[800]!,
                             width: 2,
                           ),
-                          borderRadius: BorderRadius.circular(35), // Perfect circle
+                          borderRadius:
+                              BorderRadius.circular(35), // Perfect circle
                           boxShadow: [
                             BoxShadow(
                               color: Colors.grey.withOpacity(0.3),
@@ -704,7 +731,8 @@ class _TLHomePageState extends State<TLHomePage> {
                       ),
                       const SizedBox(height: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
@@ -745,7 +773,7 @@ class _TLHomePageState extends State<TLHomePage> {
     VoidCallback? onTap,
   }) {
     final isSelected = _selectedIndex == index;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -783,8 +811,9 @@ class _TLHomePageState extends State<TLHomePage> {
 
   // Open QR scanner first (new flow)
   Future<void> _showFaceRecognition() async {
-    debugPrint('🔄 [TL_APPROVAL] Starting new approval flow with QR scanner first...');
-    
+    debugPrint(
+        '🔄 [TL_APPROVAL] Starting new approval flow with QR scanner first...');
+
     // Start with QR scanner instead of face recognition
     await _openQRScanner();
   }
@@ -792,11 +821,12 @@ class _TLHomePageState extends State<TLHomePage> {
   // Show face verification widget (moved to after QR scan)
   Future<bool> _showFaceVerification() async {
     debugPrint('🎭 [FACE_VERIFICATION] Starting face verification...');
-    
+
     // Get user ID for face verification
     final userData = await _authService.getUserData();
-    final userId = userData?['userId'] ?? userData?['userID'] ?? userData?['nik'] ?? '';
-    
+    final userId =
+        userData?['userId'] ?? userData?['userID'] ?? userData?['nik'] ?? '';
+
     if (userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -839,7 +869,7 @@ class _TLHomePageState extends State<TLHomePage> {
   // Open QR scanner directly without intermediate screen
   Future<void> _openQRScanner() async {
     await OrientationLock.portrait();
-    
+
     // Use the QR scanner widget directly
     final String? qrResult = await Navigator.push<String>(
       context,
@@ -847,16 +877,17 @@ class _TLHomePageState extends State<TLHomePage> {
         builder: (context) => TLQRScannerWidget(
           title: 'Scan QR Code - TL Approval',
           onQRDetected: (code) {
-            print('🔍 QR Code detected in TL scanner: ${code.length > 20 ? "${code.substring(0, 20)}..." : code}');
+            print(
+                '🔍 QR Code detected in TL scanner: ${code.length > 20 ? "${code.substring(0, 20)}..." : code}');
           },
           fieldKey: 'qrcode',
           fieldLabel: 'Approval QR',
         ),
       ),
     );
-    
+
     await OrientationLock.portrait();
-    
+
     // Process QR result if available
     if (qrResult != null && qrResult.isNotEmpty) {
       // Process QR data directly and call APIs
@@ -875,13 +906,17 @@ class _TLHomePageState extends State<TLHomePage> {
     try {
       debugPrint('🔍 [QR_PROCESS] Processing QR data...');
       debugPrint('🔍 [QR_PROCESS] QR data length: ${qrData.length}');
-      
+
       final normalizedQrData = _normalizeQrPayload(qrData);
 
-      Map<String, dynamic>? decryptedData = _authService.decryptDataFromQR(qrData);
+      Map<String, dynamic>? decryptedData =
+          _authService.decryptDataFromQR(qrData);
       decryptedData ??= _authService.decryptDataFromQR(normalizedQrData);
       decryptedData ??= _authService.decryptDataFromQR(
-        normalizedQrData.replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', ''),
+        normalizedQrData
+            .replaceAll('+', '-')
+            .replaceAll('/', '_')
+            .replaceAll('=', ''),
       );
 
       debugPrint(
@@ -891,21 +926,57 @@ class _TLHomePageState extends State<TLHomePage> {
         throw Exception('Invalid QR data');
       }
 
-      if (decryptedData.containsKey('simplified') && decryptedData['simplified'] == true) {
+      if (decryptedData.containsKey('simplified') &&
+          decryptedData['simplified'] == true) {
         final source = decryptedData['source']?.toString() ?? '';
         final qrIdTool = decryptedData['idTool']?.toString() ?? '';
         final cashierCode = decryptedData['cashierCode']?.toString() ?? '';
         final tableCode = decryptedData['tableCode']?.toString() ?? '';
-        final totalNominal = int.tryParse(decryptedData['totalNominal']?.toString() ?? '');
-        final totalLembar = int.tryParse(decryptedData['totalLembar']?.toString() ?? '');
-        final jumlahKasetCatridge = int.tryParse(decryptedData['jumlahKasetCatridge']?.toString() ?? '');
+        final totalNominal =
+            int.tryParse(decryptedData['totalNominal']?.toString() ?? '');
+        final totalLembar =
+            int.tryParse(decryptedData['totalLembar']?.toString() ?? '');
+        final jumlahKasetCatridge = int.tryParse(
+            decryptedData['jumlahKasetCatridge']?.toString() ?? '');
         final wsid = decryptedData['wsid']?.toString();
         final bank = decryptedData['bank']?.toString();
         final lokasi = decryptedData['lokasi']?.toString();
         final atmType = decryptedData['atmType']?.toString();
-        final jumlahKaset = int.tryParse(decryptedData['jumlahKaset']?.toString() ?? '');
+        final jumlahKaset =
+            int.tryParse(decryptedData['jumlahKaset']?.toString() ?? '');
         final qrDateStart = _extractDateStartFromPayload(decryptedData);
         debugPrint('🔍 [QR_PROCESS] Resolved dateStart from QR: $qrDateStart');
+        final simplifiedPayload = Map<String, dynamic>.from(decryptedData);
+        final routeKey = [
+          source,
+          simplifiedPayload['action']?.toString() ?? '',
+          simplifiedPayload['approvalType']?.toString() ?? '',
+        ].join('|').toUpperCase();
+        final routeKeyCompact = routeKey.replaceAll(RegExp(r'[^A-Z0-9]'), '');
+        if (routeKey.contains('KONSOL_CLOSING') ||
+            routeKeyCompact.contains('KONSOLCLOSING')) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TLKonsolClosingConfirmationPage(
+                payload: simplifiedPayload,
+              ),
+            ),
+          );
+          return;
+        }
+        if (routeKey.contains('KONSOL_RETURN_EDIT') ||
+            routeKeyCompact.contains('KONSOLRETURNEDIT')) {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TLKonsolReturnEditConfirmationPage(
+                payload: simplifiedPayload,
+              ),
+            ),
+          );
+          return;
+        }
         final action = source.toUpperCase() == 'RETURN' ? 'RETURN' : 'PREPARE';
         if (action == 'PREPARE') {
           await Navigator.push(
@@ -944,38 +1015,43 @@ class _TLHomePageState extends State<TLHomePage> {
           return;
         }
       }
-      
+
       // Process full QR data with all information intact
       final action = decryptedData['action']?.toString() ?? '';
       final idTool = decryptedData['idTool']?.toString() ?? '';
       final username = decryptedData['username']?.toString() ?? '';
       final password = decryptedData['password']?.toString() ?? '';
-      
+
       // Validate required fields
-      if (action.isEmpty || idTool.isEmpty || username.isEmpty || password.isEmpty) {
-        throw Exception('QR Code tidak lengkap. Data yang diperlukan: action, idTool, username, password');
+      if (action.isEmpty ||
+          idTool.isEmpty ||
+          username.isEmpty ||
+          password.isEmpty) {
+        throw Exception(
+            'QR Code tidak lengkap. Data yang diperlukan: action, idTool, username, password');
       }
-      
+
       // Check if this is a full data QR (with catridges and details)
       final hasCatridges = decryptedData.containsKey('catridges');
       final hasDetails = decryptedData.containsKey('details');
-      
+
       if (hasCatridges && hasDetails) {
         // Full approval flow with complete data
-        debugPrint('🔍 [QR_PROCESS] Processing full QR with catridges and details');
-        
+        debugPrint(
+            '🔍 [QR_PROCESS] Processing full QR with catridges and details');
+
         // Validate catridges data
         final catridges = decryptedData['catridges'];
         if (catridges == null || (catridges is List && catridges.isEmpty)) {
           throw Exception('Data catridge tidak ditemukan dalam QR Code');
         }
-        
+
         // Validate details data
         final details = decryptedData['details'];
         if (details == null) {
           throw Exception('Data details tidak ditemukan dalam QR Code');
         }
-        
+
         // Show success message with full data info
         await CustomModals.showSuccessModal(
           context: context,
@@ -986,13 +1062,13 @@ class _TLHomePageState extends State<TLHomePage> {
               'Catridges: ${catridges is List ? catridges.length : 'N/A'} items\n'
               'Details: Available',
         );
-        
+
         debugPrint('🔍 [QR_PROCESS] Detected action: $action');
         return;
       } else {
         // Basic approval with essential data only
         debugPrint('🔍 [QR_PROCESS] Processing basic QR with essential data');
-        
+
         await CustomModals.showSuccessModal(
           context: context,
           message: 'QR Code berhasil diproses!\n\n'
@@ -1001,11 +1077,11 @@ class _TLHomePageState extends State<TLHomePage> {
               'User: $username\n'
               'Mode: Basic Approval',
         );
-        
+
         debugPrint('🔍 [QR_PROCESS] Detected action: $action');
         return;
       }
-      
+
       // Navigate to TL Approval Summary Screen only for full data QR
       if (hasCatridges && hasDetails) {
         final Map<String, dynamic> qrDataForSummary = decryptedData;
@@ -1019,10 +1095,10 @@ class _TLHomePageState extends State<TLHomePage> {
             ),
           ),
         );
-        
-        debugPrint('🔄 [QR_PROCESS] Returned from approval summary with result: $result');
+
+        debugPrint(
+            '🔄 [QR_PROCESS] Returned from approval summary with result: $result');
       }
-      
     } catch (e) {
       debugPrint('❌ [QR_PROCESS] Error processing QR data: $e');
 
@@ -1039,7 +1115,9 @@ class _TLHomePageState extends State<TLHomePage> {
 
       await CustomModals.showFailedModal(
         context: context,
-        message: isInvalidQr ? 'Data yang di scan tidak sesuai' : 'Error processing QR code: $errorText',
+        message: isInvalidQr
+            ? 'Data yang di scan tidak sesuai'
+            : 'Error processing QR code: $errorText',
       );
     } finally {
       setState(() {

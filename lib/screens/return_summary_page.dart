@@ -38,8 +38,6 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
   final ApiService _apiService = ApiService();
   final AuthService _authService = AuthService();
   final ProfileService _profileService = ProfileService();
-  final TextEditingController _tlNikController = TextEditingController();
-  final TextEditingController _tlPasswordController = TextEditingController();
   bool _isSubmitting = false;
   String _userName = '';
   String _branchName = '';
@@ -145,8 +143,6 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _orientationLockTimer?.cancel();
-    _tlNikController.dispose();
-    _tlPasswordController.dispose();
     super.dispose();
   }
 
@@ -242,9 +238,53 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
     return details;
   }
 
-  Future<void> _validateTLAndSubmit() async {
-    if (_tlNikController.text.isEmpty || _tlPasswordController.text.isEmpty) {
-      await _showErrorDialog('NIK dan Password TL harus diisi');
+  String _userValue(List<String> keys) {
+    final data = _userData;
+    if (data == null) return '';
+
+    for (final key in keys) {
+      final value = data[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty && value.toLowerCase() != 'null') return value;
+    }
+    return '';
+  }
+
+  String get _currentUserNik => _userValue([
+        'nik',
+        'NIK',
+        'userId',
+        'userID',
+        'id',
+        'ID',
+      ]);
+
+  String get _currentTableCode => _userValue([
+        'tableCode',
+        'TableCode',
+        'noMeja',
+        'NoMeja',
+        'idMeja',
+        'IdMeja',
+      ]);
+
+  String get _currentWarehouseCode {
+    final warehouse = _userValue([
+      'warehouseCode',
+      'WarehouseCode',
+      'warehouse',
+      'Warehouse',
+    ]);
+    return warehouse.isNotEmpty ? warehouse : 'Cideng';
+  }
+
+  Future<void> _submitWithoutTLValidation() async {
+    if (_isSubmitting) return;
+
+    final approverCode = _currentUserNik;
+    if (approverCode.isEmpty) {
+      await _showErrorDialog(
+        'NIK pengguna tidak ditemukan. Silakan login ulang.',
+      );
       return;
     }
 
@@ -253,35 +293,20 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
     });
 
     try {
-      // Validate TL credentials
-      final tlResponse = await _apiService.validateTLSupervisor(
-        nik: _tlNikController.text,
-        password: _tlPasswordController.text,
-      );
-
-      if (tlResponse.success) {
-        try {
-          // Update Planning RTN first
-          await _updatePlanningRTN();
-
-          // Then submit return data
-          await _submitReturnData();
-        } catch (e) {
-          await _showErrorDialog(e.toString());
-        }
-      } else {
-        await _showErrorDialog(tlResponse.message ?? 'Validasi TL gagal');
-      }
+      await _updatePlanningRTN(approverCode: approverCode);
+      await _submitReturnData(approverCode: approverCode);
     } catch (e) {
-      await _showErrorDialog('Error validasi TL: ${e.toString()}');
+      await _showErrorDialog(e.toString());
     } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
-  Future<void> _updatePlanningRTN() async {
+  Future<void> _updatePlanningRTN({required String approverCode}) async {
     try {
       print('Updating Planning RTN...');
 
@@ -294,13 +319,13 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
 
       final updateParams = {
         "idTool": idTool,
-        "CashierReturnCode": _userData?['nik'] ?? '',
-        "TableReturnCode": _userData?['tableCode'] ?? '',
+        "CashierReturnCode": _currentUserNik,
+        "TableReturnCode": _currentTableCode,
         "DateStartReturn":
             widget.dateStartReturn ?? DateTime.now().toIso8601String(),
-        "WarehouseCode": _userData?['warehouseCode'] ?? 'Cideng',
-        "UserATMReturn": _tlNikController.text,
-        "SPVBARusak": _tlNikController.text,
+        "WarehouseCode": _currentWarehouseCode,
+        "UserATMReturn": approverCode,
+        "SPVBARusak": approverCode,
         "IsManual": "N"
       };
 
@@ -316,41 +341,22 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
     }
   }
 
-  Future<void> _submitReturnData() async {
+  Future<void> _submitReturnData({required String approverCode}) async {
     if (widget.returnData == null) {
       await _showErrorDialog('Tidak ada data untuk disubmit');
       return;
     }
 
     try {
-      // Get NIK from userData with proper error checking
-      String userNIK = '';
       if (_userData != null) {
-        // Try all possible keys for NIK (case insensitive)
-        if (_userData!.containsKey('nik')) {
-          userNIK = _userData!['nik'].toString();
-        } else if (_userData!.containsKey('NIK')) {
-          userNIK = _userData!['NIK'].toString();
-        } else if (_userData!.containsKey('userId')) {
-          userNIK = _userData!['userId'].toString();
-        } else if (_userData!.containsKey('userID')) {
-          userNIK = _userData!['userID'].toString();
-        } else if (_userData!.containsKey('id')) {
-          userNIK = _userData!['id'].toString();
-        } else if (_userData!.containsKey('ID')) {
-          userNIK = _userData!['ID'].toString();
-        }
-
-        // Log the NIK value for debugging
-        print('DEBUG - Using UserInput NIK: $userNIK');
+        print('DEBUG - Using UserInput NIK: $approverCode');
         print('DEBUG - Available userData keys: ${_userData!.keys.toList()}');
         print('DEBUG - Complete userData: $_userData');
       } else {
         print('ERROR - userData is null, cannot get NIK');
       }
 
-      // If NIK is still empty, show error
-      if (userNIK.isEmpty) {
+      if (approverCode.isEmpty) {
         await _showErrorDialog(
             'NIK pengguna tidak ditemukan. Silakan login ulang.');
         return;
@@ -371,7 +377,7 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
         }
         final execResponse = await _apiService.executeReturnAtmCatridgeByIdTool(
           idTool: idToolInt,
-          userApproveReturn: _tlNikController.text.trim(),
+          userApproveReturn: approverCode,
         );
         if (execResponse.success) {
           await _showSuccessDialog('Data return berhasil disubmit!');
@@ -702,55 +708,19 @@ class _ReturnSummaryPageState extends State<ReturnSummaryPage>
           ),
           const SizedBox(height: 24),
           if (!hasManualMode) ...[
-            const Text(
-              'NIK TL SPV',
+            Text(
+              'Tidak ada Manual Mode, data return bisa langsung disubmit tanpa input NIK dan Password TL.',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
-              ),
-              child: TextField(
-                controller: _tlNikController,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                  suffixIcon: Icon(Icons.person_outline, color: Colors.grey),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Password',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.grey.shade400)),
-              ),
-              child: TextField(
-                controller: _tlPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: 8),
-                  suffixIcon: Icon(Icons.visibility, color: Colors.grey),
-                ),
+                fontSize: 14,
+                color: Colors.grey[700],
+                fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _validateTLAndSubmit,
+                onPressed: _isSubmitting ? null : _submitWithoutTLValidation,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   padding: const EdgeInsets.symmetric(vertical: 16),
